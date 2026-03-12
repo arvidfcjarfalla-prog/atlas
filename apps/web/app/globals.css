@@ -1,0 +1,18 @@
+@import "@atlas/ui/src/tokens/base.css";
+@import "@atlas/ui/src/tokens/themes.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}

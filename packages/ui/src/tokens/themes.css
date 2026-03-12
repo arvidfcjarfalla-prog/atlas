@@ -1,0 +1,146 @@
+/*
+ * Three visual identities for the Atlas platform.
+ * All use the same CSS variable names (shadcn-compatible).
+ *
+ * Editorial  — light, "news blue", for disasters/news maps
+ * Explore    — dark, "product green", for conflict/space/consumer maps
+ * Decision   — dark, "action blue", for infrastructure/tools
+ */
+
+/* ─── Editorial (light) ────────────────────────────────── */
+[data-theme="editorial"] {
+  --background: 220 18% 98%;
+  --foreground: 222 22% 16%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 22% 16%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 22% 16%;
+
+  --primary: 215 90% 45%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 20% 96%;
+  --secondary-foreground: 222 10% 42%;
+
+  --muted: 220 20% 96%;
+  --muted-foreground: 222 10% 42%;
+
+  --accent: 220 20% 96%;
+  --accent-foreground: 222 22% 16%;
+
+  --destructive: 2 80% 52%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 16% 86%;
+  --input: 220 16% 86%;
+  --ring: 215 90% 45%;
+
+  --strike: 2 80% 52%;
+  --explosion: 30 90% 55%;
+  --military: 200 60% 50%;
+  --naval: 210 70% 45%;
+  --warning: 34 92% 46%;
+
+  --sidebar-background: 220 20% 96%;
+  --sidebar-foreground: 222 22% 16%;
+  --sidebar-primary: 215 90% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 20% 93%;
+  --sidebar-accent-foreground: 222 22% 16%;
+  --sidebar-border: 220 16% 86%;
+  --sidebar-ring: 215 90% 45%;
+}
+
+/* ─── Explore (dark, green) ────────────────────────────── */
+[data-theme="explore"] {
+  --background: 220 20% 8%;
+  --foreground: 180 5% 85%;
+
+  --card: 220 18% 11%;
+  --card-foreground: 180 5% 85%;
+
+  --popover: 220 18% 11%;
+  --popover-foreground: 180 5% 85%;
+
+  --primary: 152 65% 46%;
+  --primary-foreground: 220 20% 8%;
+
+  --secondary: 220 15% 16%;
+  --secondary-foreground: 180 5% 75%;
+
+  --muted: 220 15% 14%;
+  --muted-foreground: 220 10% 50%;
+
+  --accent: 220 15% 18%;
+  --accent-foreground: 180 5% 85%;
+
+  --destructive: 2 78% 56%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 15% 18%;
+  --input: 220 15% 18%;
+  --ring: 152 65% 46%;
+
+  --strike: 0 72% 55%;
+  --explosion: 30 90% 55%;
+  --military: 200 60% 50%;
+  --naval: 210 70% 45%;
+  --warning: 35 92% 52%;
+
+  --sidebar-background: 220 18% 10%;
+  --sidebar-foreground: 180 5% 85%;
+  --sidebar-primary: 152 65% 46%;
+  --sidebar-primary-foreground: 220 20% 8%;
+  --sidebar-accent: 220 15% 16%;
+  --sidebar-accent-foreground: 180 5% 85%;
+  --sidebar-border: 220 15% 18%;
+  --sidebar-ring: 152 65% 46%;
+}
+
+/* ─── Decision (dark, blue) ────────────────────────────── */
+[data-theme="decision"] {
+  --background: 222 18% 8%;
+  --foreground: 210 40% 96%;
+
+  --card: 222 20% 11%;
+  --card-foreground: 210 40% 96%;
+
+  --popover: 222 20% 11%;
+  --popover-foreground: 210 40% 96%;
+
+  --primary: 206 85% 52%;
+  --primary-foreground: 222 18% 8%;
+
+  --secondary: 222 15% 16%;
+  --secondary-foreground: 215 18% 72%;
+
+  --muted: 222 15% 14%;
+  --muted-foreground: 215 18% 50%;
+
+  --accent: 222 15% 18%;
+  --accent-foreground: 210 40% 96%;
+
+  --destructive: 2 75% 54%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 222 16% 22%;
+  --input: 222 16% 22%;
+  --ring: 206 85% 52%;
+
+  --strike: 2 75% 54%;
+  --explosion: 30 90% 55%;
+  --military: 200 60% 50%;
+  --naval: 210 70% 45%;
+  --warning: 34 90% 52%;
+
+  --sidebar-background: 222 20% 10%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-primary: 206 85% 52%;
+  --sidebar-primary-foreground: 222 18% 8%;
+  --sidebar-accent: 222 15% 16%;
+  --sidebar-accent-foreground: 210 40% 96%;
+  --sidebar-border: 222 16% 22%;
+  --sidebar-ring: 206 85% 52%;
+}
