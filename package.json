@@ -5,11 +5,14 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "turbo test",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.0"
   },
   "packageManager": "pnpm@9.15.4"
 }
