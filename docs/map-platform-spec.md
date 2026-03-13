@@ -34,7 +34,10 @@ apps/web
 | `GeoEntity` | data-models | `entities/base.ts` | Universal entity shape (coordinates, severity, properties) |
 | `MapShell` | map-core | `map-shell.tsx` | Top-level container: theme + layout + viewport |
 | `MapViewport` | map-core | `map-viewport.tsx` | MapLibre GL initialization + basemap quieting |
-| `useMapLayers` | map-core | `use-map-layers.ts` | GeoJSON source + multi-layer rendering + interactions |
+| `useMapLayers` (v1) | map-core | `use-map-layers.ts` | GeoJSON source + multi-layer rendering + interactions |
+| `useManifestRenderer` (v2) | map-core | `use-manifest-renderer.ts` | Compiles manifest + adds layers + handles interactions |
+| `compileLayer` (v2) | map-core | `manifest-compiler.ts` | Pure function: layer definition + data -> MapLibre specs |
+| `useBasemapLayers` (v2) | map-core | `use-basemap-layers.ts` | Terrain, hillshade, nightlights, overlays |
 | `MapControls` | map-core | `map-controls.tsx` | Zoom + geolocation buttons |
 | `SidebarLayout` | ui | `layout/sidebar-layout.tsx` | 3-column responsive layout |
 | `DetailPanel` | map-modules | `detail-panel/detail-panel.tsx` | Inspector panel for selected entity |
@@ -83,6 +86,288 @@ Each data layer creates 8 MapLibre layers in this order (bottom to top):
 | 6 | `-rings` | circle | Outer ring for high + critical only |
 | 7 | `-highlight` | circle | Hover highlight ring (feature-state driven) |
 | 8 | `-labels` | symbol | Text labels for high + critical at zoom 4+ |
+
+---
+
+## v2: AI Pipeline
+
+Atlas v2 replaces manual manifest authoring with an AI-powered flow. Users upload CSV data, describe what they want, and Claude generates a MapManifest automatically with schema + cartographic validation and self-correction.
+
+### Pipeline Steps
+
+1. **CSV Upload** (`POST /api/ai/upload-data`)
+   - Accept CSV file.
+   - Convert to GeoJSON (detect lat/lng columns).
+   - Profile dataset: analyze geometry types, attribute cardinality, value ranges.
+   - Return `DatasetProfile` with detected column types and statistics.
+
+2. **Map Generation** (`POST /api/ai/generate-map`)
+   - Input: user description + DatasetProfile.
+   - Claude Sonnet with 881-line system prompt generates MapManifest JSON.
+   - System prompt includes 9 few-shot examples for each map family.
+
+3. **Schema Validation** (`validateManifestSchema()`)
+   - Validate generated JSON against manifest.ts TypeScript types.
+   - Reject if required fields missing or types incorrect.
+
+4. **Cartographic Validation** (`validateCartographic()`)
+   - Apply domain-specific rules (e.g., choropleth needs aggregated geometry).
+   - Check color palette is valid and classification method matches data type.
+   - Verify flow arc parameters if flow family.
+
+5. **Self-Correction Loop** (max 3 attempts)
+   - If validation fails, return errors to Claude with correction prompt.
+   - Claude regenerates manifest fixing errors.
+   - Stop when validation passes or max attempts reached.
+
+6. **Manifest Compiler** (`compileLayer()`)
+   - Pure function: each layer in manifest -> MapLibre source + layer specs.
+   - Generates legend items, paint expressions, interaction handlers.
+   - Output: CompiledLayer with complete MapLibre configuration.
+
+7. **Render to Map**
+   - React hook `useManifestRenderer()` takes compiled layers.
+   - Adds sources and layers to MapLibre instance.
+   - Attaches hover/click handlers for interactivity.
+
+### Key Files
+
+- `apps/web/app/api/ai/upload-data/route.ts` — CSV ingestion + profiling.
+- `apps/web/app/api/ai/generate-map/route.ts` — Claude manifest generation.
+- `apps/web/lib/ai/system-prompt.ts` — 881 lines, 9 examples per family.
+- `apps/web/lib/ai/profiler.ts` — `profileDataset(geojson) -> DatasetProfile`.
+- `apps/web/lib/ai/validators/schema.ts` — JSON schema validation.
+- `apps/web/lib/ai/validators/cartographic.ts` — Domain-specific rules.
+- `apps/web/lib/ai/patterns/` — Per-family pattern templates.
+- `packages/map-core/src/manifest-compiler.ts` — `compileLayer()` entry point.
+- `packages/map-core/src/use-manifest-renderer.ts` — React hook for rendering.
+- `apps/web/app/(maps)/create/page.tsx` — Create map UI state machine.
+
+---
+
+## v2: Map Families
+
+AI-generated maps are built from 7 declarative families. Each family has a schema definition, a compile function, cartographic validation rules, and pattern templates.
+
+### 1. Point
+
+Individual point features with no aggregation.
+
+**Geometry**: Point.
+
+**Schema**: PointLayer with `colorField`, `sizeField` (optional), `labelField` (optional).
+
+**Compile**: Adds MapLibre circle layer with radius based on `sizeField` if present, color from classification.
+
+**Cartographic rules**: Color palette must support continuous or categorical values.
+
+**Use case**: Store locations, sensor deployments, observation sites.
+
+### 2. Cluster
+
+Groups nearby points at low zoom; explodes into individual points at high zoom.
+
+**Geometry**: Point.
+
+**Schema**: ClusterLayer with `clusterRadius`, `colorField`, `clusterAggregation` (sum | avg | count).
+
+**Compile**: Two-level rendering: cluster circles at low zoom, unclustered points at high zoom. Cluster size and color by aggregation result.
+
+**Cartographic rules**: Must define cluster color thresholds (count-based or value-based).
+
+**Use case**: Dense point clouds (sensors, events, assets).
+
+### 3. Choropleth
+
+Color regions by aggregated data.
+
+**Geometry**: Polygon or MultiPolygon.
+
+**Schema**: ChoroplethLayer with `aggregationField`, `aggregationMethod` (sum | avg | count), `colorField`, `classificationMethod` (quantile | equal-interval | natural-breaks).
+
+**Compile**: Aggregate source data by geometry, classify values, apply fill color based on classification bin.
+
+**Cartographic rules**: Aggregation field must exist in data. Classification method must match data distribution (quantile for skewed, equal-interval for uniform).
+
+**Use case**: Regional statistics, administrative boundaries with metrics.
+
+### 4. Heatmap
+
+Smooth density gradient across space.
+
+**Geometry**: Point.
+
+**Schema**: HeatmapLayer with `radius`, `intensityField` (optional), `colorRamp` palette name.
+
+**Compile**: MapLibre heatmap layer with radius, intensity, and color stops.
+
+**Cartographic rules**: Radius must be 1-50 pixels. Color ramp must be sequential or diverging.
+
+**Use case**: Density visualization, concentration hotspots.
+
+### 5. Proportional Symbol
+
+Size shapes by continuous data attribute.
+
+**Geometry**: Point or Polygon.
+
+**Schema**: ProportionalSymbolLayer with `sizeField`, `sizeRange` [min, max], `colorField` (optional), `shapeType` (circle | square).
+
+**Compile**: Circle or square layer with radius/width scaled by `sizeField` via feature-expression.
+
+**Cartographic rules**: `sizeField` must be numeric. Size range should account for overplotting.
+
+**Use case**: Magnitude or magnitude-class visualization with visual hierarchy.
+
+### 6. Flow
+
+Lines with directional emphasis (arrows or curves).
+
+**Geometry**: LineString with 2 points (origin, destination).
+
+**Schema**: FlowLayer with `flowField` (magnitude), `colorField` (optional), `arc` (true | false), `arrowSize` (small | medium | large).
+
+**Compile**: If `arc: true`, interpolate great-circle arc for >500km or cubic Bézier for <500km. Add arrow symbols along line or at destination.
+
+**Cartographic rules**: Must have exactly 2 coordinates per feature (verified at compile time). Arc interpolation uses `arc-interpolator.ts`.
+
+**Use case**: Migration, trade, connections between locations.
+
+### 7. Isochrone
+
+Reachability regions from an origin point.
+
+**Geometry**: Polygon (computed server-side).
+
+**Schema**: IsochroneLayer with `origin` [lat, lng], `mode` (driving | cycling | foot), `breaks` array of integers, `unit` (minutes | km).
+
+**Compile**: Fetch reachability polygons from `/api/isochrone`, merge into single feature collection, render as concentric fill layers with opacity gradient.
+
+**Cartographic rules**: Breaks must be in ascending order. Mode must match available OpenRouteService modes.
+
+**Use case**: Service area, accessibility analysis.
+
+---
+
+## v2: Manifest Compiler
+
+The manifest compiler is a pure function that converts declarative layer definitions into MapLibre-ready source and layer specifications.
+
+### Entry Point: `compileLayer()`
+
+```ts
+function compileLayer(
+  layer: LayerManifest,
+  data: GeoJSON.FeatureCollection,
+  classificationConfig: ClassificationConfig,
+): CompiledLayer {
+  return {
+    sources: { /* MapLibre source specs */ },
+    layers: { /* MapLibre layer specs */ },
+    legend: { /* Legend items */ },
+  };
+}
+```
+
+Each map family (point, cluster, choropleth, etc.) has a dedicated compile function invoked by the router based on `layer.kind`.
+
+### Compiled Layer Structure
+
+```ts
+interface CompiledLayer {
+  sources: Record<string, MapLibreSource>;
+  layers: MapLibreLayer[];
+  legend: LegendItem[];
+  interactionHandler?: (map: Map, feature: Feature) => void;
+}
+```
+
+**sources**: MapLibre source definitions (geojson, raster, vector). Generated from layer schema and data bounds.
+
+**layers**: Ordered array of MapLibre layer specs (fill, line, circle, symbol, etc.). Includes paint and layout expressions for styling.
+
+**legend**: Array of {label, color, min, max} items. Derived from classification breaks and palette.
+
+**interactionHandler**: Optional function for custom click/hover behavior (e.g., isochrone tooltip, flow destination label).
+
+### Classification
+
+Data classification is handled by `packages/data-models/src/classification.ts`:
+
+- **quantile**: Breaks chosen so each bin has equal count (handles skewed distributions).
+- **equal-interval**: Breaks equally spaced across range (handles uniform distributions).
+- **natural-breaks**: Jenks algorithm finds natural clustering in data (requires external optimization).
+
+Choose method based on distribution analyzed in DatasetProfile.
+
+### Color Palettes
+
+17 named palettes in `packages/data-models/src/palettes.ts`:
+
+**Sequential**: viridis, magma, plasma, inferno, cividis, blues, greens, reds, oranges, purples, greys.
+
+**Diverging**: blue-red, blue-yellow-red, spectral.
+
+**Categorical**: set1, set2, paired.
+
+Use sequential for continuous data (elevation, temperature). Use diverging for bipolar data (change, deviation). Use categorical for unordered categories.
+
+---
+
+## v2: Color and Classification
+
+Every v2 map uses a named palette + a classification method.
+
+### Named Palettes
+
+| Family | Type | Palettes |
+|--------|------|----------|
+| Sequential | Ascending intensity | viridis, magma, plasma, inferno, cividis, blues, greens, reds, oranges, purples, greys |
+| Diverging | Centered on middle value | blue-red, blue-yellow-red, spectral |
+| Categorical | Unordered groups | set1, set2, paired |
+
+Each palette is defined as an array of hex colors, indexed by class bin.
+
+### Classification Methods
+
+| Method | Best For | Behavior |
+|--------|----------|----------|
+| `quantile` | Skewed data | Each bin contains same number of values; breaks adapt to distribution |
+| `equal-interval` | Uniform data | Breaks equally spaced across min-max range |
+| `natural-breaks` | Visual clustering | Jenks algorithm finds natural groupings; computationally expensive |
+
+The AI system prompt recommends a method based on DatasetProfile statistics (coefficient of variation, outlier count).
+
+---
+
+## v2: Basemap Overlays
+
+The `useBasemapLayers()` hook adds optional terrain, relief, and thematic overlays to the basemap. All overlays are subordinate to data layers (z-order managed by layer IDs).
+
+### Available Overlays
+
+| Overlay | Source | Effect | Use Case |
+|---------|--------|--------|----------|
+| terrain | Mapbox Terrain-RGB | Hillshade + contour lines | Topographic context |
+| hillshade | Derived from DEM | Directional shading | Relief visualization |
+| nightlights | NOAA DMSP | Satellite nighttime lights | Urban extent, population density |
+| land-mask | Natural Earth | Solid land fill | Separate land from water |
+| tectonic | GeoJSON | Plate boundary lines + labels | Seismic context |
+
+### Hook Usage
+
+```ts
+const { map } = useMap();
+useBasemapLayers(map, {
+  terrain: true,
+  hillshade: true,
+  nightlights: false,
+  landMask: false,
+  tectonics: false,
+});
+```
+
+Each overlay is added as a set of MapLibre layers. Overlays are automatically positioned below data layers via ID prefix convention (e.g., basemap-terrain, basemap-hillshade).
 
 ---
 
@@ -320,6 +605,21 @@ Map modules are reusable UI components in `packages/map-modules/`. Each module:
 ---
 
 ## How to Add a New Map
+
+Two paths: **v1 (manual manifest)** or **v2 (AI-generated)**.
+
+### v2 Path: AI-Generated Maps
+
+1. Navigate to `/create`.
+2. Upload CSV with lat/lng columns.
+3. Describe desired map in natural language (e.g., "Show earthquake density by region with a choropleth").
+4. Wait for AI to profile data + generate manifest + validate.
+5. Review generated map and edit manifest if needed.
+6. Save as new map product.
+
+The create page state machine: idle -> uploading -> profiled -> generating -> rendered.
+
+### v1 Path: Manual Manifest (Legacy)
 
 ### Step 1: Define the Manifest
 
