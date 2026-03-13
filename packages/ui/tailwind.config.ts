@@ -20,6 +20,14 @@ const config: Config = {
         sans: ["Inter", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
+      fontSize: {
+        heading: ["15px", { lineHeight: "1.33", fontWeight: "600", letterSpacing: "-0.01em" }],
+        title: ["13px", { lineHeight: "1.38", fontWeight: "500", letterSpacing: "-0.006em" }],
+        body: ["13px", { lineHeight: "1.54", fontWeight: "400" }],
+        caption: ["11px", { lineHeight: "1.45", fontWeight: "400" }],
+        label: ["10px", { lineHeight: "1.4", fontWeight: "500", letterSpacing: "0.04em" }],
+        data: ["13px", { lineHeight: "1.38", fontWeight: "400" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -70,6 +78,17 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      transitionDuration: {
+        fast: "var(--dur-fast)",
+        med: "var(--dur-med)",
+        slow: "var(--dur-slow)",
+      },
+      zIndex: {
+        overlay: "var(--z-overlay)",
+        sidebar: "var(--z-sidebar)",
+        panel: "var(--z-panel)",
+        controls: "var(--z-controls)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -80,9 +99,14 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(12px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
-        "fade-in-up": "fade-in-up 0.3s ease-out both",
+        "fade-in-up": "fade-in-up var(--dur-med) var(--ease-out) both",
+        "slide-in-right": "slide-in-right var(--dur-slow) var(--ease-out) both",
       },
     },
   },

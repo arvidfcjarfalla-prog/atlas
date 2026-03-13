@@ -1,25 +1,32 @@
 :root {
-  /* Spacing scale */
+  /* Spacing scale — 4, 6, 8, 12, 16, 20, 24, 32, 40 */
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
 
   /* Radius */
   --radius: 0.375rem;
 
-  /* Shadows */
+  /* Shadow */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
-  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.22);
-  --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.28);
 
-  /* Motion */
+  /* Motion — 3 durations only */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 150ms;
   --dur-med: 250ms;
   --dur-slow: 400ms;
+
+  /* Z-index scale */
+  --z-overlay: 10;
+  --z-sidebar: 20;
+  --z-panel: 25;
+  --z-controls: 30;
 }
 
 /* Scrollbar */

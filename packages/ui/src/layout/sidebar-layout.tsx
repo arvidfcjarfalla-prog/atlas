@@ -36,9 +36,9 @@ export function SidebarLayout({
       {/* Main content (map) */}
       <main className="relative flex-1 min-w-0">{children}</main>
 
-      {/* Right panel — desktop only */}
+      {/* Right panel — desktop only, slides in */}
       {panel && panelOpen && (
-        <aside className="hidden lg:flex w-96 flex-shrink-0 flex-col border-l bg-sidebar overflow-hidden">
+        <aside className="hidden lg:flex w-96 flex-shrink-0 flex-col border-l bg-sidebar overflow-hidden animate-slide-in-right">
           {panel}
         </aside>
       )}

@@ -16,3 +16,18 @@
     overscroll-behavior: none;
   }
 }
+
+/* MapLibre overrides — hide default controls, quiet attribution */
+.maplibregl-ctrl-top-right {
+  display: none;
+}
+
+.maplibregl-ctrl-attrib {
+  background: transparent !important;
+  color: hsl(var(--muted-foreground));
+  font-size: 10px;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: inherit;
+}

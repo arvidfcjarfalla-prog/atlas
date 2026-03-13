@@ -4,9 +4,10 @@ export const disastersManifest: MapManifest = {
   id: "disasters",
   title: "Disasters",
   description: "Real-time earthquakes, wildfires, and natural disasters worldwide.",
-  theme: "editorial",
+  theme: "explore",
   defaultCenter: [20, 0],
   defaultZoom: 2,
+  defaultPitch: 22,
   layers: [
     {
       id: "earthquakes",

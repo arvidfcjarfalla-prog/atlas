@@ -44,12 +44,6 @@ const maps: MapCard[] = [
   },
 ];
 
-const THEME_ACCENT: Record<string, string> = {
-  editorial: "bg-blue-500",
-  explore: "bg-emerald-500",
-  decision: "bg-sky-500",
-};
-
 export default function ExplorePage() {
   return (
     <div data-theme="explore" className="h-full overflow-auto bg-background text-foreground">
@@ -73,18 +67,18 @@ export default function ExplorePage() {
               }`}
             >
               <div className="flex items-center gap-2 mb-3">
-                <span className={`w-2 h-2 rounded-full ${THEME_ACCENT[map.theme]}`} />
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                <span data-theme={map.theme} className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-label font-mono uppercase text-muted-foreground">
                   {map.theme}
                 </span>
                 {map.status === "coming-soon" && (
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground ml-auto border border-border rounded px-1.5 py-0.5">
+                  <span className="text-label font-mono uppercase text-muted-foreground ml-auto border border-border rounded px-1.5 py-0.5">
                     Soon
                   </span>
                 )}
               </div>
-              <h2 className="text-lg font-semibold mb-1">{map.title}</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h2 className="text-heading mb-1">{map.title}</h2>
+              <p className="text-body text-muted-foreground">
                 {map.description}
               </p>
             </Link>
