@@ -11,6 +11,14 @@ interface MapCard {
 
 const maps: MapCard[] = [
   {
+    id: "create",
+    title: "Create Map",
+    description: "Upload a CSV and describe a map — AI generates it for you.",
+    theme: "explore",
+    href: "/create",
+    status: "live",
+  },
+  {
     id: "disasters",
     title: "Disasters",
     description: "Real-time earthquakes, wildfires, and natural disasters worldwide.",
