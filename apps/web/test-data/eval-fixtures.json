@@ -1,0 +1,155 @@
+[
+  {
+    "id": "good-choropleth",
+    "label": "Well-formed choropleth with all fields",
+    "expectedScore": 90,
+    "manifest": {
+      "id": "eval-choropleth",
+      "title": "Population Density by Country",
+      "description": "Choropleth showing population density across Europe.",
+      "theme": "decision",
+      "defaultCenter": [50, 10],
+      "defaultZoom": 4,
+      "defaultBounds": [[35, -10], [65, 30]],
+      "layers": [{
+        "id": "density",
+        "kind": "zone",
+        "label": "Density",
+        "sourceType": "geojson-static",
+        "geometryType": "polygon",
+        "style": {
+          "markerShape": "circle",
+          "mapFamily": "choropleth",
+          "colorField": "density",
+          "classification": { "method": "quantile", "classes": 5 },
+          "color": { "scheme": "blues", "colorblindSafe": true },
+          "normalization": { "field": "area_km2", "method": "per-area" },
+          "fillOpacity": 0.85,
+          "strokeColor": "rgba(255,255,255,0.4)",
+          "strokeWidth": 1
+        },
+        "legend": { "title": "Density (per km²)", "type": "gradient" },
+        "interaction": {
+          "tooltipFields": ["name", "density", "population"],
+          "clickBehavior": "popup",
+          "hoverEffect": "highlight"
+        }
+      }]
+    },
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[-5,42],[3,42],[3,51],[-5,51],[-5,42]]] }, "properties": { "name": "France", "density": 119, "population": 67390000, "area_km2": 551695 } },
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[5,47],[15,47],[15,55],[5,55],[5,47]]] }, "properties": { "name": "Germany", "density": 240, "population": 83200000, "area_km2": 357588 } },
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[6,36],[18,36],[18,47],[6,47],[6,36]]] }, "properties": { "name": "Italy", "density": 206, "population": 59550000, "area_km2": 301340 } },
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[-10,36],[4,36],[4,44],[-10,44],[-10,36]]] }, "properties": { "name": "Spain", "density": 94, "population": 47350000, "area_km2": 505990 } },
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[14,49],[24,49],[24,55],[14,55],[14,49]]] }, "properties": { "name": "Poland", "density": 124, "population": 37750000, "area_km2": 312696 } }
+      ]
+    }
+  },
+  {
+    "id": "good-point",
+    "label": "Well-formed point map with categorical color",
+    "expectedScore": 80,
+    "manifest": {
+      "id": "eval-point",
+      "title": "European Capitals",
+      "description": "Capital cities colored by region.",
+      "theme": "explore",
+      "defaultCenter": [50, 10],
+      "defaultZoom": 4,
+      "layers": [{
+        "id": "capitals",
+        "kind": "asset",
+        "label": "Capitals",
+        "sourceType": "geojson-static",
+        "geometryType": "point",
+        "style": {
+          "markerShape": "circle",
+          "mapFamily": "point",
+          "colorField": "region",
+          "color": { "scheme": "set2", "colorblindSafe": true },
+          "fillOpacity": 0.85
+        },
+        "legend": { "title": "Region", "type": "categorical" },
+        "interaction": {
+          "tooltipFields": ["name", "region"],
+          "hoverEffect": "highlight"
+        }
+      }]
+    },
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "geometry": { "type": "Point", "coordinates": [2.35, 48.86] }, "properties": { "name": "Paris", "region": "Western" } },
+        { "type": "Feature", "geometry": { "type": "Point", "coordinates": [13.4, 52.52] }, "properties": { "name": "Berlin", "region": "Central" } },
+        { "type": "Feature", "geometry": { "type": "Point", "coordinates": [18.07, 59.33] }, "properties": { "name": "Stockholm", "region": "Nordic" } }
+      ]
+    }
+  },
+  {
+    "id": "bad-choropleth-no-normalization",
+    "label": "Choropleth missing normalization and legend",
+    "expectedScore": 50,
+    "manifest": {
+      "id": "eval-bad-choro",
+      "title": "Raw Population",
+      "description": "Population map without normalization.",
+      "theme": "decision",
+      "defaultCenter": [50, 10],
+      "defaultZoom": 4,
+      "layers": [{
+        "id": "pop",
+        "kind": "zone",
+        "label": "Population",
+        "sourceType": "geojson-static",
+        "geometryType": "polygon",
+        "style": {
+          "markerShape": "circle",
+          "mapFamily": "choropleth",
+          "colorField": "population",
+          "classification": { "method": "quantile", "classes": 5 },
+          "color": { "scheme": "blues", "colorblindSafe": true }
+        }
+      }]
+    },
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[-5,42],[3,42],[3,51],[-5,51],[-5,42]]] }, "properties": { "name": "France", "population": 67390000 } }
+      ]
+    }
+  },
+  {
+    "id": "bad-wrong-family",
+    "label": "Choropleth used with point data",
+    "expectedScore": 30,
+    "manifest": {
+      "id": "eval-wrong-family",
+      "title": "Mismatched Family",
+      "theme": "explore",
+      "description": "Point data incorrectly mapped as choropleth.",
+      "defaultCenter": [50, 10],
+      "defaultZoom": 4,
+      "layers": [{
+        "id": "wrong",
+        "kind": "asset",
+        "label": "Wrong",
+        "sourceType": "geojson-static",
+        "geometryType": "point",
+        "style": {
+          "markerShape": "circle",
+          "mapFamily": "choropleth",
+          "colorField": "value",
+          "color": { "scheme": "set1", "colorblindSafe": false }
+        }
+      }]
+    },
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "geometry": { "type": "Point", "coordinates": [10, 50] }, "properties": { "value": 42 } }
+      ]
+    }
+  }
+]

@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "eval": "tsx scripts/eval-runner.ts --offline",
+    "eval:online": "tsx scripts/eval-runner.ts --online",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "point-capitals",
+    "prompt": "Show European capitals as colored points by region (Western, Nordic, Eastern). Use a categorical color scheme.",
+    "expectedFamily": "point"
+  },
+  {
+    "id": "cluster-events",
+    "prompt": "Map earthquake events across the Pacific Ring of Fire. There are thousands of events so cluster them at low zoom levels.",
+    "expectedFamily": "cluster"
+  },
+  {
+    "id": "choropleth-density",
+    "prompt": "Create a choropleth map of population density by country in Europe. Normalize by area and use a blue sequential palette with 5 classes.",
+    "expectedFamily": "choropleth"
+  },
+  {
+    "id": "heatmap-crime",
+    "prompt": "Visualize reported crime incidents in central Stockholm as a heatmap. Weight by severity score.",
+    "expectedFamily": "heatmap"
+  },
+  {
+    "id": "proportional-population",
+    "prompt": "Show major world cities with circle sizes proportional to their population. Color by continent.",
+    "expectedFamily": "proportional-symbol"
+  },
+  {
+    "id": "flow-trade",
+    "prompt": "Map international trade flows between major European ports. Line width should represent trade volume in tonnes. Use curved arcs.",
+    "expectedFamily": "flow"
+  },
+  {
+    "id": "isochrone-cycling",
+    "prompt": "Show 10, 20, and 30 minute cycling accessibility zones from Stockholm Central Station.",
+    "expectedFamily": "isochrone"
+  },
+  {
+    "id": "choropleth-election",
+    "prompt": "Map election results by municipality in Sweden. Use a diverging blue-red color scheme to show vote margin between the two leading parties.",
+    "expectedFamily": "choropleth"
+  },
+  {
+    "id": "heatmap-wifi",
+    "prompt": "Create a density surface of public WiFi hotspot locations in Paris.",
+    "expectedFamily": "heatmap"
+  },
+  {
+    "id": "flow-migration",
+    "prompt": "Visualize migration patterns between Nordic countries. Show direction and weight by number of migrants.",
+    "expectedFamily": "flow"
+  },
+  {
+    "id": "proportional-gdp",
+    "prompt": "Map EU member states with bubbles sized by GDP. Color by GDP per capita using a green sequential scheme.",
+    "expectedFamily": "proportional-symbol"
+  },
+  {
+    "id": "isochrone-driving",
+    "prompt": "Show 15 and 30 minute driving isochrones from Gothenburg airport.",
+    "expectedFamily": "isochrone"
+  }
+]

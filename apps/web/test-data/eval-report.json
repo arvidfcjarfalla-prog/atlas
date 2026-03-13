@@ -1,0 +1,287 @@
+{
+  "mode": "offline",
+  "timestamp": "2026-03-13T23:02:42.961Z",
+  "total": 4,
+  "passed": 3,
+  "failed": 1,
+  "avgQualityScore": 72,
+  "results": [
+    {
+      "id": "good-choropleth",
+      "label": "Well-formed choropleth with all fields",
+      "pass": true,
+      "manifest": {
+        "id": "eval-choropleth",
+        "title": "Population Density by Country",
+        "description": "Choropleth showing population density across Europe.",
+        "theme": "decision",
+        "defaultCenter": [
+          50,
+          10
+        ],
+        "defaultZoom": 4,
+        "defaultBounds": [
+          [
+            35,
+            -10
+          ],
+          [
+            65,
+            30
+          ]
+        ],
+        "layers": [
+          {
+            "id": "density",
+            "kind": "zone",
+            "label": "Density",
+            "sourceType": "geojson-static",
+            "geometryType": "polygon",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "choropleth",
+              "colorField": "density",
+              "classification": {
+                "method": "quantile",
+                "classes": 5
+              },
+              "color": {
+                "scheme": "blues",
+                "colorblindSafe": true
+              },
+              "normalization": {
+                "field": "area_km2",
+                "method": "per-area"
+              },
+              "fillOpacity": 0.85,
+              "strokeColor": "rgba(255,255,255,0.4)",
+              "strokeWidth": 1
+            },
+            "legend": {
+              "title": "Density (per km²)",
+              "type": "gradient"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "name",
+                "density",
+                "population"
+              ],
+              "clickBehavior": "popup",
+              "hoverEffect": "highlight"
+            }
+          }
+        ]
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 100,
+        "breakdown": {
+          "schemaCompleteness": 20,
+          "familyAppropriateness": 25,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "good-point",
+      "label": "Well-formed point map with categorical color",
+      "pass": true,
+      "manifest": {
+        "id": "eval-point",
+        "title": "European Capitals",
+        "description": "Capital cities colored by region.",
+        "theme": "explore",
+        "defaultCenter": [
+          50,
+          10
+        ],
+        "defaultZoom": 4,
+        "layers": [
+          {
+            "id": "capitals",
+            "kind": "asset",
+            "label": "Capitals",
+            "sourceType": "geojson-static",
+            "geometryType": "point",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "point",
+              "colorField": "region",
+              "color": {
+                "scheme": "set2",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.85
+            },
+            "legend": {
+              "title": "Region",
+              "type": "categorical"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "name",
+                "region"
+              ],
+              "hoverEffect": "highlight"
+            }
+          }
+        ]
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 98,
+        "breakdown": {
+          "schemaCompleteness": 18,
+          "familyAppropriateness": 25,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "bad-choropleth-no-normalization",
+      "label": "Choropleth missing normalization and legend",
+      "pass": true,
+      "manifest": {
+        "id": "eval-bad-choro",
+        "title": "Raw Population",
+        "description": "Population map without normalization.",
+        "theme": "decision",
+        "defaultCenter": [
+          50,
+          10
+        ],
+        "defaultZoom": 4,
+        "layers": [
+          {
+            "id": "pop",
+            "kind": "zone",
+            "label": "Population",
+            "sourceType": "geojson-static",
+            "geometryType": "polygon",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "choropleth",
+              "colorField": "population",
+              "classification": {
+                "method": "quantile",
+                "classes": 5
+              },
+              "color": {
+                "scheme": "blues",
+                "colorblindSafe": true
+              }
+            }
+          }
+        ]
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": [
+          "Layer \"pop\": choropleth without normalization — raw counts may be misleading"
+        ]
+      },
+      "qualityScore": {
+        "total": 75,
+        "breakdown": {
+          "schemaCompleteness": 15,
+          "familyAppropriateness": 25,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 0,
+          "legendCompleteness": 0
+        },
+        "deductions": [
+          "Choropleth without normalization — raw counts may be misleading",
+          "Legend is missing a title",
+          "Legend is missing a type"
+        ]
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "bad-wrong-family",
+      "label": "Choropleth used with point data",
+      "pass": false,
+      "manifest": {
+        "id": "eval-wrong-family",
+        "title": "Mismatched Family",
+        "theme": "explore",
+        "description": "Point data incorrectly mapped as choropleth.",
+        "defaultCenter": [
+          50,
+          10
+        ],
+        "defaultZoom": 4,
+        "layers": [
+          {
+            "id": "wrong",
+            "kind": "asset",
+            "label": "Wrong",
+            "sourceType": "geojson-static",
+            "geometryType": "point",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "choropleth",
+              "colorField": "value",
+              "color": {
+                "scheme": "set1",
+                "colorblindSafe": false
+              }
+            }
+          }
+        ]
+      },
+      "validation": {
+        "valid": false,
+        "errors": [
+          "Layer \"wrong\": choropleth requires polygon geometry, got \"point\""
+        ],
+        "warnings": [
+          "Layer \"wrong\": choropleth without normalization — raw counts may be misleading",
+          "Layer \"wrong\": colorblindSafe is disabled — map may be inaccessible"
+        ]
+      },
+      "qualityScore": {
+        "total": 15,
+        "breakdown": {
+          "schemaCompleteness": 15,
+          "familyAppropriateness": 0,
+          "colorSchemeQuality": 0,
+          "classificationQuality": 0,
+          "normalization": 0,
+          "legendCompleteness": 0
+        },
+        "deductions": [
+          "Family \"choropleth\" is not appropriate for Point geometry",
+          "Colorblind safety is disabled",
+          "Categorical scheme \"set1\" used for sequential data (choropleth)",
+          "No classification specified for quantitative family",
+          "Choropleth without normalization — raw counts may be misleading",
+          "Legend is missing a title",
+          "Legend is missing a type"
+        ]
+      },
+      "compileSuccess": false
+    }
+  ]
+}
