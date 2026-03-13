@@ -17,6 +17,10 @@
     },
     "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "e2e": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   }
 }
