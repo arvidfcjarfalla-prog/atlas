@@ -69,9 +69,9 @@ export function useActivityField({
             "interpolate",
             ["linear"],
             ["zoom"],
-            0, 0.06,
-            4, 0.08,
-            8, 0.04,
+            0, 0.10,
+            4, 0.12,
+            8, 0.06,
             9, 0,
           ],
           // Deep subsurface ramp — geological heat, not UI glow

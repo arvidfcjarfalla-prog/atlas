@@ -17,41 +17,169 @@ const BASEMAP_STYLES: Record<string, string> = {
   decision: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
 };
 
+/** Fetch a style URL with retries to handle transient 503s from CARTO CDN. */
+async function fetchStyleWithRetry(
+  url: string,
+  retries = 3,
+  delayMs = 800,
+): Promise<maplibregl.StyleSpecification> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url);
+    if (res.ok) return res.json() as Promise<maplibregl.StyleSpecification>;
+    if (attempt < retries) await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+  }
+  throw new Error(`Failed to fetch basemap style after ${retries + 1} attempts`);
+}
+
+/**
+ * Mutate the CARTO Dark Matter style JSON before it reaches the Map constructor.
+ *
+ * CARTO Dark Matter structure:
+ *   background  #0e0e0e  (near-black)
+ *   land fills  #0e0e0e  (same as bg, uses zoom-stops)
+ *   water fill  #2C353C  (blue-grey, lighter than land)
+ *   56 line layers, 27 symbol layers
+ *
+ * This transform:
+ *   - Shifts background + land toward blue-black (#080b10 / #10141a)
+ *   - Makes water distinctly colder and deeper (#0c1520)
+ *   - Quiets lines and labels so data layers dominate
+ *   - Eliminates flash-of-unquieted-basemap (pre-constructor, not post-load)
+ */
+function transformBasemapStyle(
+  style: maplibregl.StyleSpecification,
+): maplibregl.StyleSpecification {
+  const LAND_COLOR = "#151921";
+  const WATER_COLOR = "#040810";
+
+  const layers = style.layers.map((layer) => {
+    // Background — deep blue-black night
+    if (layer.type === "background") {
+      return {
+        ...layer,
+        paint: { ...layer.paint, "background-color": "#030508" },
+      };
+    }
+
+    // Water fills — cold deep ocean, materially different from land
+    if (layer.type === "fill" && layer.id.includes("water")) {
+      return {
+        ...layer,
+        paint: { "fill-color": WATER_COLOR, "fill-opacity": 1 },
+      };
+    }
+
+    // Landcover layers — slightly lighter for subtle texture variation
+    if (layer.type === "fill" && layer.id.includes("landcover")) {
+      return {
+        ...layer,
+        paint: { "fill-color": "#181e28", "fill-opacity": 0.6 },
+      };
+    }
+
+    // All other fills — solid LAND_COLOR
+    if (layer.type === "fill") {
+      return {
+        ...layer,
+        paint: { "fill-color": LAND_COLOR, "fill-opacity": 1 },
+      };
+    }
+
+    // Structural lines — subtle but present for geographic definition
+    if (layer.type === "line") {
+      const paint = layer.paint as Record<string, unknown> | undefined;
+      if (!paint) return layer;
+      const existingOpacity = paint["line-opacity"];
+      const base = typeof existingOpacity === "number" ? existingOpacity : 1;
+      return {
+        ...layer,
+        paint: {
+          ...paint,
+          "line-color": "#1a2535",
+          "line-opacity": base * 0.2,
+        },
+      };
+    }
+
+    // Labels — quiet, cool, receding
+    if (layer.type === "symbol") {
+      const paint = layer.paint as Record<string, unknown> | undefined;
+      return {
+        ...layer,
+        paint: {
+          ...paint,
+          "text-opacity": 0.25,
+          "text-color": "rgba(160, 175, 190, 1)",
+          "text-halo-color": "rgba(0, 0, 0, 0.7)",
+          "text-halo-blur": 2,
+        },
+      };
+    }
+
+    return layer;
+  });
+
+  return { ...style, layers };
+}
+
 export function MapViewport({ manifest, children }: MapViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MaplibreMap | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: BASEMAP_STYLES[manifest.theme] ?? BASEMAP_STYLES.explore,
-      center: manifest.defaultCenter
-        ? [manifest.defaultCenter[1], manifest.defaultCenter[0]]
-        : [0, 20],
-      zoom: manifest.defaultZoom ?? 2,
-      attributionControl: { compact: true },
-    });
+    let cancelled = false;
+    let mapRef: MaplibreMap | null = null;
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    const styleUrl = BASEMAP_STYLES[manifest.theme] ?? BASEMAP_STYLES.explore;
 
-    map.on("load", () => {
-      mapRef.current = map;
-      setIsReady(true);
-    });
+    fetchStyleWithRetry(styleUrl)
+      .then((styleJson) => {
+        if (cancelled || !containerRef.current) return;
+
+        const map = new maplibregl.Map({
+          container: containerRef.current,
+          style: transformBasemapStyle(styleJson),
+          center: manifest.defaultCenter
+            ? [manifest.defaultCenter[1], manifest.defaultCenter[0]]
+            : [0, 20],
+          zoom: manifest.defaultZoom ?? 2,
+          pitch: manifest.defaultPitch ?? 0,
+          maxPitch: 45,
+          attributionControl: { compact: true },
+        });
+
+        mapRef = map;
+
+        const onReady = () => {
+          if (!cancelled) {
+            setMapInstance(map);
+          }
+        };
+
+        if (map.loaded()) {
+          onReady();
+        } else {
+          map.on("load", onReady);
+        }
+
+        map.once("idle", onReady);
+      })
+      .catch(() => {
+        // Style fetch failed after retries — map won't render
+      });
 
     return () => {
-      map.remove();
-      mapRef.current = null;
-      setIsReady(false);
+      cancelled = true;
+      setMapInstance(null);
+      mapRef?.remove();
     };
-  }, [manifest.theme, manifest.defaultCenter, manifest.defaultZoom]);
+  }, [manifest.theme]);
 
   const handleResize = useCallback(() => {
-    mapRef.current?.resize();
-  }, []);
+    mapInstance?.resize();
+  }, [mapInstance]);
 
   useEffect(() => {
     window.addEventListener("resize", handleResize);
@@ -59,13 +187,13 @@ export function MapViewport({ manifest, children }: MapViewportProps) {
   }, [handleResize]);
 
   const contextValue = useMemo(
-    () => ({ map: mapRef.current, isReady }),
-    [isReady],
+    () => ({ map: mapInstance, isReady: mapInstance !== null }),
+    [mapInstance],
   );
 
   return (
     <MapContext.Provider value={contextValue}>
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
       {children}
     </MapContext.Provider>
   );

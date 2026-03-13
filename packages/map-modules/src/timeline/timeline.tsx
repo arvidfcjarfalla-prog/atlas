@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from "react";
 import type { GeoEntity, Severity } from "@atlas/data-models";
-import { SEVERITY_PRIORITY, SEVERITY_COLOR, maxSeverity } from "@atlas/data-models";
+import { SEVERITY_COLOR, maxSeverity } from "@atlas/data-models";
 import { cn } from "@atlas/ui";
 import { useTimeWindow, type TimeWindowValue } from "./use-time-window";
 
@@ -24,7 +24,6 @@ interface TimelineProps {
 
 /**
  * Density bar showing entity distribution over time.
- * Generalized from live-iran-map IncidentTimeline.
  */
 export function Timeline({ entities, embedded, className }: TimelineProps) {
   const { timeWindow, setTimeWindow, windowMs } = useTimeWindow();
@@ -78,7 +77,7 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
       className={cn(
         embedded
           ? "flex items-end gap-3 px-3 py-2 w-full"
-          : "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 hidden sm:flex items-end gap-3 bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 shadow-lg max-w-[520px]",
+          : "absolute bottom-4 left-1/2 -translate-x-1/2 z-overlay hidden sm:flex items-end gap-3 bg-card border border-border rounded-lg px-3 py-2 shadow-sm max-w-[520px]",
         className,
       )}
     >
@@ -90,27 +89,27 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
               key={w}
               onClick={() => handleWindowClick(w)}
               className={cn(
-                "text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded transition-colors",
+                "text-label font-mono uppercase px-2 py-0.5 rounded transition-colors duration-fast",
                 timeWindow === w
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
               )}
             >
               {w}
             </button>
           ))}
         </div>
-        <span className="text-[8px] font-mono text-muted-foreground">
+        <span className="text-caption font-mono text-muted-foreground">
           {totalInWindow} events
         </span>
       </div>
 
       {/* Density bars */}
-      <div className="flex items-end gap-px h-6 flex-1 min-w-0">
+      <div className="flex items-end gap-px h-9 flex-1 min-w-0">
         {buckets.map((bucket, i) => {
           const height =
             bucket.count > 0
-              ? Math.max(3, (bucket.count / maxCount) * 24)
+              ? Math.max(3, (bucket.count / maxCount) * 36)
               : 1;
           const color =
             bucket.count > 0
@@ -123,7 +122,7 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
               title={`${bucket.count} event${bucket.count !== 1 ? "s" : ""}`}
             >
               <div
-                className="w-full rounded-sm transition-all duration-150 group-hover:brightness-125"
+                className="w-full rounded-sm transition-all duration-fast group-hover:brightness-125"
                 style={{
                   height: `${height}px`,
                   backgroundColor: color,
@@ -136,7 +135,7 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
       </div>
 
       {/* Now indicator */}
-      <span className="text-[7px] font-mono text-muted-foreground flex-shrink-0 self-end">
+      <span className="text-label font-mono text-muted-foreground flex-shrink-0 self-end">
         now
       </span>
     </div>

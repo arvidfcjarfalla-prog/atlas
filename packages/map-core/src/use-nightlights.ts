@@ -3,30 +3,31 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "./use-map";
 
-interface UseHillshadeOptions {
-  /** Enable the hillshade terrain texture. */
+interface UseNightlightsOptions {
+  /** Enable the nightlights raster layer. */
   enabled?: boolean;
-  /** Insert the hillshade layer below this layer ID. */
+  /** Insert the nightlights layer below this layer ID. */
   beforeLayerId?: string;
 }
 
-const SOURCE_ID = "hillshade-dem-source";
-const LAYER_ID = "hillshade-layer";
+const SOURCE_ID = "nightlights-source";
+const LAYER_ID = "nightlights-layer";
 
 /**
- * Adds a subtle hillshade layer that reveals terrain structure —
- * mountain ranges, ocean ridges, continental relief.
+ * Adds a NASA VIIRS Black Marble nightlights raster layer
+ * that shows city lights on the dark globe.
  *
- * Uses a raster-DEM source rendered as a hillshade layer.
- * Opacity is intentionally low — terrain texture, not topographic map.
- * Sits below all data layers as the quietest visual element.
+ * Gives the land surface texture and life — warm orange/white
+ * dots across populated areas. Opacity is intentionally low
+ * so it reads as ambient texture, not content.
  *
- * Uses AWS/Mapzen Terrarium tiles (free, no API key, global coverage).
+ * Uses NASA GIBS WMTS tiles (free, no API key).
+ * Falls back gracefully if tiles fail to load.
  */
-export function useHillshade({
+export function useNightlights({
   enabled = true,
   beforeLayerId,
-}: UseHillshadeOptions = {}) {
+}: UseNightlightsOptions = {}) {
   const { map, isReady } = useMap();
   const addedRef = useRef(false);
 
@@ -36,13 +37,12 @@ export function useHillshade({
     try {
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
-          type: "raster-dem",
+          type: "raster",
           tiles: [
-            "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+            "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png",
           ],
-          encoding: "terrarium",
           tileSize: 256,
-          maxzoom: 15,
+          maxzoom: 8,
         });
       }
 
@@ -55,16 +55,14 @@ export function useHillshade({
         map.addLayer(
           {
             id: LAYER_ID,
-            type: "hillshade",
+            type: "raster",
             source: SOURCE_ID,
-            maxzoom: 8,
             paint: {
-              "hillshade-exaggeration": 0.4,
-              "hillshade-shadow-color": "rgba(0, 0, 0, 0.6)",
-              "hillshade-highlight-color": "rgba(180, 200, 220, 0.10)",
-              "hillshade-accent-color": "rgba(50, 60, 75, 1)",
-              "hillshade-illumination-direction": 315,
-              "hillshade-illumination-anchor": "map",
+              "raster-opacity": 0.35,
+              "raster-brightness-min": 0,
+              "raster-brightness-max": 0.4,
+              "raster-contrast": 1,
+              "raster-saturation": -0.6,
             },
           },
           insertBefore,
@@ -73,6 +71,7 @@ export function useHillshade({
 
       addedRef.current = true;
     } catch {
+      // Clean up orphaned source if layer creation failed
       if (map.getSource(SOURCE_ID) && !map.getLayer(LAYER_ID)) {
         try { map.removeSource(SOURCE_ID); } catch { /* noop */ }
       }

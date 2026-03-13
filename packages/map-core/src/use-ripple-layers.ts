@@ -18,16 +18,16 @@ interface UseRippleLayersOptions {
 const CYCLE_MS = 4000;
 
 /** Max age for ripple visibility. Events older than this show no ripple. */
-const MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
+const MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 /** Starting radius of the ripple ring. */
-const MIN_RADIUS = 14;
+const MIN_RADIUS = 18;
 
 /** Maximum radius the ripple expands to. */
-const MAX_RADIUS = 34;
+const MAX_RADIUS = 55;
 
 /** Peak stroke opacity at the start of each cycle. */
-const MAX_OPACITY = 0.22;
+const MAX_OPACITY = 0.35;
 
 /** Target update interval in ms (~20fps). */
 const FRAME_INTERVAL = 50;
@@ -84,7 +84,7 @@ export function useRippleLayers({
             "critical", colors.critical,
             colors.high,
           ],
-          "circle-stroke-width": 1,
+          "circle-stroke-width": 1.5,
           "circle-radius": [
             "coalesce",
             ["feature-state", "rippleRadius"],

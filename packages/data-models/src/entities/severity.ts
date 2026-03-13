@@ -7,6 +7,15 @@ export const SEVERITY_PRIORITY: Record<Severity, number> = {
   critical: 3,
 };
 
+/** Hex values for MapLibre paint expressions and inline styles. */
+export const SEVERITY_HEX: Record<Severity, string> = {
+  low: "#64748b",
+  medium: "#f59e0b",
+  high: "#f97316",
+  critical: "#ef4444",
+};
+
+/** CSS variable references for DOM elements. Does NOT work in MapLibre. */
 export const SEVERITY_COLOR: Record<Severity, string> = {
   low: "hsl(var(--muted-foreground))",
   medium: "hsl(var(--warning))",

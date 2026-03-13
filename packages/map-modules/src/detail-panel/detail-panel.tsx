@@ -19,70 +19,92 @@ const SEVERITY_VARIANT: Record<string, "default" | "secondary" | "destructive" |
 };
 
 /**
- * Expandable detail panel for a selected entity.
- * Renders entity metadata + optional custom content via children.
+ * Inspector-style detail panel for a selected entity.
+ * Floating card aesthetic — clean data hierarchy, severity accent border.
  */
 export function DetailPanel({ entity, onClose, children, className }: DetailPanelProps) {
   if (!entity) return null;
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-2 min-w-0">
-          {entity.severity && (
-            <Badge variant={SEVERITY_VARIANT[entity.severity] ?? "outline"}>
-              {entity.severity}
-            </Badge>
-          )}
-          <span className="text-xs text-muted-foreground font-mono uppercase">
-            {entity.category}
-          </span>
+      {/* Title block */}
+      <div className="px-4 py-3 flex-shrink-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-heading leading-snug">{entity.title}</h2>
+            <div className="flex items-center gap-2 mt-1.5">
+              {entity.severity && (
+                <Badge variant={SEVERITY_VARIANT[entity.severity] ?? "outline"}>
+                  {entity.severity}
+                </Badge>
+              )}
+              <span className="text-label font-mono uppercase text-muted-foreground">
+                {entity.category}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md p-1.5 transition-colors duration-fast flex-shrink-0 mt-0.5"
+            aria-label="Close"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
-          <h2 className="text-sm font-semibold leading-snug">{entity.title}</h2>
-
-          {entity.description && (
-            <p className="text-xs text-muted-foreground leading-relaxed">
+        {entity.description && (
+          <div className="px-4 pb-3">
+            <p className="text-body text-muted-foreground">
               {entity.description}
             </p>
-          )}
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {entity.occurredAt && (
-              <div>
-                <span className="text-muted-foreground">Time</span>
-                <p className="font-mono">
-                  {new Date(entity.occurredAt).toLocaleString()}
-                </p>
-              </div>
-            )}
-            <div>
-              <span className="text-muted-foreground">Location</span>
-              <p className="font-mono">
-                {entity.coordinates[0].toFixed(3)}, {entity.coordinates[1].toFixed(3)}
-              </p>
-            </div>
-            {entity.sourceCount != null && entity.sourceCount > 0 && (
-              <div>
-                <span className="text-muted-foreground">Sources</span>
-                <p className="font-mono">{entity.sourceCount}</p>
-              </div>
-            )}
           </div>
+        )}
 
-          {/* Map-specific extra content */}
-          {children}
+        {/* Properties — key-value with severity accent bar */}
+        <div className="mx-4 rounded-md border border-border overflow-hidden">
+          {entity.occurredAt && (
+            <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-border">
+              <span className="text-caption text-muted-foreground flex-shrink-0">
+                Time
+              </span>
+              <span className="text-data font-mono text-right">
+                {new Date(entity.occurredAt).toLocaleString()}
+              </span>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-border">
+            <span className="text-caption text-muted-foreground flex-shrink-0">
+              Location
+            </span>
+            <span className="text-data font-mono tabular-nums text-right">
+              {entity.coordinates[0].toFixed(3)}, {entity.coordinates[1].toFixed(3)}
+            </span>
+          </div>
+          {entity.sourceCount != null && entity.sourceCount > 0 && (
+            <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-border">
+              <span className="text-caption text-muted-foreground flex-shrink-0">
+                Sources
+              </span>
+              <span className="text-data font-mono">
+                {entity.sourceCount}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Extra content from parent (e.g. depth, tsunami) */}
+        {children && (
+          <div className="mx-4 mt-3 rounded-md border border-border overflow-hidden">
+            <div className="px-4 py-2.5">
+              {children}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom spacer */}
+        <div className="h-4" />
       </ScrollArea>
     </div>
   );
