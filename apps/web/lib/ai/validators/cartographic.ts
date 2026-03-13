@@ -95,13 +95,6 @@ export function validateCartographic(
       );
     }
 
-    // Flow arc is deferred
-    if (family === "flow" && layer.flow?.arc) {
-      warnings.push(
-        `Layer "${id}": arc rendering is deferred — lines will render as straight segments`,
-      );
-    }
-
     // Isochrone requires polygon geometry
     if (
       family === "isochrone" &&

@@ -338,6 +338,7 @@ const flowFixture: TestFixture = {
         originField: "origin",
         destinationField: "destination",
         weightField: "volume",
+        arc: true,
         minWidth: 1,
         maxWidth: 10,
       },

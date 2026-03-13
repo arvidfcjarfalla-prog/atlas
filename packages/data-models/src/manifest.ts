@@ -34,7 +34,7 @@ export interface FlowConfig {
   weightField?: string;
   /** Property name for flow direction (optional — lines are bidirectional by default). */
   directionField?: string;
-  /** Render lines as curved arcs. Deferred: renders as straight lines until arc interpolation is implemented. */
+  /** Render lines as curved arcs (great circle for long distances, Bézier for short). Default false. */
   arc?: boolean;
   /** Min line width in px (default 1). */
   minWidth?: number;

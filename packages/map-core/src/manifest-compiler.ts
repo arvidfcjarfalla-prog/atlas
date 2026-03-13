@@ -12,6 +12,7 @@ import type {
 } from "@atlas/data-models";
 import { getColors, classify } from "@atlas/data-models";
 import type { LayerSpecification } from "maplibre-gl";
+import { applyArcInterpolation } from "./arc-interpolator";
 
 // ─── Public types ───────────────────────────────────────────
 
@@ -479,7 +480,8 @@ function compileProportionalSymbol(
  * Assumptions:
  * - Data is pre-processed as LineString features with origin/destination
  *   metadata in properties.
- * - Arc rendering (curved lines) is deferred — all lines are straight.
+ * - When flow.arc is true, 2-point LineStrings are converted to smooth
+ *   arcs (great circle for long distances, Bézier for short).
  * - Width scales linearly between flow.minWidth and flow.maxWidth.
  */
 function compileFlow(
@@ -489,6 +491,10 @@ function compileFlow(
   const sourceId = `${layer.id}-source`;
   const linesId = `${layer.id}-lines`;
   const highlightId = `${layer.id}-highlight`;
+
+  // Apply arc interpolation if enabled
+  const useArc = layer.flow?.arc === true;
+  const sourceData = useArc ? applyArcInterpolation(data) : data;
 
   const flow = layer.flow;
   const minWidth = flow?.minWidth ?? 1;
@@ -552,7 +558,7 @@ function compileFlow(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data: sourceData },
     layers,
     legendItems: buildFlowLegend(layer, data),
   };
