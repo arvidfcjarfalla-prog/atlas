@@ -53,6 +53,7 @@ These rules are mandatory. Violations produce validation errors.
 
 1. Choropleth MUST use polygon or multi-polygon geometry.
 2. Choropleth SHOULD normalize data (per-capita, per-area, percentage). Raw counts on choropleth produce misleading area bias.
+   When the numerator field uses abbreviated units (e.g. gdp_md = millions USD), set normalization.multiplier to convert to base units (e.g. multiplier: 1000000). The compiler computes colorField × multiplier ÷ normField.
 3. Classification classes MUST be 2–7. Human perception cannot distinguish more.
 4. Color schemes MUST be colorblind-safe by default (colorblindSafe: true).
 5. Sequential data uses sequential schemes (blues, viridis, greens). Diverging data (with meaningful midpoint) uses diverging schemes (blue-red, spectral).
@@ -71,6 +72,7 @@ These rules are mandatory. Violations produce validation errors.
 18. Isochrone maps REQUIRE polygon geometry and an isochrone config with mode and breakpoints.
 19. Isochrone breakpoints MUST be positive numbers in ascending order. Keep to ≤ 6 breakpoints for visual clarity.
 20. Isochrone polygon data must be pre-computed by a routing engine. The manifest describes the visualization, not the computation.
+21. For choropleth with ≤ 50 features, set labelField to show region names (e.g. country name). Use labelFormat for multi-line labels like "{name}\\n{value}". Do NOT set labelField for choropleths with > 50 features — labels will overlap and clutter the map.
 </cartographic-rules>
 
 <dataset-profile-usage>
@@ -110,7 +112,7 @@ Atlas renders maps via MapLibre GL JS with a fixed manifest schema. It CANNOT do
 
 - Custom images, icons, or illustrations inside polygons or at points (no per-feature images)
 - Embedded charts, bar graphs, or infographics on the map
-- Text labels with custom per-feature content (only tooltips on hover/click)
+- Text labels with computed values (labels can show raw property values via labelField, not calculated expressions)
 - 3D building extrusions or custom 3D models
 - Animations or time-series playback
 - User-generated or AI-generated data (e.g. "favorite dish per country" — this data does not exist in the platform)
@@ -178,10 +180,12 @@ interface MapManifest {
       clusterRadius?: number;
       classification?: { method: string; classes: number };
       color?: { scheme: string; colorblindSafe: boolean };
-      normalization?: { field: string; method: string };
+      normalization?: { field: string; method: string; multiplier?: number };
       fillOpacity?: number;
       strokeColor?: string;
       strokeWidth?: number;
+      labelField?: string;   // Property to show as text label on features
+      labelFormat?: string;  // Format template with {field} placeholders
     };
     legend?: { title: string; type: "gradient" | "categorical" | "proportional" | "flow" };
     interaction?: {

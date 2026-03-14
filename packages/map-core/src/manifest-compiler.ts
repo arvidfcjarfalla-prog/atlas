@@ -53,6 +53,30 @@ function numericValues(
   return values;
 }
 
+/**
+ * Compute normalized values (field * multiplier / normField) for classification.
+ * Skips features where either field is missing, zero, or non-numeric.
+ */
+function normalizedValues(
+  data: GeoJSON.FeatureCollection,
+  field: string,
+  normField: string,
+  multiplier = 1,
+): number[] {
+  const values: number[] = [];
+  for (const f of data.features) {
+    const v = f.properties?.[field];
+    const d = f.properties?.[normField];
+    if (
+      typeof v === "number" && isFinite(v) &&
+      typeof d === "number" && isFinite(d) && d !== 0
+    ) {
+      values.push((v * multiplier) / d);
+    }
+  }
+  return values;
+}
+
 function uniqueStringValues(
   data: GeoJSON.FeatureCollection,
   field: string,
@@ -262,16 +286,32 @@ function compileChoropleth(
   const method = layer.style.classification?.method ?? "quantile";
   const colorScheme = scheme(layer);
   const paletteColors = getColors(colorScheme, classCount);
+  const normField = layer.style.normalization?.field;
+  const multiplier = layer.style.normalization?.multiplier ?? 1;
 
   let fillColor: string | Expr = paletteColors[Math.floor(paletteColors.length / 2)];
 
   if (colorField) {
-    const vals = numericValues(data, colorField);
+    // Use normalized values for classification when normalization is configured
+    const vals = normField
+      ? normalizedValues(data, colorField, normField, multiplier)
+      : numericValues(data, colorField);
+
     if (vals.length > 0) {
       const breaks = classify(vals, method, classCount);
       if (breaks.breaks.length > 0) {
-        // Build step expression: ["step", ["get", field], color0, break1, color1, ...]
-        const expr: Expr = ["step", ["get", colorField], paletteColors[0]];
+        // The value expression: either normalized (field * multiplier / normField) or raw
+        let valueExpr: Expr;
+        if (normField) {
+          const numerator: Expr = multiplier !== 1
+            ? ["*", ["get", colorField], multiplier]
+            : ["get", colorField];
+          valueExpr = ["/", numerator, ["max", ["get", normField], 1]];
+        } else {
+          valueExpr = ["get", colorField];
+        }
+
+        const expr: Expr = ["step", valueExpr, paletteColors[0]];
         for (let i = 0; i < breaks.breaks.length; i++) {
           expr.push(breaks.breaks[i]);
           expr.push(paletteColors[Math.min(i + 1, paletteColors.length - 1)]);
@@ -315,6 +355,39 @@ function compileChoropleth(
       },
     } as LayerSpecification,
   ];
+
+  // Optional text labels on polygons
+  const labelField = layer.style.labelField;
+  if (labelField) {
+    const labelsId = `${layer.id}-labels`;
+    const textFieldExpr: string | Expr = layer.style.labelFormat
+      ? layer.style.labelFormat
+      : ["get", labelField];
+
+    layers.push({
+      id: labelsId,
+      type: "symbol",
+      source: sourceId,
+      layout: {
+        "symbol-placement": "point",
+        "text-field": textFieldExpr as string,
+        "text-size": 11,
+        "text-font": ["Open Sans Semibold", "Arial Unicode MS Regular"],
+        "text-variable-anchor": ["center", "top", "bottom"],
+        "text-radial-offset": 0,
+        "text-justify": "center",
+        "text-max-width": 8,
+        "text-allow-overlap": false,
+        "text-optional": true,
+      },
+      paint: {
+        "text-color": "rgba(255,255,255,0.9)",
+        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-width": 1.5,
+        "text-halo-blur": 0.5,
+      },
+    } as LayerSpecification);
+  }
 
   return {
     sourceId,
@@ -773,7 +846,11 @@ function buildChoroplethLegend(
 
   const classCount = classes(layer);
   const method = layer.style.classification?.method ?? "quantile";
-  const vals = numericValues(data, colorField);
+  const normField = layer.style.normalization?.field;
+  const multiplier = layer.style.normalization?.multiplier ?? 1;
+  const vals = normField
+    ? normalizedValues(data, colorField, normField, multiplier)
+    : numericValues(data, colorField);
   if (vals.length === 0) return [];
 
   const breaks = classify(vals, method, classCount);
@@ -856,5 +933,7 @@ function formatNumber(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   if (Number.isInteger(n)) return String(n);
+  if (Math.abs(n) < 0.01 && n !== 0) return n.toExponential(1);
+  if (Math.abs(n) < 1) return n.toPrecision(3);
   return n.toFixed(1);
 }

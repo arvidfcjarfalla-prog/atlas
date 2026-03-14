@@ -8,7 +8,7 @@ import {
   useManifestRenderer,
 } from "@atlas/map-core";
 import type { CompiledLegendItem } from "@atlas/map-core";
-import { Legend } from "@atlas/map-modules";
+import { Legend, GradientLegend, ProportionalLegend } from "@atlas/map-modules";
 import type { MapManifest } from "@atlas/data-models";
 import type {
   DatasetProfile,
@@ -25,6 +25,7 @@ type FlowState =
   | "uploading"
   | "profiled"
   | "generating"
+  | "fetching-data"
   | "rendered"
   | "error";
 
@@ -101,6 +102,9 @@ export default function CreateMapPage() {
   // Result state
   const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
   const [legendItems, setLegendItems] = useState<CompiledLegendItem[]>([]);
+
+  // Pre-fetched GeoJSON data (so the compiler has real data for expressions)
+  const [fetchedGeoJSON, setFetchedGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
 
   // Track whether we've auto-submitted the URL prompt
   const autoSubmittedRef = useRef(false);
@@ -245,6 +249,27 @@ export default function CreateMapPage() {
         }
 
         setGenerateResult(data);
+
+        // Pre-fetch GeoJSON so the compiler has real data for color expressions
+        const dataSourceUrl =
+          dataUrl ?? data.manifest?.layers?.[0]?.sourceUrl;
+        if (dataSourceUrl && typeof dataSourceUrl === "string") {
+          setState("fetching-data");
+          try {
+            const geoRes = await fetch(dataSourceUrl);
+            if (geoRes.ok) {
+              const geojson = await geoRes.json();
+              if (
+                geojson?.type === "FeatureCollection" &&
+                Array.isArray(geojson.features)
+              ) {
+                setFetchedGeoJSON(geojson);
+              }
+            }
+          } catch {
+            // Non-fatal — will fall back to URL-based loading
+          }
+        }
         setState("rendered");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Generation failed");
@@ -366,6 +391,7 @@ export default function CreateMapPage() {
     setAnswers({});
     setResolvedDataUrl(null);
     setResolvedProfile(null);
+    setFetchedGeoJSON(null);
     autoSubmittedRef.current = false;
     if (fileRef.current) fileRef.current.value = "";
   }, []);
@@ -377,11 +403,10 @@ export default function CreateMapPage() {
     const layer = manifest.layers[0];
     const validation = generateResult.validation;
 
-    // Determine data source: uploaded GeoJSON or remote URL
-    const mapData: GeoJSON.FeatureCollection | string =
+    // Determine data source: uploaded GeoJSON, pre-fetched GeoJSON, or empty
+    const mapData: GeoJSON.FeatureCollection =
       uploadResult?.geojson ??
-      resolvedDataUrl ??
-      layer?.sourceUrl ??
+      fetchedGeoJSON ??
       { type: "FeatureCollection" as const, features: [] };
 
     const sidebar = (
@@ -515,10 +540,22 @@ export default function CreateMapPage() {
         sidebar={sidebar}
         sidebarOpen
         overlay={
-          <Legend
-            items={legendItems}
-            title={layer?.legend?.title ?? layer?.label}
-          />
+          layer?.legend?.type === "gradient" ? (
+            <GradientLegend
+              items={legendItems}
+              title={layer?.legend?.title ?? layer?.label}
+            />
+          ) : layer?.legend?.type === "proportional" ? (
+            <ProportionalLegend
+              items={legendItems.filter((i) => i.radius != null) as { label: string; color: string; radius: number }[]}
+              title={layer?.legend?.title ?? layer?.label}
+            />
+          ) : (
+            <Legend
+              items={legendItems}
+              title={layer?.legend?.title ?? layer?.label}
+            />
+          )
         }
       >
         <MapContent
@@ -532,7 +569,7 @@ export default function CreateMapPage() {
 
   // ── Pre-render states ─────────────────────────────────────
 
-  const isLoading = state === "clarifying" || state === "generating" || state === "uploading";
+  const isLoading = state === "clarifying" || state === "generating" || state === "uploading" || state === "fetching-data";
 
   return (
     <div

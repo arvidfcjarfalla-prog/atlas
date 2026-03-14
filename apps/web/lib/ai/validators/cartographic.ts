@@ -207,6 +207,14 @@ export function validateCartographic(
         );
       }
 
+      // labelField must exist in dataset
+      const labelField = layer.style?.labelField;
+      if (labelField && !attrMap.has(labelField)) {
+        errors.push(
+          `Layer "${id}": labelField "${labelField}" not found in dataset attributes`,
+        );
+      }
+
       // flow.weightField must exist in dataset
       if (family === "flow" && layer.flow?.weightField && !attrMap.has(layer.flow.weightField)) {
         errors.push(

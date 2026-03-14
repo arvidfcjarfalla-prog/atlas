@@ -262,6 +262,72 @@ describe("manifest-compiler", () => {
       expect(result.layers).toHaveLength(3);
       expect(result.legendItems).toHaveLength(1);
     });
+
+    it("compiles choropleth with labelField", () => {
+      const layer: LayerManifest = {
+        id: "labeled-choropleth",
+        kind: "asset",
+        label: "Labeled Choropleth",
+        sourceType: "geojson-static",
+        geometryType: "polygon",
+        style: {
+          markerShape: "circle",
+          mapFamily: "choropleth",
+          colorField: "density",
+          classification: { method: "quantile", classes: 3 },
+          color: { scheme: "viridis" },
+          labelField: "name",
+        },
+      };
+
+      const data = fc([
+        poly(rect(10, 60, 11, 61), { density: 94, name: "A" }),
+        poly(rect(11, 60, 12, 61), { density: 119, name: "B" }),
+        poly(rect(12, 60, 13, 61), { density: 206, name: "C" }),
+      ]);
+
+      const result = compileLayer(layer, data);
+
+      // 4 layers: fill + stroke + highlight + labels
+      expect(result.layers).toHaveLength(4);
+
+      const labelLayer = result.layers[3] as SymbolLayerSpecification;
+      expect(labelLayer.id).toBe("labeled-choropleth-labels");
+      expect(labelLayer.type).toBe("symbol");
+      expect(labelLayer.layout?.["text-field"]).toEqual(["get", "name"]);
+    });
+
+    it("compiles choropleth with labelFormat template", () => {
+      const layer: LayerManifest = {
+        id: "formatted-choropleth",
+        kind: "asset",
+        label: "Formatted Choropleth",
+        sourceType: "geojson-static",
+        geometryType: "polygon",
+        style: {
+          markerShape: "circle",
+          mapFamily: "choropleth",
+          colorField: "value",
+          classification: { method: "quantile", classes: 3 },
+          color: { scheme: "blues" },
+          labelField: "name",
+          labelFormat: "{name}\n{value}",
+        },
+      };
+
+      const data = fc([
+        poly(rect(10, 60, 11, 61), { value: 10, name: "X" }),
+        poly(rect(11, 60, 12, 61), { value: 20, name: "Y" }),
+      ]);
+
+      const result = compileLayer(layer, data);
+
+      // 4 layers: fill + stroke + highlight + labels
+      expect(result.layers).toHaveLength(4);
+
+      const labelLayer = result.layers[3] as SymbolLayerSpecification;
+      expect(labelLayer.layout?.["text-field"]).toBe("{name}\n{value}");
+    });
   });
 
   describe("heatmap family", () => {

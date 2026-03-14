@@ -101,6 +101,9 @@ export interface NormalizationConfig {
   /** Denominator field in the dataset. */
   field: string;
   method: NormalizationMethod;
+  /** Scale factor applied to the numerator before dividing.
+   *  Example: gdp_md is in millions → multiplier: 1_000_000 gives real per-capita USD. */
+  multiplier?: number;
 }
 
 // ─── v2: Legend ───────────────────────────────────────────────
@@ -196,6 +199,10 @@ export interface LayerStyle {
   fillOpacity?: number;
   strokeColor?: string;
   strokeWidth?: number;
+  /** Property name to display as text label on features (e.g. "name"). */
+  labelField?: string;
+  /** Format template using {field} placeholders (e.g. "{name}\n{value}"). */
+  labelFormat?: string;
 }
 
 // ─── LayerManifest (extended) ────────────────────────────────

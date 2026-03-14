@@ -176,6 +176,25 @@ export function getSuggestions(
     }
   }
 
+  // Choropleth without labels → suggest adding them
+  if (
+    layer &&
+    layer.style?.mapFamily === "choropleth" &&
+    !layer.style?.labelField
+  ) {
+    if (!matched.some((m) => m.suggestion.action === "add-labels")) {
+      matched.push({
+        suggestion: {
+          label: "Add region labels",
+          promptSuffix: "Add text labels showing each region's name on the map using labelField.",
+          action: "add-labels",
+          source: "manifest-gap",
+        },
+        weight: 7,
+      });
+    }
+  }
+
   // Sort by weight (highest impact first), take top 3
   matched.sort((a, b) => b.weight - a.weight);
   return matched.slice(0, MAX_SUGGESTIONS).map((m) => m.suggestion);

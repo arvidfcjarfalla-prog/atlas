@@ -71,8 +71,11 @@ function transformBasemapStyle(
       };
     }
 
-    // Landcover layers — slightly lighter for subtle texture variation
+    // Landcover layers — hide when labels hidden (choropleth), otherwise subtle
     if (layer.type === "fill" && layer.id.includes("landcover")) {
+      if (hideLabels) {
+        return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
+      }
       return {
         ...layer,
         paint: { "fill-color": "#181e28", "fill-opacity": 0.6 },
@@ -87,8 +90,11 @@ function transformBasemapStyle(
       };
     }
 
-    // Structural lines — subtle but present for geographic definition
+    // Structural lines — hide when labels hidden (choropleth), otherwise subtle
     if (layer.type === "line") {
+      if (hideLabels) {
+        return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
+      }
       const paint = layer.paint as Record<string, unknown> | undefined;
       if (!paint) return layer;
       const existingOpacity = paint["line-opacity"];

@@ -137,7 +137,8 @@ export const EXAMPLES: FewShotExample[] = [
         },
         "fillOpacity": 0.85,
         "strokeColor": "rgba(255,255,255,0.4)",
-        "strokeWidth": 1
+        "strokeWidth": 1,
+        "labelField": "kommunnamn"
       },
       "legend": {
         "title": "Pris per kvm (SEK)",
