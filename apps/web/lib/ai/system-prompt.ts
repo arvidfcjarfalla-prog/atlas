@@ -202,12 +202,17 @@ Do NOT include comments in JSON. Output valid JSON only.
 </output-format>`.trim();
 
 /**
- * Build the system prompt with dynamically selected examples.
+ * Build the system prompt with dynamically selected examples and optional
+ * case lessons from past generations.
  *
  * - With profile: selects 3 geometry-relevant examples (~1700 tok).
  * - Without profile: includes all 9 examples (~5000 tok, no regression).
+ * - With lessonsBlock: appends past-case lessons after examples (~300 tok).
  */
-export function buildSystemPrompt(profile?: DatasetProfile | null): string {
+export function buildSystemPrompt(
+  profile?: DatasetProfile | null,
+  lessonsBlock?: string,
+): string {
   const examples = selectExamples(profile ?? undefined);
   const examplesBlock = examples.map((e) => formatExample(e)).join("\n\n");
 
@@ -216,11 +221,16 @@ export function buildSystemPrompt(profile?: DatasetProfile | null): string {
     catalogContext(),
   );
 
-  return `${prompt}
+  const parts = [
+    prompt,
+    `\n<examples>\n${examplesBlock}\n</examples>`,
+  ];
 
-<examples>
-${examplesBlock}
-</examples>`;
+  if (lessonsBlock) {
+    parts.push(`\n${lessonsBlock}`);
+  }
+
+  return parts.join("");
 }
 
 /** Backward-compatible constant — includes all examples. */

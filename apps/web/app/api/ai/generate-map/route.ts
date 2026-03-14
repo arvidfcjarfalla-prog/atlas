@@ -6,7 +6,7 @@ import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
-import { saveCase } from "../../../../lib/ai/case-memory";
+import { saveCase, findRelevantLessons, formatLessons } from "../../../../lib/ai/case-memory";
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 
@@ -110,6 +110,11 @@ export async function POST(request: Request) {
 
     const client = getClient();
 
+    // Retrieve lessons from past cases (non-blocking — empty on first run)
+    const geoType = profile?.geometryType;
+    const lessons = await findRelevantLessons(prompt, geoType).catch(() => []);
+    const lessonsBlock = formatLessons(lessons);
+
     // Self-correction loop: generate → validate → retry on errors
     const messages: Anthropic.Messages.MessageParam[] = [
       { role: "user", content: buildUserMessage(prompt, profile, sourceUrl) },
@@ -126,7 +131,7 @@ export async function POST(request: Request) {
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        system: buildSystemPrompt(profile),
+        system: buildSystemPrompt(profile, lessonsBlock),
         messages,
       });
 
