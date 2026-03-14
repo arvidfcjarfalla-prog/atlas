@@ -1,5 +1,25 @@
-import type { MapManifest, ManifestValidation } from "@atlas/data-models";
+import type { MapManifest, ManifestValidation, ColorScheme } from "@atlas/data-models";
 import type { DatasetProfile, AttributeProfile } from "../types";
+
+const CATEGORICAL_SCHEMES = new Set<ColorScheme>(["set1", "set2", "paired"]);
+
+/**
+ * Detect categorical choropleths — editorial/ranking maps where regions are
+ * assigned to named categories rather than numeric ranges.
+ */
+function isCategoricalChoropleth(layer: MapManifest["layers"][number]): boolean {
+  if (layer.style?.mapFamily !== "choropleth") return false;
+  if (layer.legend?.type === "categorical") return true;
+  const scheme = layer.style?.color?.scheme;
+  if (
+    layer.style?.classification?.method === "manual" &&
+    scheme &&
+    CATEGORICAL_SCHEMES.has(scheme)
+  ) {
+    return true;
+  }
+  return false;
+}
 
 /** Cartographic rule validation — domain-specific map quality checks. */
 export function validateCartographic(
@@ -33,8 +53,8 @@ export function validateCartographic(
       );
     }
 
-    // Choropleth without normalization → warning
-    if (family === "choropleth" && !layer.style?.normalization) {
+    // Choropleth without normalization → warning (skip for categorical/editorial choropleths)
+    if (family === "choropleth" && !layer.style?.normalization && !isCategoricalChoropleth(layer)) {
       warnings.push(
         `Layer "${id}": choropleth without normalization — raw counts may be misleading`,
       );

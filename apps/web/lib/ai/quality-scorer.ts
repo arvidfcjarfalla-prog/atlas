@@ -36,6 +36,28 @@ const CATEGORICAL_SCHEMES = new Set<ColorScheme>([
   "set1", "set2", "paired",
 ]);
 
+/**
+ * Detect categorical choropleths — editorial/ranking maps where regions are
+ * assigned to named categories rather than numeric ranges. These should use
+ * categorical color schemes and do NOT need normalization.
+ */
+function isCategoricalChoropleth(manifest: MapManifest): boolean {
+  const layer = manifest.layers?.[0];
+  if (layer?.style?.mapFamily !== "choropleth") return false;
+  // Explicit categorical legend
+  if (layer.legend?.type === "categorical") return true;
+  // Manual classification with a categorical scheme
+  const scheme = layer.style?.color?.scheme;
+  if (
+    layer.style?.classification?.method === "manual" &&
+    scheme &&
+    CATEGORICAL_SCHEMES.has(scheme)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Families that work with point geometry. */
 const POINT_FAMILIES = new Set<MapFamily>([
   "point", "cluster", "heatmap", "proportional-symbol",
@@ -122,8 +144,17 @@ export function scoreManifest(
 
   // Scheme type matches data usage (+10)
   const scheme = colorConfig?.scheme;
+  const categorical = isCategoricalChoropleth(manifest);
   if (scheme) {
-    if (family === "choropleth" || family === "heatmap" || family === "isochrone") {
+    if (categorical) {
+      // Categorical choropleth → categorical scheme preferred
+      if (CATEGORICAL_SCHEMES.has(scheme)) {
+        colorSchemeQuality += 10;
+      } else {
+        colorSchemeQuality += 5;
+        deductions.push(`Sequential/diverging scheme "${scheme}" used for categorical choropleth`);
+      }
+    } else if (family === "choropleth" || family === "heatmap" || family === "isochrone") {
       // Sequential data → sequential or diverging scheme
       if (SEQUENTIAL_SCHEMES.has(scheme) || DIVERGING_SCHEMES.has(scheme)) {
         colorSchemeQuality += 10;
@@ -172,7 +203,7 @@ export function scoreManifest(
   // ── Normalization (0–10) ──
   let normalization = 10; // full by default
 
-  if (family === "choropleth") {
+  if (family === "choropleth" && !categorical) {
     if (!layer?.style?.normalization) {
       normalization = 0;
       deductions.push("Choropleth without normalization — raw counts may be misleading");

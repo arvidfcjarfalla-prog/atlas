@@ -7,7 +7,7 @@ import { resolveAmenityQuery, queryOverpass } from "../../../../lib/ai/tools/ove
 import { searchPublicData, getCachedData } from "../../../../lib/ai/tools/data-search";
 import type { ClarifyResponse, DatasetProfile } from "../../../../lib/ai/types";
 
-const MODEL = "claude-haiku-4-20250414";
+const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 1024;
 const MAX_TOOL_ROUNDS = 3;
 
@@ -131,23 +131,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       ? `${trimmedPrompt}\n\nUser clarifications:\n${Object.entries(answers).map(([k, v]) => `${k}: ${v}`).join("\n")}`
       : trimmedPrompt;
 
-    // ── Fast path 1: Specific data search (World Bank, EONET, REST Countries)
-    // Run before catalog — returns richer, indicator-specific data
-    // (e.g. "GDP per capita" → actual per-capita values from World Bank
-    //  vs catalog world-countries which only has estimated total GDP).
-    const directSearch = await searchPublicData(fullContext);
-    if (directSearch.found && directSearch.cacheKey) {
-      const dataUrl = `/api/geo/cached/${encodeURIComponent(directSearch.cacheKey)}`;
-      const response: ClarifyResponse = {
-        ready: true,
-        resolvedPrompt: fullContext,
-        dataUrl,
-        dataProfile: directSearch.profile,
-      };
-      return NextResponse.json(response);
-    }
-
-    // ── Fast path 2: Catalog match ──────────────────────────
+    // ── Fast path 1: Catalog match ─────────────────────────
+    // Catalog entries have curated geometry types (polygon for countries,
+    // point for cities/earthquakes) — checked first to avoid REST Countries
+    // returning Point geometry for queries that need polygons.
     const catalogMatches = matchCatalog(fullContext);
     if (catalogMatches.length > 0) {
       const best = catalogMatches[0];
@@ -182,6 +169,21 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         return NextResponse.json(response);
       }
+    }
+
+    // ── Fast path 2: Specific data search (World Bank, EONET, REST Countries)
+    // Fallback for indicator-specific data not in the catalog
+    // (e.g. "GDP per capita" → actual per-capita values from World Bank).
+    const directSearch = await searchPublicData(fullContext);
+    if (directSearch.found && directSearch.cacheKey) {
+      const dataUrl = `/api/geo/cached/${encodeURIComponent(directSearch.cacheKey)}`;
+      const response: ClarifyResponse = {
+        ready: true,
+        resolvedPrompt: fullContext,
+        dataUrl,
+        dataProfile: directSearch.profile,
+      };
+      return NextResponse.json(response);
     }
 
     // ── Fast path 3: Overpass POI resolution ─────────────────
