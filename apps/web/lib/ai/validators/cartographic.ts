@@ -1,11 +1,21 @@
 import type { MapManifest, ManifestValidation } from "@atlas/data-models";
+import type { DatasetProfile, AttributeProfile } from "../types";
 
 /** Cartographic rule validation — domain-specific map quality checks. */
 export function validateCartographic(
   manifest: MapManifest,
+  profile?: DatasetProfile | null,
 ): ManifestValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
+
+  // Build attribute lookup from profile
+  const attrMap = new Map<string, AttributeProfile>();
+  if (profile) {
+    for (const attr of profile.attributes) {
+      attrMap.set(attr.name, attr);
+    }
+  }
 
   for (const layer of manifest.layers) {
     const family = layer.style?.mapFamily;
@@ -127,6 +137,108 @@ export function validateCartographic(
       warnings.push(
         `Layer "${id}": more than 6 isochrone breakpoints may be hard to distinguish visually`,
       );
+    }
+
+    // ─── Profile-aware checks (only when profile is provided) ───
+
+    if (profile && attrMap.size > 0) {
+      // colorField must exist in dataset
+      const colorField = layer.style?.colorField;
+      if (colorField && !attrMap.has(colorField)) {
+        errors.push(
+          `Layer "${id}": colorField "${colorField}" not found in dataset attributes`,
+        );
+      }
+
+      // sizeField must exist in dataset
+      const sizeField = layer.style?.sizeField;
+      if (sizeField && !attrMap.has(sizeField)) {
+        errors.push(
+          `Layer "${id}": sizeField "${sizeField}" not found in dataset attributes`,
+        );
+      }
+
+      // sizeField should be numeric
+      if (sizeField && attrMap.has(sizeField)) {
+        const attr = attrMap.get(sizeField)!;
+        if (attr.type !== "number") {
+          warnings.push(
+            `Layer "${id}": sizeField "${sizeField}" is ${attr.type}, expected number`,
+          );
+        }
+      }
+
+      // tooltipFields must exist in dataset
+      if (layer.interaction?.tooltipFields) {
+        for (const field of layer.interaction.tooltipFields) {
+          if (!attrMap.has(field)) {
+            errors.push(
+              `Layer "${id}": tooltipField "${field}" not found in dataset attributes`,
+            );
+          }
+        }
+      }
+
+      // normalization.field must exist in dataset
+      const normField = layer.style?.normalization?.field;
+      if (normField && !attrMap.has(normField)) {
+        errors.push(
+          `Layer "${id}": normalization.field "${normField}" not found in dataset attributes`,
+        );
+      }
+
+      // flow.weightField must exist in dataset
+      if (family === "flow" && layer.flow?.weightField && !attrMap.has(layer.flow.weightField)) {
+        errors.push(
+          `Layer "${id}": flow.weightField "${layer.flow.weightField}" not found in dataset attributes`,
+        );
+      }
+
+      // flow.weightField should be numeric
+      if (family === "flow" && layer.flow?.weightField && attrMap.has(layer.flow.weightField)) {
+        const attr = attrMap.get(layer.flow.weightField)!;
+        if (attr.type !== "number") {
+          warnings.push(
+            `Layer "${id}": flow.weightField "${layer.flow.weightField}" is ${attr.type}, expected number`,
+          );
+        }
+      }
+
+      // flow.originField / destinationField must exist in dataset
+      if (family === "flow" && layer.flow) {
+        if (layer.flow.originField && !attrMap.has(layer.flow.originField)) {
+          errors.push(
+            `Layer "${id}": flow.originField "${layer.flow.originField}" not found in dataset attributes`,
+          );
+        }
+        if (layer.flow.destinationField && !attrMap.has(layer.flow.destinationField)) {
+          errors.push(
+            `Layer "${id}": flow.destinationField "${layer.flow.destinationField}" not found in dataset attributes`,
+          );
+        }
+      }
+
+      // colorField with high null rate → warning
+      if (colorField && attrMap.has(colorField)) {
+        const attr = attrMap.get(colorField)!;
+        const totalValues = attr.nullCount + attr.uniqueValues;
+        if (totalValues > 0 && attr.nullCount / totalValues > 0.5) {
+          warnings.push(
+            `Layer "${id}": colorField "${colorField}" has >50% null values`,
+          );
+        }
+      }
+
+      // Large point dataset without clustering (using actual feature count)
+      if (
+        (family === "point" || family === "proportional-symbol") &&
+        !layer.style?.clusterEnabled &&
+        profile.featureCount > 500
+      ) {
+        warnings.push(
+          `Layer "${id}": ${profile.featureCount} features without clustering — consider cluster or heatmap`,
+        );
+      }
     }
   }
 

@@ -179,14 +179,14 @@ function evaluateManifest(
   manifest: MapManifest,
   geojson?: GeoJSON.FeatureCollection,
 ): EvalResult {
-  // 1. Validate
-  const validation = validateManifest(manifest);
-
-  // 2. Profile (if data available)
+  // 1. Profile (if data available)
   let profile: DatasetProfile | undefined;
   if (geojson) {
     profile = profileDataset(geojson);
   }
+
+  // 2. Validate (with profile for field-reference checks)
+  const validation = validateManifest(manifest, profile);
 
   // 3. Score
   const qualityScore = scoreManifest(manifest, profile);

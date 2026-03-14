@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { MapManifest } from "@atlas/data-models";
-import { MAP_AI_SYSTEM_PROMPT } from "../../../../lib/ai/system-prompt";
+import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
 import { validateManifest } from "../../../../lib/ai/validators";
 import { profileDataset } from "../../../../lib/ai/profiler";
 import type { DatasetProfile } from "../../../../lib/ai/types";
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        system: MAP_AI_SYSTEM_PROMPT,
+        system: buildSystemPrompt(profile),
         messages,
       });
 
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         continue;
       }
 
-      validation = validateManifest(manifest);
+      validation = validateManifest(manifest, profile);
 
       // No errors → done (warnings are OK)
       if (validation.errors.length === 0) break;

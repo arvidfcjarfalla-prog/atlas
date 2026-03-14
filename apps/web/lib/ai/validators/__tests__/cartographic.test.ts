@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateCartographic } from "../cartographic";
 import type { MapManifest } from "@atlas/data-models";
+import type { DatasetProfile } from "../../types";
 
 function validManifest(layerOverrides?: Partial<any>): MapManifest {
   return {
@@ -326,6 +327,214 @@ describe("validateCartographic", () => {
     const result = validateCartographic(manifest);
     expect(result.warnings).toContain(
       'Layer "layer-1": more than 6 isochrone breakpoints may be hard to distinguish visually'
+    );
+  });
+
+  // ─── Profile-aware checks ────────────────────────────────────
+
+  const testProfile: DatasetProfile = {
+    featureCount: 100,
+    geometryType: "Point",
+    bounds: [[55, 12], [58, 15]],
+    crs: null,
+    attributes: [
+      { name: "population", type: "number", uniqueValues: 90, nullCount: 2, min: 100, max: 1000000, mean: 50000, median: 25000, distribution: "skewed-right" },
+      { name: "region", type: "string", uniqueValues: 5, nullCount: 0, sampleValues: ["North", "South", "East", "West", "Central"] },
+      { name: "sparse_field", type: "string", uniqueValues: 3, nullCount: 80 },
+      { name: "name", type: "string", uniqueValues: 100, nullCount: 0 },
+    ],
+  };
+
+  it("still valid without profile (backward compatible)", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", colorField: "nonexistent" },
+    });
+    const result = validateCartographic(manifest);
+    expect(result.valid).toBe(true);
+  });
+
+  it("returns error when colorField not found in profile", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", colorField: "nonexistent" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Layer "layer-1": colorField "nonexistent" not found in dataset attributes'
+    );
+  });
+
+  it("accepts colorField that exists in profile", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", colorField: "region" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("colorField")
+    );
+  });
+
+  it("returns error when sizeField not found in profile", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "proportional-symbol", sizeField: "gdp", colorField: "region" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).toContain(
+      'Layer "layer-1": sizeField "gdp" not found in dataset attributes'
+    );
+  });
+
+  it("returns warning when sizeField is not numeric", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "proportional-symbol", sizeField: "region" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.warnings).toContain(
+      'Layer "layer-1": sizeField "region" is string, expected number'
+    );
+  });
+
+  it("returns error when tooltipField not found in profile", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point" },
+      interaction: { tooltipFields: ["name", "nonexistent_field"] },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Layer "layer-1": tooltipField "nonexistent_field" not found in dataset attributes'
+    );
+  });
+
+  it("accepts tooltipFields that all exist in profile", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point" },
+      interaction: { tooltipFields: ["name", "population", "region"] },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("tooltipField")
+    );
+  });
+
+  it("returns error when normalization.field not found in profile", () => {
+    const manifest = validManifest({
+      geometryType: "polygon",
+      style: {
+        markerShape: "circle",
+        mapFamily: "choropleth",
+        colorField: "population",
+        normalization: { field: "nonexistent_area", method: "per-area" },
+      },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Layer "layer-1": normalization.field "nonexistent_area" not found in dataset attributes'
+    );
+  });
+
+  it("accepts normalization.field that exists in profile", () => {
+    const manifest = validManifest({
+      geometryType: "polygon",
+      style: {
+        markerShape: "circle",
+        mapFamily: "choropleth",
+        colorField: "population",
+        normalization: { field: "population", method: "per-area" },
+      },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).not.toContainEqual(
+      expect.stringContaining("normalization.field")
+    );
+  });
+
+  it("returns error when flow.weightField not found in profile", () => {
+    const manifest = validManifest({
+      geometryType: "line",
+      style: { markerShape: "circle", mapFamily: "flow" },
+      flow: { originField: "name", destinationField: "region", weightField: "volume" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).toContain(
+      'Layer "layer-1": flow.weightField "volume" not found in dataset attributes'
+    );
+  });
+
+  it("returns warning when flow.weightField is not numeric", () => {
+    const manifest = validManifest({
+      geometryType: "line",
+      style: { markerShape: "circle", mapFamily: "flow" },
+      flow: { originField: "name", destinationField: "region", weightField: "region" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.warnings).toContain(
+      'Layer "layer-1": flow.weightField "region" is string, expected number'
+    );
+  });
+
+  it("returns error when flow.originField not found in profile", () => {
+    const manifest = validManifest({
+      geometryType: "line",
+      style: { markerShape: "circle", mapFamily: "flow" },
+      flow: { originField: "source_city", destinationField: "region" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.errors).toContain(
+      'Layer "layer-1": flow.originField "source_city" not found in dataset attributes'
+    );
+  });
+
+  it("returns warning when colorField has high null rate", () => {
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", colorField: "sparse_field" },
+    });
+    const result = validateCartographic(manifest, testProfile);
+    expect(result.warnings).toContain(
+      'Layer "layer-1": colorField "sparse_field" has >50% null values'
+    );
+  });
+
+  it("returns warning for large point dataset without clustering", () => {
+    const largeProfile: DatasetProfile = {
+      ...testProfile,
+      featureCount: 2000,
+    };
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", clusterEnabled: false },
+    });
+    const result = validateCartographic(manifest, largeProfile);
+    expect(result.warnings).toContain(
+      'Layer "layer-1": 2000 features without clustering — consider cluster or heatmap'
+    );
+  });
+
+  it("does not warn about clustering when cluster is enabled", () => {
+    const largeProfile: DatasetProfile = {
+      ...testProfile,
+      featureCount: 2000,
+    };
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", clusterEnabled: true },
+    });
+    const result = validateCartographic(manifest, largeProfile);
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("without clustering")
+    );
+  });
+
+  it("does not warn about clustering for small datasets", () => {
+    const smallProfile: DatasetProfile = {
+      ...testProfile,
+      featureCount: 50,
+    };
+    const manifest = validManifest({
+      style: { markerShape: "circle", mapFamily: "point", clusterEnabled: false },
+    });
+    const result = validateCartographic(manifest, smallProfile);
+    expect(result.warnings).not.toContainEqual(
+      expect.stringContaining("without clustering")
     );
   });
 });
