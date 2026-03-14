@@ -78,6 +78,14 @@ pnpm typecheck && pnpm test
 import { compileLayer } from "../../../packages/map-core/src/manifest-compiler.js";
 ```
 
+## Development Rules
+
+- Keep the compiler dumb — no intent interpretation, no auto-fixes, no cartographic logic.
+- Never move cartographic intelligence into the rendering layer.
+- Read relevant files before changing code. Identify the smallest change with highest ROI.
+- Preserve backward compatibility unless explicitly asked to break it.
+- Solve problems we have, not problems we might have.
+
 ## Tech Stack
 
 - pnpm 9.15 + Turborepo
