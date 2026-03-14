@@ -134,6 +134,7 @@ Each map must be uniquely tailored to its dataset and analytical task. Do NOT co
 defaults from the few-shot examples. Specifically:
 
 1. Vary basemap settings based on context: nightlights for global/dark themes, hillshade for terrain-relevant data, tectonic for seismic data. Do not enable all basemap layers by default.
+   Set labelsVisible: false for choropleth and thematic maps where basemap labels (country names, cities, terrain) would clutter or conflict with the data layer. Labels are useful for point/cluster maps where the user needs geographic reference.
 2. Choose color schemes that match the data domain: temperature → blue-red, vegetation → greens, population → viridis, categorical → set2 or paired.
 3. Vary interaction patterns: dense data benefits from detail-panel, sparse data from popup, heatmaps from none.
 4. Adapt fillOpacity to data density: sparse polygons → 0.8-0.9, dense overlapping features → 0.4-0.6.
@@ -159,6 +160,7 @@ interface MapManifest {
     landMask?: boolean;
     terrain?: boolean;
     tectonic?: boolean;
+    labelsVisible?: boolean; // false for choropleth/thematic maps to reduce clutter
   };
   layers: Array<{
     id: string;

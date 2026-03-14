@@ -148,6 +148,8 @@ export interface BasemapConfig {
   landMask?: boolean;
   terrain?: boolean | { exaggeration?: number };
   tectonic?: boolean;
+  /** Show basemap text labels (country names, city names, etc.). Defaults to true. */
+  labelsVisible?: boolean;
 }
 
 // ─── v2: AI intent tracking ──────────────────────────────────

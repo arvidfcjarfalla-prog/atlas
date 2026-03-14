@@ -48,7 +48,9 @@ async function fetchStyleWithRetry(
  */
 function transformBasemapStyle(
   style: maplibregl.StyleSpecification,
+  options?: { labelsVisible?: boolean },
 ): maplibregl.StyleSpecification {
+  const hideLabels = options?.labelsVisible === false;
   const LAND_COLOR = "#151921";
   const WATER_COLOR = "#040810";
 
@@ -101,8 +103,11 @@ function transformBasemapStyle(
       };
     }
 
-    // Labels — quiet, cool, receding
+    // Labels — hide completely or quiet down
     if (layer.type === "symbol") {
+      if (hideLabels) {
+        return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
+      }
       const paint = layer.paint as Record<string, unknown> | undefined;
       return {
         ...layer,
@@ -140,7 +145,9 @@ export function MapViewport({ manifest, children }: MapViewportProps) {
 
         const map = new maplibregl.Map({
           container: containerRef.current,
-          style: transformBasemapStyle(styleJson),
+          style: transformBasemapStyle(styleJson, {
+            labelsVisible: manifest.basemap?.labelsVisible,
+          }),
           center: manifest.defaultCenter
             ? [manifest.defaultCenter[1], manifest.defaultCenter[0]]
             : [0, 20],
