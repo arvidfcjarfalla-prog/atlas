@@ -3,8 +3,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MapManifest } from "@atlas/data-models";
 import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
 import { validateManifest } from "../../../../lib/ai/validators";
+import { scoreManifest } from "../../../../lib/ai/quality-scorer";
+import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
+import { saveCase } from "../../../../lib/ai/case-memory";
 import type { DatasetProfile } from "../../../../lib/ai/types";
+
+const QUALITY_THRESHOLD = 60;
 
 const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 4096;
@@ -111,6 +116,7 @@ export async function POST(request: Request) {
 
     let manifest: MapManifest | null = null;
     let validation = { valid: false, errors: [] as string[], warnings: [] as string[] };
+    let quality: QualityScore | null = null;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     let attempts = 0;
@@ -163,18 +169,31 @@ export async function POST(request: Request) {
 
       validation = validateManifest(manifest, profile);
 
-      // No errors → done (warnings are OK)
-      if (validation.errors.length === 0) break;
+      // Validation errors → retry with error feedback
+      if (validation.errors.length > 0) {
+        if (attempts === MAX_ATTEMPTS) break;
+        messages.push(
+          { role: "assistant", content: responseText },
+          {
+            role: "user",
+            content: `The manifest has validation errors:\n${validation.errors.map((e) => `- ${e}`).join("\n")}\n\nFix these errors and return a corrected JSON manifest.`,
+          },
+        );
+        continue;
+      }
 
-      // Errors on last attempt → return with errors attached
-      if (attempts === MAX_ATTEMPTS) break;
+      // Validation passed — run quality scorer as critic
+      quality = scoreManifest(manifest, profile ?? undefined);
 
-      // Feed errors back for self-correction
+      // Good enough or out of attempts → accept
+      if (quality.total >= QUALITY_THRESHOLD || attempts === MAX_ATTEMPTS) break;
+
+      // Quality too low — feed deductions back for improvement
       messages.push(
         { role: "assistant", content: responseText },
         {
           role: "user",
-          content: `The manifest has validation errors:\n${validation.errors.map((e) => `- ${e}`).join("\n")}\n\nFix these errors and return a corrected JSON manifest.`,
+          content: `The manifest is valid but has quality issues (score: ${quality.total}/100):\n${quality.deductions.map((d) => `- ${d}`).join("\n")}\n\nImprove the manifest to address these issues and return a corrected JSON.`,
         },
       );
     }
@@ -188,9 +207,29 @@ export async function POST(request: Request) {
 
     manifest.validation = validation;
 
+    // Score the final manifest if not already scored (e.g. validation errors on last attempt)
+    if (!quality) {
+      quality = scoreManifest(manifest, profile ?? undefined);
+    }
+
+    // Save case record (fire-and-forget — never delays response)
+    const caseId = crypto.randomUUID();
+    saveCase({
+      id: caseId,
+      timestamp: new Date().toISOString(),
+      prompt,
+      ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: body.dataSource ?? "unknown" } } : {}),
+      manifest,
+      quality,
+      attempts,
+      outcome: "accepted",
+    }).catch(() => {});
+
     return NextResponse.json({
       manifest,
       validation,
+      quality,
+      caseId,
       model: MODEL,
       attempts,
       usage: {

@@ -74,6 +74,29 @@ export interface ClarifyRequest {
   answers?: Record<string, string>;
 }
 
+// ─── Case memory ─────────────────────────────────────────────
+
+import type { QualityScore } from "./quality-scorer";
+
+/** A saved record of a map generation for future retrieval/learning. */
+export interface CaseRecord {
+  id: string;
+  timestamp: string;
+  prompt: string;
+  clarifications?: {
+    questions: { id: string; question: string }[];
+    answers: Record<string, string>;
+  };
+  resolvedSource?: {
+    url: string;
+    source: string;
+  };
+  manifest: MapManifest;
+  quality: QualityScore;
+  attempts: number;
+  outcome: "accepted" | "edited" | "reset";
+}
+
 // ─── Map patterns ────────────────────────────────────────────
 
 /** A reusable map design pattern with defaults and validation rules. */

@@ -42,6 +42,7 @@ interface UploadResult {
 interface GenerateResult {
   manifest: MapManifest;
   validation: { valid: boolean; errors: string[]; warnings: string[] };
+  caseId?: string;
   attempts: number;
   usage: { inputTokens: number; outputTokens: number };
 }
@@ -294,6 +295,21 @@ export default function CreateMapPage() {
     [answers, prompt, handleClarify],
   );
 
+  // ── Case outcome tracking ────────────────────────────────
+
+  const sendOutcome = useCallback(
+    (outcome: "edited" | "reset") => {
+      const caseId = generateResult?.caseId;
+      if (!caseId) return;
+      fetch("/api/ai/case-memory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: caseId, outcome }),
+      }).catch(() => {});
+    },
+    [generateResult],
+  );
+
   // ── Reset ───────────────────────────────────────────────
 
   const handleReset = useCallback(() => {
@@ -409,6 +425,7 @@ export default function CreateMapPage() {
         <div className="p-4 space-y-2">
           <button
             onClick={() => {
+              sendOutcome("edited");
               setState("idle");
               setGenerateResult(null);
               setLegendItems([]);
@@ -418,7 +435,10 @@ export default function CreateMapPage() {
             Edit prompt
           </button>
           <button
-            onClick={handleReset}
+            onClick={() => {
+              sendOutcome("reset");
+              handleReset();
+            }}
             className="w-full rounded-md border border-border bg-card px-3 py-2 text-body text-muted-foreground hover:bg-background/80 transition-colors duration-fast"
           >
             Start over
