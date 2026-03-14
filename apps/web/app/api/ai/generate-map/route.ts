@@ -7,6 +7,7 @@ import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
 import { saveCase } from "../../../../lib/ai/case-memory";
+import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 
 const QUALITY_THRESHOLD = 60;
@@ -212,10 +213,15 @@ export async function POST(request: Request) {
       quality = scoreManifest(manifest, profile ?? undefined);
     }
 
+    // Derive refinement suggestions from quality deductions + manifest gaps
+    const suggestions = getSuggestions(quality, manifest);
+
     // Save case record (fire-and-forget — never delays response)
     const caseId = crypto.randomUUID();
+    const parentCaseId: string | undefined = body.parentCaseId;
     saveCase({
       id: caseId,
+      ...(parentCaseId ? { parentCaseId } : {}),
       timestamp: new Date().toISOString(),
       prompt,
       ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: body.dataSource ?? "unknown" } } : {}),
@@ -223,6 +229,7 @@ export async function POST(request: Request) {
       quality,
       attempts,
       outcome: "accepted",
+      refinements: [],
     }).catch(() => {});
 
     return NextResponse.json({
@@ -230,6 +237,7 @@ export async function POST(request: Request) {
       validation,
       quality,
       caseId,
+      suggestions,
       model: MODEL,
       attempts,
       usage: {

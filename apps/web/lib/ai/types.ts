@@ -78,9 +78,27 @@ export interface ClarifyRequest {
 
 import type { QualityScore } from "./quality-scorer";
 
+/** A refinement event logged when the user improves a generated map. */
+export interface RefinementEvent {
+  type: "chat" | "ui";
+  action: string;
+  detail: string;
+  timestamp: string;
+}
+
+/** A suggested refinement surfaced to the user after generation. */
+export interface RefinementSuggestion {
+  label: string;
+  promptSuffix: string;
+  action: string;
+  source: "quality-deduction" | "manifest-gap" | "default";
+}
+
 /** A saved record of a map generation for future retrieval/learning. */
 export interface CaseRecord {
   id: string;
+  /** Links to the parent case when this was generated via a refinement chip. */
+  parentCaseId?: string;
   timestamp: string;
   prompt: string;
   clarifications?: {
@@ -95,6 +113,7 @@ export interface CaseRecord {
   quality: QualityScore;
   attempts: number;
   outcome: "accepted" | "edited" | "reset";
+  refinements: RefinementEvent[];
 }
 
 // ─── Map patterns ────────────────────────────────────────────

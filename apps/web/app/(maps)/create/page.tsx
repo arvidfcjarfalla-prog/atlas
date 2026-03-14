@@ -14,6 +14,7 @@ import type {
   DatasetProfile,
   ClarifyResponse,
   ClarificationQuestion,
+  RefinementSuggestion,
 } from "../../../lib/ai/types";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -43,6 +44,7 @@ interface GenerateResult {
   manifest: MapManifest;
   validation: { valid: boolean; errors: string[]; warnings: string[] };
   caseId?: string;
+  suggestions?: RefinementSuggestion[];
   attempts: number;
   usage: { inputTokens: number; outputTokens: number };
 }
@@ -219,6 +221,7 @@ export default function CreateMapPage() {
       promptText: string,
       dataUrl: string | null,
       profile: DatasetProfile | null,
+      parentCaseId?: string,
     ) => {
       setState("generating");
       setError(null);
@@ -231,6 +234,7 @@ export default function CreateMapPage() {
             prompt: promptText.trim(),
             ...(dataUrl ? { sourceUrl: dataUrl, dataUrl } : {}),
             ...(profile ? { dataProfile: profile } : {}),
+            ...(parentCaseId ? { parentCaseId } : {}),
           }),
         });
 
@@ -308,6 +312,44 @@ export default function CreateMapPage() {
       }).catch(() => {});
     },
     [generateResult],
+  );
+
+  const sendRefinementEvent = useCallback(
+    (type: "chat" | "ui", action: string, detail: string) => {
+      const caseId = generateResult?.caseId;
+      if (!caseId) return;
+      fetch("/api/ai/case-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: caseId,
+          event: { type, action, detail, timestamp: new Date().toISOString() },
+        }),
+      }).catch(() => {});
+    },
+    [generateResult],
+  );
+
+  // ── Suggestion chip handler ─────────────────────────────
+
+  const handleRefine = useCallback(
+    (suggestion: RefinementSuggestion) => {
+      const parentId = generateResult?.caseId;
+      sendRefinementEvent("ui", suggestion.action, suggestion.promptSuffix);
+      sendOutcome("edited");
+      const refined = `${prompt.trim()} ${suggestion.promptSuffix}`;
+      setPrompt(refined);
+      setGenerateResult(null);
+      setLegendItems([]);
+      setState("generating");
+      // Re-generate with the appended instruction, linking back to parent case
+      if (resolvedDataUrl || resolvedProfile) {
+        handleGenerateWithData(refined, resolvedDataUrl, resolvedProfile, parentId);
+      } else {
+        handleClarify(refined);
+      }
+    },
+    [prompt, generateResult, resolvedDataUrl, resolvedProfile, sendRefinementEvent, sendOutcome, handleGenerateWithData, handleClarify],
   );
 
   // ── Reset ───────────────────────────────────────────────
@@ -420,6 +462,26 @@ export default function CreateMapPage() {
               </ul>
             </div>
           )}
+
+        {/* Refinement suggestions */}
+        {generateResult.suggestions && generateResult.suggestions.length > 0 && (
+          <div className="p-4 border-b border-border">
+            <h3 className="text-label font-mono uppercase text-muted-foreground mb-2">
+              Refine this map
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {generateResult.suggestions.map((s) => (
+                <button
+                  key={s.action}
+                  onClick={() => handleRefine(s)}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-caption text-muted-foreground hover:bg-card hover:text-foreground transition-colors"
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="p-4 space-y-2">

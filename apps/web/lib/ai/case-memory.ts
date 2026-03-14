@@ -8,9 +8,11 @@
 
 import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { CaseRecord } from "./types";
+import type { CaseRecord, RefinementEvent } from "./types";
 
 export type { CaseRecord };
+
+const MAX_REFINEMENTS = 20;
 
 const CASES_DIR = join(process.cwd(), ".next", "cache", "atlas-cases");
 let dirReady = false;
@@ -47,6 +49,20 @@ export async function updateCaseOutcome(
   const record = await loadCase(id);
   if (!record) return false;
   record.outcome = outcome;
+  await saveCase(record);
+  return true;
+}
+
+/** Append a refinement event to a case record. Returns false if not found. */
+export async function appendRefinement(
+  id: string,
+  event: RefinementEvent,
+): Promise<boolean> {
+  const record = await loadCase(id);
+  if (!record) return false;
+  if (!record.refinements) record.refinements = [];
+  if (record.refinements.length >= MAX_REFINEMENTS) return true; // silently cap
+  record.refinements.push(event);
   await saveCase(record);
   return true;
 }
