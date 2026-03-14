@@ -43,6 +43,37 @@ export interface DatasetProfile {
   attributes: AttributeProfile[];
 }
 
+// ─── Clarification ──────────────────────────────────────────
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  options?: string[];
+  aspect: "geography" | "metric" | "timeframe" | "data-source" | "visualization";
+}
+
+/** Response from the /api/ai/clarify endpoint. */
+export interface ClarifyResponse {
+  /** If true, prompt is clear enough to proceed to generation. */
+  ready: boolean;
+  /** Enhanced prompt with resolved context (when ready). */
+  resolvedPrompt?: string;
+  /** Resolved data endpoint URL (when ready and data is available). */
+  dataUrl?: string;
+  /** Dataset profile if data was fetched and profiled. */
+  dataProfile?: DatasetProfile;
+  /** Follow-up questions (max 2) when not ready. */
+  questions?: ClarificationQuestion[];
+  /** Warning when data is unavailable for the requested topic. */
+  dataWarning?: string;
+}
+
+/** Request body for /api/ai/clarify. */
+export interface ClarifyRequest {
+  prompt: string;
+  answers?: Record<string, string>;
+}
+
 // ─── Map patterns ────────────────────────────────────────────
 
 /** A reusable map design pattern with defaults and validation rules. */

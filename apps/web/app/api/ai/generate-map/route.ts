@@ -32,11 +32,18 @@ function extractJSON(text: string): unknown {
 }
 
 /**
- * Build the user message, optionally including a dataset profile block.
+ * Build the user message, optionally including a dataset profile and source URL.
  */
-function buildUserMessage(prompt: string, profile: DatasetProfile | null): string {
-  if (!profile) return prompt.trim();
-  return `<dataset-profile>\n${JSON.stringify(profile, null, 2)}\n</dataset-profile>\n\n${prompt.trim()}`;
+function buildUserMessage(prompt: string, profile: DatasetProfile | null, sourceUrl?: string): string {
+  const parts: string[] = [];
+  if (profile) {
+    parts.push(`<dataset-profile>\n${JSON.stringify(profile, null, 2)}\n</dataset-profile>`);
+  }
+  if (sourceUrl) {
+    parts.push(`<source-url>${sourceUrl}</source-url>`);
+  }
+  parts.push(prompt.trim());
+  return parts.join("\n\n");
 }
 
 /**
@@ -89,16 +96,17 @@ export async function POST(request: Request) {
     }
 
     // Resolve dataset profile: explicit > fetched > none
+    const sourceUrl: string | undefined = body.sourceUrl ?? body.dataUrl;
     let profile: DatasetProfile | null = body.dataProfile ?? null;
-    if (!profile && body.dataUrl && typeof body.dataUrl === "string") {
-      profile = await fetchAndProfile(body.dataUrl);
+    if (!profile && sourceUrl && typeof sourceUrl === "string") {
+      profile = await fetchAndProfile(sourceUrl);
     }
 
     const client = getClient();
 
     // Self-correction loop: generate → validate → retry on errors
     const messages: Anthropic.Messages.MessageParam[] = [
-      { role: "user", content: buildUserMessage(prompt, profile) },
+      { role: "user", content: buildUserMessage(prompt, profile, sourceUrl) },
     ];
 
     let manifest: MapManifest | null = null;

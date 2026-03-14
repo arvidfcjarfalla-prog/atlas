@@ -10,6 +10,7 @@
  */
 import type { DatasetProfile } from "./types";
 import { selectExamples, formatExample } from "./example-bank";
+import { catalogContext } from "./data-catalog";
 
 const SYSTEM_PROMPT_PREFIX = `
 <role>
@@ -86,6 +87,23 @@ summary of the actual dataset. Use it to make precise decisions:
 
 If no dataset profile is provided, state field name assumptions explicitly in intent.assumptions.
 </dataset-profile-usage>
+
+<available-datasets>
+These datasets are built into Atlas and available via API. When the user's
+prompt matches one of these, use its exact endpoint as sourceUrl and its
+attributes for colorField, sizeField, and tooltipFields.
+
+{CATALOG_PLACEHOLDER}
+
+When a <dataset-profile> block is provided in the user message, it takes
+precedence over catalog entries — use the profile's attributes. If a
+<source-url> tag is included, use that exact URL as sourceUrl in the manifest.
+
+When the prompt implies data not in this catalog and no profile is provided,
+still generate a valid manifest. Use "geojson-url" as sourceType and set
+sourceUrl to the URL provided in the prompt context (if any). State in
+intent.assumptions that the data source must be provided by the user.
+</available-datasets>
 
 <variation-rules>
 Each map must be uniquely tailored to its dataset and analytical task. Do NOT copy
@@ -193,7 +211,12 @@ export function buildSystemPrompt(profile?: DatasetProfile | null): string {
   const examples = selectExamples(profile ?? undefined);
   const examplesBlock = examples.map((e) => formatExample(e)).join("\n\n");
 
-  return `${SYSTEM_PROMPT_PREFIX}
+  const prompt = SYSTEM_PROMPT_PREFIX.replace(
+    "{CATALOG_PLACEHOLDER}",
+    catalogContext(),
+  );
+
+  return `${prompt}
 
 <examples>
 ${examplesBlock}

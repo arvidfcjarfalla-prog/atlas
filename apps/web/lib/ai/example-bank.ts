@@ -49,7 +49,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "event",
       "label": "Earthquakes",
       "sourceType": "api",
-      "sourceUrl": "/api/earthquakes?period=7d",
+      "sourceUrl": "/api/earthquakes",
       "geometryType": "point",
       "style": {
         "markerShape": "circle",
@@ -117,7 +117,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "zone",
       "label": "Kommuner",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/geo/stockholm-municipalities",
+      "sourceUrl": "/api/user-data/current",
       "geometryType": "polygon",
       "style": {
         "markerShape": "circle",
@@ -161,8 +161,8 @@ export const EXAMPLES: FewShotExample[] = [
     "taskType": "compare-regions",
     "confidence": 0.90,
     "assumptions": [
-      "Data is median price per square meter, already normalized",
-      "Municipality boundaries available as polygon GeoJSON",
+      "Data must be provided by user — no built-in municipality price dataset",
+      "Municipality boundaries assumed available as polygon GeoJSON",
       "Quantile classification chosen for skewed price distribution",
       "normalization.field set to area_sqm as price is already per-sqm — this may be redundant"
     ]
@@ -194,7 +194,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "event",
       "label": "Inbrott",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/crime/burglaries?city=gothenburg",
+      "sourceUrl": "/api/user-data/current",
       "geometryType": "point",
       "style": {
         "markerShape": "circle",
@@ -226,7 +226,7 @@ export const EXAMPLES: FewShotExample[] = [
     "taskType": "find-hotspots",
     "confidence": 0.85,
     "assumptions": [
-      "Data is geocoded burglary reports with point coordinates",
+      "Data must be provided by user — no built-in crime dataset",
       "Heatmap chosen because user asks 'where most occur' — implies density",
       "maxZoom 9 to prevent noisy rendering at street level"
     ]
@@ -243,28 +243,28 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["proportional-symbol"],
     hasProfile: false,
     geometryTypes: ["Point", "MultiPoint"],
-    prompt: "Visa befolkning per stad i Sverige, större cirkel = fler invånare",
+    prompt: "Visa världens största städer, större cirkel = fler invånare",
     output: `{
   "version": 2,
-  "id": "sweden-city-population",
-  "title": "Stadsbefolkning — Sverige",
-  "description": "Swedish cities with circle sizes proportional to population.",
+  "id": "world-city-population",
+  "title": "Världens största städer",
+  "description": "Major world cities with circle sizes proportional to population.",
   "theme": "editorial",
-  "defaultCenter": [62.0, 15.0],
-  "defaultZoom": 5,
+  "defaultCenter": [20, 0],
+  "defaultZoom": 2,
   "layers": [
     {
       "id": "cities",
       "kind": "asset",
       "label": "Städer",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/geo/sweden-cities",
+      "sourceUrl": "/api/geo/world-cities",
       "geometryType": "point",
       "style": {
         "markerShape": "circle",
         "mapFamily": "proportional-symbol",
-        "sizeField": "population",
-        "colorField": "region",
+        "sizeField": "pop_max",
+        "colorField": "country",
         "color": {
           "scheme": "set2",
           "colorblindSafe": true
@@ -275,15 +275,14 @@ export const EXAMPLES: FewShotExample[] = [
       },
       "legend": {
         "title": "Befolkning",
-        "type": "proportional",
-        "exampleValues": [10000, 100000, 1000000]
+        "type": "proportional"
       },
       "interaction": {
-        "tooltipFields": ["name", "population", "region"],
+        "tooltipFields": ["name", "country", "pop_max"],
         "clickBehavior": "popup",
         "hoverEffect": "enlarge"
       },
-      "attribution": "SCB"
+      "attribution": "Natural Earth"
     }
   ],
   "accessibility": {
@@ -292,13 +291,13 @@ export const EXAMPLES: FewShotExample[] = [
     "locale": "sv"
   },
   "intent": {
-    "userPrompt": "Visa befolkning per stad i Sverige, större cirkel = fler invånare",
+    "userPrompt": "Visa världens största städer, större cirkel = fler invånare",
     "taskType": "compare-magnitudes",
     "confidence": 0.95,
     "assumptions": [
-      "City coordinates are available as point data",
-      "Population field is numeric",
-      "Categorical color by region adds secondary information"
+      "Using built-in world-cities dataset from Natural Earth",
+      "pop_max field is numeric population estimate",
+      "Categorical color by country adds secondary information"
     ]
   },
   "validation": {
@@ -328,7 +327,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "asset",
       "label": "Restauranger",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/places/restaurants?area=stockholm-inner",
+      "sourceUrl": "/api/user-data/current",
       "geometryType": "point",
       "style": {
         "markerShape": "circle",
@@ -357,7 +356,7 @@ export const EXAMPLES: FewShotExample[] = [
     "taskType": "browse-places",
     "confidence": 0.90,
     "assumptions": [
-      "Dataset is restaurant POIs from OSM or similar",
+      "Data must be provided by user — no built-in restaurant dataset",
       "Inner city area keeps feature count manageable (< 500), no clustering needed",
       "Zoom 13 appropriate for city-center browsing"
     ]
@@ -502,7 +501,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "zone",
       "label": "Kommuner",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/geo/sweden-municipalities",
+      "sourceUrl": "/api/user-data/current",
       "geometryType": "multi-polygon",
       "style": {
         "markerShape": "circle",
@@ -590,7 +589,7 @@ export const EXAMPLES: FewShotExample[] = [
       "kind": "route",
       "label": "Pendlingsflöden",
       "sourceType": "geojson-url",
-      "sourceUrl": "/api/geo/skane-commuting",
+      "sourceUrl": "/api/user-data/current",
       "geometryType": "line",
       "style": {
         "markerShape": "circle",
