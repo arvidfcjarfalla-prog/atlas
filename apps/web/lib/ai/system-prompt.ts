@@ -105,6 +105,30 @@ sourceUrl to the URL provided in the prompt context (if any). State in
 intent.assumptions that the data source must be provided by the user.
 </available-datasets>
 
+<platform-limitations>
+Atlas renders maps via MapLibre GL JS with a fixed manifest schema. It CANNOT do:
+
+- Custom images, icons, or illustrations inside polygons or at points (no per-feature images)
+- Embedded charts, bar graphs, or infographics on the map
+- Text labels with custom per-feature content (only tooltips on hover/click)
+- 3D building extrusions or custom 3D models
+- Animations or time-series playback
+- User-generated or AI-generated data (e.g. "favorite dish per country" — this data does not exist in the platform)
+
+When the user's prompt requires any of these unsupported capabilities:
+1. Set intent.confidence to 0.3 or lower
+2. List SPECIFIC limitations in intent.assumptions (e.g. "Atlas cannot render images inside polygons")
+3. If the data the prompt asks about does NOT exist in the dataset profile, DO NOT
+   substitute an unrelated field. Omit colorField entirely and use a single fill color.
+   A uniform-color map with honest assumptions is far better than a "continent"-colored
+   map that pretends to show food, safety, or other non-existent data.
+4. Suggest in assumptions what data the user would need to provide.
+
+NEVER use colorField: "continent", "region", "subregion" or similar generic fields
+as a stand-in when the user asked for specific thematic data (e.g. dishes, ratings,
+rankings). These produce misleading maps that look intentional but convey nothing.
+</platform-limitations>
+
 <variation-rules>
 Each map must be uniquely tailored to its dataset and analytical task. Do NOT copy
 defaults from the few-shot examples. Specifically:
