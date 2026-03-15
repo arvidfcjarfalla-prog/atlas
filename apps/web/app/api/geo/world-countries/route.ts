@@ -34,16 +34,14 @@ export async function GET(): Promise<NextResponse> {
     const raw = (await res.json()) as GeoJSON.FeatureCollection;
 
     // Normalise to a slim set of attributes
-    const features: GeoJSON.Feature[] = raw.features
-      .filter((f) => f.properties?.["ISO_A3"] !== "-99") // skip Antarctica etc.
-      .map((f) => {
+    const features: GeoJSON.Feature[] = raw.features.map((f) => {
         const p = f.properties ?? {};
         return {
           type: "Feature" as const,
           geometry: f.geometry,
           properties: {
             name: p["NAME"] ?? p["name"] ?? "",
-            iso_a3: p["ISO_A3"] ?? p["iso_a3"] ?? "",
+            iso_a3: p["ISO_A3_EH"] ?? p["ISO_A3"] ?? p["iso_a3"] ?? "",
             continent: p["CONTINENT"] ?? p["continent"] ?? "",
             subregion: p["SUBREGION"] ?? p["subregion"] ?? "",
             pop_est: Number(p["POP_EST"] ?? p["pop_est"] ?? 0),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   MapShell,
@@ -79,7 +79,16 @@ function MapContent({
 // ─── Root page ──────────────────────────────────────────────
 
 export default function CreateMapPage() {
+  return (
+    <Suspense>
+      <CreateMapPageInner />
+    </Suspense>
+  );
+}
+
+function CreateMapPageInner() {
   const searchParams = useSearchParams();
+  const urlPrompt = searchParams.get("prompt")?.trim() ?? "";
   const [state, setState] = useState<FlowState>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +97,7 @@ export default function CreateMapPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Prompt state
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(urlPrompt);
 
   // Clarification state
   const [clarifyQuestions, setClarifyQuestions] = useState<ClarificationQuestion[]>([]);
@@ -112,17 +121,6 @@ export default function CreateMapPage() {
   const handleLegendItems = useCallback((items: CompiledLegendItem[]) => {
     setLegendItems(items);
   }, []);
-
-  // ── Read URL prompt on mount ──────────────────────────────
-
-  useEffect(() => {
-    if (autoSubmittedRef.current) return;
-    const urlPrompt = searchParams.get("prompt");
-    if (urlPrompt && urlPrompt.trim()) {
-      autoSubmittedRef.current = true;
-      setPrompt(urlPrompt.trim());
-    }
-  }, [searchParams]);
 
   // ── Clarify handler ───────────────────────────────────────
 
@@ -178,12 +176,20 @@ export default function CreateMapPage() {
     [answers],
   );
 
-  // Auto-submit URL prompt after setting it
+  // Auto-submit URL prompt on mount
   useEffect(() => {
-    if (autoSubmittedRef.current && prompt && state === "idle") {
-      handleClarify(prompt);
-    }
-  }, [prompt, state, handleClarify]);
+    if (!urlPrompt) return;
+    if (autoSubmittedRef.current) return;
+    autoSubmittedRef.current = true;
+    // setTimeout(0) ensures the call survives React 18 strict-mode's
+    // unmount/remount cycle (synchronous calls get discarded).
+    const id = setTimeout(() => handleClarify(urlPrompt), 0);
+    return () => {
+      clearTimeout(id);
+      autoSubmittedRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlPrompt]);
 
   // ── Upload handler ──────────────────────────────────────
 

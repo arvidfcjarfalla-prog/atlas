@@ -13,6 +13,12 @@ interface GradientLegendProps {
   className?: string;
 }
 
+function extractRangeEnd(label: string, end: "low" | "high"): string {
+  const parts = label.split(/\s*–\s*/);
+  if (parts.length === 2) return end === "low" ? parts[0] : parts[1];
+  return label;
+}
+
 /**
  * Gradient legend for choropleth and heatmap maps.
  * Renders a continuous color bar with class break labels.
@@ -52,13 +58,13 @@ export function GradientLegend({
         }}
       />
 
-      {/* Labels */}
-      <div className="flex justify-between mt-1">
+      {/* Labels: show min of first range, max of last range */}
+      <div className="flex justify-between mt-1 gap-2">
         <span className="text-caption text-foreground/60">
-          {items[0].label}
+          {extractRangeEnd(items[0].label, "low")}
         </span>
         <span className="text-caption text-foreground/60">
-          {items[items.length - 1].label}
+          {extractRangeEnd(items[items.length - 1].label, "high")}
         </span>
       </div>
     </div>
