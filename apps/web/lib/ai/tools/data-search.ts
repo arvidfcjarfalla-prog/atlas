@@ -171,11 +171,31 @@ const WORLD_BANK_INDICATORS: Record<string, { code: string; label: string; unit:
 };
 
 /**
+ * Words indicating the user wants sub-national data.
+ * World Bank only has country-level data, so skip if these appear.
+ */
+const SUBNATIONAL_KEYWORDS = [
+  "state", "states", "province", "provinces", "county", "counties",
+  "district", "districts", "municipality", "municipalities",
+  "län", "kommun", "kommuner",
+];
+
+/**
  * Search World Bank API for a matching indicator.
  * Returns country-level data joined with Natural Earth geometries.
+ *
+ * Skips if the prompt explicitly asks for sub-national data (e.g. "US states")
+ * since World Bank only provides country-level statistics.
  */
 export async function searchWorldBank(query: string): Promise<DataSearchResult> {
   const lower = query.toLowerCase();
+  const words = lower.split(/\s+/);
+
+  // Skip if user wants sub-national data — World Bank is country-level only
+  const wantsSubnational = SUBNATIONAL_KEYWORDS.some((kw) => words.includes(kw));
+  if (wantsSubnational) {
+    return { found: false, error: "World Bank only has country-level data; prompt asks for sub-national" };
+  }
 
   // Find matching indicator — sort by keyword length (longest first)
   // so "gdp per capita" matches before "gdp"

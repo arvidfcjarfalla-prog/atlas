@@ -137,12 +137,54 @@ export const DATA_CATALOG: CatalogEntry[] = [
 // ─── Matching ────────────────────────────────────────────────
 
 /**
+ * Words that indicate a specific metric/topic the user wants to visualize.
+ * If the prompt contains one of these and the catalog entry doesn't have
+ * matching data, we should not match that entry.
+ */
+const METRIC_KEYWORDS = [
+  "deforestation", "forest loss", "tree cover",
+  "poverty", "inequality", "gini",
+  "crime", "safety", "murder", "homicide",
+  "education", "school", "literacy",
+  "health", "disease", "malaria", "hiv",
+  "temperature", "climate", "rainfall", "precipitation",
+  "migration", "immigration", "refugee",
+  "trade", "export", "import",
+  "debt", "inflation",
+  "corruption",
+  "biodiversity", "species", "endangered",
+  "water", "sanitation", "drinking water",
+  "energy", "electricity", "power",
+  "agriculture", "farming", "crop",
+];
+
+/**
+ * Words indicating the user wants sub-national (state, province, county) data.
+ * Catalog entries with global/country-level bounds should not match these prompts.
+ */
+const SUBNATIONAL_KEYWORDS = [
+  "state", "states", "province", "provinces", "county", "counties",
+  "region", "regions", "district", "districts", "municipality",
+  "län", "kommun", "kommuner",
+];
+
+/**
  * Find catalog entries whose topics match keywords in the prompt.
  * Returns entries sorted by number of topic hits (best match first).
+ *
+ * Avoids false positives by checking:
+ * 1. If the prompt contains a specific metric not in the entry's attributes/topics
+ * 2. If the prompt asks for sub-national data that the entry can't provide
  */
 export function matchCatalog(prompt: string): CatalogEntry[] {
   const lower = prompt.toLowerCase();
   const words = lower.split(/\s+/);
+
+  // Check if prompt contains a specific metric
+  const promptMetric = METRIC_KEYWORDS.find((m) => lower.includes(m));
+
+  // Check if prompt asks for sub-national data
+  const wantsSubnational = SUBNATIONAL_KEYWORDS.some((kw) => words.includes(kw));
 
   const scored = DATA_CATALOG.map((entry) => {
     let hits = 0;
@@ -151,6 +193,24 @@ export function matchCatalog(prompt: string): CatalogEntry[] {
       if (lower.includes(topic)) hits++;
       if (words.includes(topic)) hits++;
     }
+
+    // Penalize: prompt has a specific metric but entry doesn't cover it
+    if (promptMetric && hits > 0) {
+      const entryCovers =
+        entry.topics.some((t) => promptMetric.includes(t) || t.includes(promptMetric)) ||
+        entry.attributes.some((a) => promptMetric.includes(a) || a.includes(promptMetric));
+      if (!entryCovers) {
+        // Only match if the topic hits are strong (≥3), meaning the prompt
+        // is really about this dataset, not just using a geographic scope word
+        if (hits < 3) hits = 0;
+      }
+    }
+
+    // Penalize: prompt wants sub-national but entry is country/global level
+    if (wantsSubnational && entry.id === "world-countries") {
+      hits = 0;
+    }
+
     return { entry, hits };
   });
 
