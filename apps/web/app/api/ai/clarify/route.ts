@@ -4,7 +4,9 @@ import { matchCatalog } from "../../../../lib/ai/data-catalog";
 import { buildClarifyPrompt, CLARIFY_TOOLS } from "../../../../lib/ai/clarify-prompt";
 import { profileDataset } from "../../../../lib/ai/profiler";
 import { resolveAmenityQuery, queryOverpass } from "../../../../lib/ai/tools/overpass";
-import { searchPublicData, getCachedData } from "../../../../lib/ai/tools/data-search";
+import { searchPublicData, getCachedData, fetchGeoJSON } from "../../../../lib/ai/tools/data-search";
+import { searchWebDatasets } from "../../../../lib/ai/tools/web-dataset-search";
+import { extractIntent, checkRegistry } from "../../../../lib/ai/tools/dataset-registry";
 import type { ClarifyResponse, DatasetProfile } from "../../../../lib/ai/types";
 
 const MODEL = "claude-haiku-4-5-20251001";
@@ -106,6 +108,11 @@ async function executeTool(
     const result = await searchPublicData(query, url);
     return JSON.stringify(result);
   }
+  if (name === "search_web_datasets") {
+    const query = input.query as string;
+    const result = await searchWebDatasets(query);
+    return JSON.stringify(result);
+  }
   return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
@@ -184,6 +191,33 @@ export async function POST(request: Request): Promise<NextResponse> {
         dataProfile: directSearch.profile,
       };
       return NextResponse.json(response);
+    }
+
+    // ── Fast path 2.5: Dataset registry (previously discovered web datasets)
+    const intent = extractIntent(fullContext);
+    const registryHit = await checkRegistry(intent);
+    if (registryHit) {
+      const registryCached = await getCachedData(registryHit.cacheKey);
+      if (registryCached) {
+        const response: ClarifyResponse = {
+          ready: true,
+          resolvedPrompt: fullContext,
+          dataUrl: `/api/geo/cached/${encodeURIComponent(registryHit.cacheKey)}`,
+          dataProfile: registryCached.profile,
+        };
+        return NextResponse.json(response);
+      }
+      // Data expired from cache — re-fetch from stored URL
+      const refetched = await fetchGeoJSON(registryHit.datasetUrl);
+      if (refetched.found && refetched.cacheKey) {
+        const response: ClarifyResponse = {
+          ready: true,
+          resolvedPrompt: fullContext,
+          dataUrl: `/api/geo/cached/${encodeURIComponent(refetched.cacheKey)}`,
+          dataProfile: refetched.profile,
+        };
+        return NextResponse.json(response);
+      }
     }
 
     // ── Fast path 3: Overpass POI resolution ─────────────────

@@ -29,6 +29,12 @@ is mentioned. Always try searching before asking the user.
     drought, landslides, sea ice
   * REST Countries: country metadata — population, area, region, capitals
   * Direct GeoJSON URL validation
+
+- search_web_datasets: Search the internet for downloadable geographic datasets.
+  Use this AFTER search_public_data returns no results. Searches open data portals
+  (data.gov, HDX, Natural Earth, GitHub, Our World in Data, etc.) for GeoJSON
+  and CSV files. Provide a descriptive query including topic, metric, and geography.
+  Avoids HTML tables and paywalled sources. Only returns validated real datasets.
 </tools>
 
 <rules>
@@ -41,7 +47,7 @@ is mentioned. Always try searching before asking the user.
 7. Always provide quick-select options when asking questions
 8. Keep questions under 15 words
 9. If you cannot resolve the data source at all, set dataWarning to suggest the user uploads data
-10. Prefer using tools to search for data over asking the user
+10. Prefer using tools: try search_public_data first, then search_web_datasets if nothing found. Only ask the user as a last resort
 </rules>
 
 <output-format>
@@ -81,6 +87,22 @@ export const CLARIFY_TOOLS: Anthropic.Tool[] = [
           type: "string",
           description:
             "Optional direct URL to a GeoJSON file to fetch and validate",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "search_web_datasets",
+    description:
+      "Search the internet for downloadable geographic datasets (GeoJSON, CSV). Use AFTER search_public_data returns no results. Searches open data portals, GitHub, and government data sites. Provide a descriptive query with topic, metric, and geography.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Descriptive search query including topic, metric, and geography (e.g. 'global shipping routes geojson', 'US state poverty rate csv')",
         },
       },
       required: ["query"],

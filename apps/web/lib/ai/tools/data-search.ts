@@ -36,7 +36,7 @@ export interface DataSearchResult {
 
 // ─── Cache ──────────────────────────────────────────────────
 
-interface CacheEntry {
+export interface CacheEntry {
   data: GeoJSON.FeatureCollection;
   profile: DatasetProfile;
   source: string;
@@ -134,7 +134,7 @@ export function getCachedDataSync(key: string): CacheEntry | null {
 }
 
 /** Write to both L1 and L2. */
-async function setCache(key: string, entry: CacheEntry): Promise<void> {
+export async function setCache(key: string, entry: CacheEntry): Promise<void> {
   memoryCache.set(key, entry);
   await writeFileCache(key, entry);
 }
