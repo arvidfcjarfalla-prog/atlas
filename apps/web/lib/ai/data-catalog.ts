@@ -137,26 +137,29 @@ export const DATA_CATALOG: CatalogEntry[] = [
 // ─── Matching ────────────────────────────────────────────────
 
 /**
- * Words that indicate a specific metric/topic the user wants to visualize.
- * If the prompt contains one of these and the catalog entry doesn't have
- * matching data, we should not match that entry.
+ * Stop words — common words that should not count as "extra content" in a prompt.
+ * Used to detect whether a prompt has a specific metric beyond geography scope.
  */
-const METRIC_KEYWORDS = [
-  "deforestation", "forest loss", "tree cover",
-  "poverty", "inequality", "gini",
-  "crime", "safety", "murder", "homicide",
-  "education", "school", "literacy",
-  "health", "disease", "malaria", "hiv",
-  "temperature", "climate", "rainfall", "precipitation",
-  "migration", "immigration", "refugee",
-  "trade", "export", "import",
-  "debt", "inflation",
-  "corruption",
-  "biodiversity", "species", "endangered",
-  "water", "sanitation", "drinking water",
-  "energy", "electricity", "power",
-  "agriculture", "farming", "crop",
-];
+const STOP_WORDS = new Set([
+  // English
+  "a", "an", "the", "in", "on", "by", "for", "of", "to", "and", "or", "with",
+  "per", "from", "over", "show", "map", "display", "create", "make", "build",
+  "me", "my", "i", "want", "need", "please", "can", "could", "how", "many",
+  "all", "each", "every", "most", "some", "that", "this", "it", "is", "are",
+  "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
+  "did", "will", "would", "shall", "should", "may", "might", "must",
+  "not", "no", "but", "if", "then", "than", "so", "very", "too", "also",
+  "just", "only", "about", "up", "out", "into", "between", "through", "after",
+  "before", "during", "without", "within", "across", "around", "along",
+  "where", "when", "what", "which", "who", "whom", "whose",
+  "colored", "sized", "grouped", "sorted", "filtered", "compared",
+  "3d", "interactive", "hover", "click", "popup", "tooltip", "label", "labels",
+  // Swedish
+  "och", "i", "på", "för", "av", "till", "med", "från", "över", "under",
+  "en", "ett", "den", "det", "de", "som", "att", "är", "var", "har",
+  "ska", "kan", "vill", "visa", "skapa", "bygg", "karta",
+  "jag", "vi", "man", "alla", "varje", "sin", "sitt", "sina",
+]);
 
 /**
  * Words indicating the user wants sub-national (state, province, county) data.
@@ -180,29 +183,43 @@ export function matchCatalog(prompt: string): CatalogEntry[] {
   const lower = prompt.toLowerCase();
   const words = lower.split(/\s+/);
 
-  // Check if prompt contains a specific metric
-  const promptMetric = METRIC_KEYWORDS.find((m) => lower.includes(m));
-
   // Check if prompt asks for sub-national data
   const wantsSubnational = SUBNATIONAL_KEYWORDS.some((kw) => words.includes(kw));
 
+  // Extract content words from the prompt (non-stop, non-geographic-scope words)
+  const contentWords = words.filter((w) => !STOP_WORDS.has(w) && w.length > 2);
+
   const scored = DATA_CATALOG.map((entry) => {
     let hits = 0;
+    const matchedTopicWords = new Set<string>();
     for (const topic of entry.topics) {
-      // Check both substring match and word match
-      if (lower.includes(topic)) hits++;
-      if (words.includes(topic)) hits++;
+      if (lower.includes(topic)) {
+        hits++;
+        // Track which prompt words were matched by topics
+        for (const w of topic.split(/\s+/)) matchedTopicWords.add(w);
+      }
+      if (words.includes(topic)) {
+        hits++;
+        matchedTopicWords.add(topic);
+      }
     }
 
-    // Penalize: prompt has a specific metric but entry doesn't cover it
-    if (promptMetric && hits > 0) {
-      const entryCovers =
-        entry.topics.some((t) => promptMetric.includes(t) || t.includes(promptMetric)) ||
-        entry.attributes.some((a) => promptMetric.includes(a) || a.includes(promptMetric));
-      if (!entryCovers) {
-        // Only match if the topic hits are strong (≥3), meaning the prompt
-        // is really about this dataset, not just using a geographic scope word
-        if (hits < 3) hits = 0;
+    // Check if the prompt has substantive content beyond what the entry covers.
+    // If the user asks for a specific metric (e.g. "hundägare", "deforestation",
+    // "crime rate") and the entry doesn't cover it, don't match.
+    if (hits > 0 && hits < 3) {
+      const unmatchedContent = contentWords.filter((w) => {
+        if (matchedTopicWords.has(w)) return false;
+        // Also check if word matches an attribute
+        if (entry.attributes.some((a) => a.includes(w) || w.includes(a))) return false;
+        // Check sub-national keywords separately (handled below)
+        if (SUBNATIONAL_KEYWORDS.includes(w)) return false;
+        return true;
+      });
+      // If there are significant unmatched content words, the prompt is asking
+      // for something this entry can't provide
+      if (unmatchedContent.length >= 2) {
+        hits = 0;
       }
     }
 
