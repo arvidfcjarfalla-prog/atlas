@@ -50,6 +50,14 @@ const maps: MapCard[] = [
     href: "/supply-chain",
     status: "coming-soon",
   },
+  {
+    id: "todo",
+    title: "Todo",
+    description: "Keep track of tasks and what needs to be done.",
+    theme: "explore",
+    href: "/todo",
+    status: "live",
+  },
 ];
 
 export default function ExplorePage() {
