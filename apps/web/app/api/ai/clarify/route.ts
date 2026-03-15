@@ -233,6 +233,28 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(response);
     }
 
+    // ── Fast path 4: Web dataset search ───────────────────────
+    // All internal sources failed — try searching the internet for datasets
+    // before falling back to the AI clarification loop.
+    const webApiKey = process.env.ANTHROPIC_API_KEY;
+    if (webApiKey) {
+      try {
+        const webResult = await searchWebDatasets(fullContext);
+        if (webResult.found && webResult.cacheKey) {
+          const dataUrl = `/api/geo/cached/${encodeURIComponent(webResult.cacheKey)}`;
+          const response: ClarifyResponse = {
+            ready: true,
+            resolvedPrompt: fullContext,
+            dataUrl,
+            dataProfile: webResult.profile,
+          };
+          return NextResponse.json(response);
+        }
+      } catch {
+        // Web search failed — continue to AI clarification
+      }
+    }
+
     // ── Slow path: AI clarification with tool use ────────────
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
