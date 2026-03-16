@@ -39,7 +39,9 @@ describe('debug pipeline fresh', () => {
     console.log('geo codes selected:', geoSel?.valueCodes.length, 'first 3:', geoSel?.valueCodes.slice(0,3));
 
     // Fetch data
-    const records = await fetchData(SCB_BASE, table.id, dimResult.selections, 'sv');
+    const rawData = await fetchData(SCB_BASE, table.id, dimResult.selections, 'sv');
+    if (!rawData) { console.log('NO DATA'); return; }
+    const records = jsonStat2ToRecords(rawData, geoDim!.id, contentsDim!.id, timeDim!.id);
     console.log('records:', records.length);
 
     // Normalize
@@ -60,7 +62,7 @@ describe('debug pipeline fresh', () => {
     });
     console.log('normalized.rows:', normalized.rows.length);
     console.log('sample row:', JSON.stringify(normalized.rows[0]));
-    console.log('dimensions:', normalized.dimensions.map(d => `${d.id}(${d.type},${d.values.length})`).join(', '));
+    console.log('dimensions:', normalized.dimensions.map(d => `${d.id}(${d.role},${d.values.length})`).join(', '));
 
     // Run pure pipeline
     const result = resolvePxWebPure(normalized);

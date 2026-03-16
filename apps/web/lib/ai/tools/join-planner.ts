@@ -208,11 +208,32 @@ export function planJoin(
 // ═══════════════════════════════════════════════════════════════
 
 /**
+ * Semantic → structural level aliases.
+ *
+ * The detector uses semantic names like "county" or "region" that describe
+ * what the data represents. The geometry registry uses structural names like
+ * "admin1" or "admin2" that describe the administrative hierarchy tier.
+ *
+ * When a registry lookup by semantic level returns nothing, we also try the
+ * structural alias so that, e.g., Swedish "county" (2-digit SCB codes) maps
+ * to the "admin1" entry in the registry.
+ */
+const LEVEL_ALIASES: Partial<Record<GeographyLevel, GeographyLevel[]>> = {
+  county: ["admin1"],
+  region: ["admin1"],
+  admin1: ["county", "region"],
+  admin2: ["municipality"],
+  municipality: ["admin2"],
+};
+
+/**
  * Resolve candidate geometry entries for a given level and country hints.
  *
  * Queries the registry for each country hint, deduplicates, and returns
  * the combined list. Point_set levels are excluded from polygon join
  * candidates — they are handled separately above.
+ *
+ * Also tries structural aliases when the semantic level yields no results.
  */
 function resolveGeometryCandidates(
   level: GeographyLevel,
@@ -228,14 +249,19 @@ function resolveGeometryCandidates(
   // If we have country hints, use them for scoped lookup
   const countries = countryHints.length > 0 ? countryHints : ["GLOBAL"];
 
+  // Levels to try: primary first, then structural aliases
+  const levelsToTry: GeographyLevel[] = [level, ...(LEVEL_ALIASES[level] ?? [])];
+
   for (const country of countries) {
-    const entries = lookup(country, level);
-    for (const entry of entries) {
-      // Skip point_set geometry entries — not polygon boundaries
-      if (entry.level === "point_set") continue;
-      if (!seen.has(entry.id)) {
-        seen.add(entry.id);
-        result.push(entry);
+    for (const tryLevel of levelsToTry) {
+      const entries = lookup(country, tryLevel);
+      for (const entry of entries) {
+        // Skip point_set geometry entries — not polygon boundaries
+        if (entry.level === "point_set") continue;
+        if (!seen.has(entry.id)) {
+          seen.add(entry.id);
+          result.push(entry);
+        }
       }
     }
   }
@@ -348,6 +374,23 @@ function scoreJoinKey(
           strategy: "normalized_name",
           reason: `name ↔ name: normalized name join (+${NORMALIZED_NAME_SCORE})`,
         };
+      }
+      // Before falling back to fuzzy, check if a crosswalk maps detection → name
+      if (crosswalks) {
+        for (const cw of crosswalks) {
+          const srcMatch =
+            cw.sourceFamily.family === detectionFamily.family &&
+            (!cw.sourceFamily.namespace || !detectionFamily.namespace ||
+              cw.sourceFamily.namespace === detectionFamily.namespace);
+          const tgtMatch = cw.targetFamily.family === "name";
+          if (srcMatch && tgtMatch) {
+            return {
+              score: CROSSWALK_SCORE,
+              strategy: "alias_crosswalk",
+              reason: `crosswalk: ${cw.description} (+${CROSSWALK_SCORE})`,
+            };
+          }
+        }
       }
       // Otherwise it's a fuzzy fallback
       return {

@@ -355,8 +355,25 @@ export function normalizePxWebResult(opts: {
     });
   }
 
-  // Normalize
-  const dimensions = normalizePxDimensions(metadata.dimensions);
+  // Build dimension selections map for filtering
+  const selectionsByDim: Record<string, Set<string>> = {};
+  for (const sel of selections) {
+    selectionsByDim[sel.dimensionId] = new Set(sel.valueCodes);
+  }
+
+  // Normalize dimensions, filtering geo dimension values to only selected codes.
+  // This is critical: if we pass all metadata values (e.g. 9835 mixed DeSO/municipality/county
+  // codes), classifyCodeShape sees mixed formats and returns pattern="unknown", causing
+  // inferRenderHint to return "non_geographic" and aborting the join. By filtering to the
+  // actually selected codes (e.g. 21 county codes ["01".."25"]), the detector sees clean codes.
+  const dimensionsRaw = metadata.dimensions.map((d) => {
+    const selectedCodes = selectionsByDim[d.id];
+    if (selectedCodes && selectedCodes.size > 0) {
+      return { ...d, values: d.values.filter((v) => selectedCodes.has(v.code)) };
+    }
+    return d;
+  });
+  const dimensions = normalizePxDimensions(dimensionsRaw);
   const rows = normalizePxRecords(
     records,
     geoDimId,
@@ -366,7 +383,9 @@ export function normalizePxWebResult(opts: {
   );
   const candidateMetricFields = identifyPxMetricFields(metadata);
   const countryHints = countryCode ? [countryCode] : [];
-  const geographyHints = inferPxGeographyHints(geoDim, countryCode);
+  // Use filtered geo dim so hints reflect selected codes, not all metadata values
+  const filteredGeoDim = dimensionsRaw.find((d) => d.id === geoDimId) ?? geoDim;
+  const geographyHints = inferPxGeographyHints(filteredGeoDim, countryCode);
   const candidates = buildPxCandidates(tables, sourceName);
 
   // Confidence: PxWeb is structured, so base is decent

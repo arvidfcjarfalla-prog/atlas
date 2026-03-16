@@ -14,12 +14,14 @@ import {
   swedenScbPlugin,
   eurostatNutsPlugin,
   usFipsPlugin,
+  pxwebGenericPlugin,
   countryAdminPlugin,
 } from "./geography-plugins";
 
 if (pluginCount() === 0) {
-  registerPlugin(swedenScbPlugin);
-  registerPlugin(eurostatNutsPlugin);
-  registerPlugin(usFipsPlugin);
-  registerPlugin(countryAdminPlugin);
+  registerPlugin(swedenScbPlugin);      // priority 10 — SE-specific
+  registerPlugin(eurostatNutsPlugin);   // priority  5 — EU NUTS
+  registerPlugin(usFipsPlugin);         // priority  5 — US FIPS
+  registerPlugin(pxwebGenericPlugin);   // priority  3 — all PxWeb v2 sources
+  registerPlugin(countryAdminPlugin);   // priority  1 — ISO alpha-2/3 fallback
 }

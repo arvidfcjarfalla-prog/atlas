@@ -364,6 +364,7 @@ export function collectJoinEnrichment(
       }
     }
 
+
     // Collect join confidence hints
     if (plugin.confidenceHints) {
       for (const hint of plugin.confidenceHints()) {
@@ -371,6 +372,26 @@ export function collectJoinEnrichment(
           result.confidenceHints.push({ ...hint, pluginId: plugin.id });
         }
       }
+    }
+  }
+
+  // Auto-inject a code→label normalizer from geo dimension values.
+  // When the geo dimension has labels (e.g. "0180" → "Stockholm"), this
+  // enables alias_crosswalk joins to name-keyed geometry without fuzzy matching.
+  // Injected once per source. Generic — works for any structured data source
+  // where geographic codes have human-readable labels (PxWeb, Eurostat, etc.).
+  if (result.consultedPlugins.length > 0) {
+    const geoDim = source.dimensions.find((d) => d.role === "geo");
+    if (geoDim && geoDim.values.length > 0 && geoDim.values[0].label) {
+      const codeToLabel: Record<string, string> = {};
+      for (const v of geoDim.values) {
+        if (v.label) codeToLabel[v.code] = v.label;
+      }
+      result.aliasNormalizers.push({
+        name: "source-code-to-label",
+        pluginId: "auto",
+        normalizer: (code: string) => codeToLabel[code] ?? null,
+      });
     }
   }
 
@@ -630,9 +651,9 @@ export const swedenScbPlugin: GeographyPlugin = {
       {
         sourceFamily: { family: "national" as const, namespace: "se-scb" },
         targetFamily: { family: "name" as const },
-        strategy: "fuzzy_name",
-        confidence: 0.7,
-        description: "SCB names → geometry names (fuzzy)",
+        strategy: "alias_crosswalk",
+        confidence: 0.75,
+        description: "SCB municipality codes → geometry names via label crosswalk",
       },
     ];
   },
@@ -856,6 +877,44 @@ export const usFipsPlugin: GeographyPlugin = {
           maxUnits: 56,
         },
         reason: "FIPS state data with 40–56 units — matches US state count",
+      },
+    ];
+  },
+};
+
+/**
+ * Generic PxWeb v2 plugin.
+ *
+ * Applies to ALL PxWeb v2 sources regardless of country.
+ * Declares that national codes can be joined to geometry via label crosswalk,
+ * enabling alias_crosswalk strategy (instead of fuzzy_name) for any PxWeb
+ * source that has geo dimension labels. This covers NO, FI, IS, CH, LV, etc.
+ * without needing a per-country plugin.
+ *
+ * Sits below country-specific plugins (priority 3) so SE-SCB, FIPS, NUTS
+ * take precedence when they match.
+ */
+export const pxwebGenericPlugin: GeographyPlugin = {
+  id: "pxweb-generic",
+  name: "Generic PxWeb v2",
+  family: "pxweb_country",
+  priority: 3,
+
+  appliesTo(source) {
+    return source.sourceMetadata.apiType === "pxweb-v2";
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Any national code system → geometry name via label crosswalk.
+        // The actual mapping is performed by the auto-injected
+        // source-code-to-label normalizer in collectJoinEnrichment.
+        sourceFamily: { family: "national" as const },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.7,
+        description: "PxWeb national codes → geometry names via dimension labels",
       },
     ];
   },

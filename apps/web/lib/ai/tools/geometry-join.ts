@@ -171,10 +171,11 @@ export function executeJoin(
   }
 
   // ── Build geometry lookup index ──────────────────────────
+  const useNormalized = plan.strategy === "normalized_name" || plan.strategy === "alias_crosswalk";
   const geoIndex = buildGeoIndex(
     geometry.features,
     plan.geometryJoinField,
-    plan.strategy === "normalized_name",
+    useNormalized,
   );
 
   reasons.push(
@@ -198,7 +199,7 @@ export function executeJoin(
   // Group rows by geo code
   const rowsByCode = new Map<string, JoinableRow[]>();
   for (const row of joinableRows) {
-    const key = plan.strategy === "normalized_name"
+    const key = useNormalized
       ? normalizeForJoin(row.geoCode)
       : row.geoCode;
     const existing = rowsByCode.get(key);
@@ -220,7 +221,9 @@ export function executeJoin(
         try {
           const aliased = normalizer(code);
           if (aliased !== null && aliased !== code) {
-            const candidate = geoIndex.get(aliased);
+            // Look up exact alias, or normalized alias if the index is normalized
+            const lookupKey = useNormalized ? normalizeForJoin(aliased) : aliased;
+            const candidate = geoIndex.get(lookupKey);
             if (candidate) {
               feature = candidate;
               aliasMatchCount++;

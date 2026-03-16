@@ -278,6 +278,7 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error("[generate-map] unhandled error:", message, err);
     return NextResponse.json(
       { error: "Failed to generate map", detail: message },
       { status: 502 },
