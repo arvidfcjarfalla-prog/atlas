@@ -40,9 +40,9 @@ function multiPolyFeature(polygons: [number, number][][][], props: Record<string
 
 describe("profileDataset", () => {
   describe("Geometry type detection", () => {
-    it("returns Point for empty FeatureCollection", () => {
+    it("returns Mixed for empty FeatureCollection", () => {
       const profile = profileDataset(fc([]));
-      expect(profile.geometryType).toBe("Point");
+      expect(profile.geometryType).toBe("Mixed");
       expect(profile.featureCount).toBe(0);
       expect(profile.attributes).toEqual([]);
     });

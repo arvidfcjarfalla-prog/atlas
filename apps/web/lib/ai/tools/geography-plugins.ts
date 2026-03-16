@@ -1,0 +1,919 @@
+/**
+ * Pluggable geography intelligence.
+ *
+ * Plugins contribute domain-specific knowledge that enriches the generic
+ * geography detector and join planner — without hardcoding outcomes.
+ *
+ * Plugin families:
+ *   - PxWeb country plugins (SE-SCB, NO-SSB, FI-stat, etc.)
+ *   - Eurostat / NUTS plugin
+ *   - US FIPS-style plugin
+ *   - Country admin-code plugin
+ *
+ * Core rules:
+ *   1. Plugins enrich detection and planning — they never bypass the
+ *      generic detector or join executor.
+ *   2. Plugin results are confidence-scored and explainable.
+ *   3. Multiple plugins can coexist; their contributions are merged by
+ *      the plugin runner with precedence rules.
+ *   4. When no plugin matches, the generic detector works unchanged.
+ */
+
+import type {
+  NormalizedSourceResult,
+  NormalizedDimension,
+  GeographyLevel,
+  CodeFamily,
+} from "./normalized-result";
+import type { DetectionResult } from "./geography-detector";
+import type { JoinPlanResult, JoinStrategy } from "./join-planner";
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin contributions
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * A code matcher identifies whether a set of codes belongs to a
+ * known code system, returning a code family + confidence.
+ */
+export interface CodeMatchResult {
+  /** Recognized code family. */
+  codeFamily: CodeFamily;
+  /** Inferred geography level. */
+  level: GeographyLevel;
+  /** 0.0–1.0 confidence in this match. */
+  confidence: number;
+  /** Human-readable explanation. */
+  reason: string;
+}
+
+/**
+ * A known geography dimension descriptor.
+ * Tells the detector "when you see a dimension with this id/label
+ * from this source, treat it as geography at this level."
+ */
+export interface KnownGeoDimension {
+  /** Dimension ID pattern (exact or regex). */
+  dimensionId: string | RegExp;
+  /** Expected geography level. */
+  level: GeographyLevel;
+  /** Code family the values use. */
+  codeFamily: CodeFamily;
+  /** How confident the plugin is about this mapping. */
+  confidence: number;
+}
+
+/**
+ * A join-key family describes how codes from a specific system
+ * map to geometry properties.
+ */
+export interface JoinKeyFamily {
+  /** Source code family (what the data has). */
+  sourceFamily: CodeFamily;
+  /** Target code family (what the geometry property uses). */
+  targetFamily: CodeFamily;
+  /** Recommended join strategy. */
+  strategy: JoinStrategy;
+  /** Confidence that this mapping is correct. */
+  confidence: number;
+  /** Human-readable description. */
+  description: string;
+}
+
+/**
+ * An alias normalizer transforms source codes into a canonical form
+ * that the geometry can match on.
+ *
+ * Example: SCB uses "01" for Stockholm län, geometry uses "01".
+ * Example: FIPS uses "06" for California, geometry uses "06".
+ *
+ * Returns null when the code doesn't belong to this normalizer's domain.
+ */
+export type AliasNormalizer = (code: string) => string | null;
+
+/**
+ * A confidence hint adjusts the detection/planning confidence
+ * based on plugin-specific knowledge.
+ */
+export interface ConfidenceHint {
+  /** What this hint adjusts. */
+  target: "detection" | "join";
+  /** Additive adjustment (-1.0 to +1.0). Clamped to [0, 1] after. */
+  delta: number;
+  /** Condition: only apply when this predicate is true. */
+  condition: ConfidenceCondition;
+  /** Human-readable reason for this adjustment. */
+  reason: string;
+}
+
+/** Conditions under which a confidence hint applies. */
+export interface ConfidenceCondition {
+  /** Match source ID (exact). */
+  sourceId?: string;
+  /** Match geography level. */
+  level?: GeographyLevel;
+  /** Match code family. */
+  codeFamily?: CodeFamily;
+  /** Minimum unit count to trigger. */
+  minUnits?: number;
+  /** Maximum unit count to trigger. */
+  maxUnits?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin interface
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * A geography intelligence plugin.
+ *
+ * Plugins are stateless — they receive data and return contributions.
+ * They do NOT call the detector, planner, or join executor.
+ */
+export interface GeographyPlugin {
+  /** Unique stable identifier. */
+  id: string;
+  /** Human-readable name. */
+  name: string;
+  /** Plugin family for grouping. */
+  family: PluginFamily;
+  /** Priority (higher = checked first). Default: 0. */
+  priority: number;
+
+  /**
+   * Does this plugin apply to the given source?
+   * Quick check based on source metadata — should be fast.
+   */
+  appliesTo(source: NormalizedSourceResult): boolean;
+
+  /**
+   * Try to match codes from a dimension to a known code system.
+   * Return null if this plugin can't identify the codes.
+   */
+  matchCodes?(codes: string[], dimension: NormalizedDimension): CodeMatchResult | null;
+
+  /**
+   * Return known geography dimensions for this source.
+   * The detector uses these as strong signals during dimension scoring.
+   */
+  knownDimensions?(): KnownGeoDimension[];
+
+  /**
+   * Return join-key families this plugin knows about.
+   * The planner uses these to improve join strategy selection.
+   */
+  joinKeyFamilies?(): JoinKeyFamily[];
+
+  /**
+   * Return alias normalizers for code transformation.
+   * Applied during join execution to improve match rates.
+   */
+  aliasNormalizers?(): Array<{ name: string; normalizer: AliasNormalizer }>;
+
+  /**
+   * Return confidence hints that adjust detection/planning scores.
+   * Applied after the generic detector/planner runs.
+   */
+  confidenceHints?(): ConfidenceHint[];
+}
+
+/** Plugin family categories. */
+export type PluginFamily =
+  | "pxweb_country"     // PxWeb API country plugins (SE, NO, FI, DK, IS)
+  | "eurostat"          // Eurostat / NUTS
+  | "fips"              // US FIPS-style codes
+  | "admin_code"        // Country admin code systems
+  | "custom";           // Other
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin registry
+// ═══════════════════════════════════════════════════════════════
+
+/** Internal storage for registered plugins. */
+const pluginRegistry: GeographyPlugin[] = [];
+
+/**
+ * Register a geography plugin.
+ * Plugins are sorted by priority (descending) on registration.
+ * Duplicate IDs are rejected.
+ */
+export function registerPlugin(plugin: GeographyPlugin): void {
+  if (pluginRegistry.some((p) => p.id === plugin.id)) {
+    throw new Error(`Geography plugin "${plugin.id}" is already registered`);
+  }
+  pluginRegistry.push(plugin);
+  pluginRegistry.sort((a, b) => b.priority - a.priority);
+}
+
+/**
+ * Remove a registered plugin by ID.
+ * Returns true if the plugin was found and removed.
+ */
+export function unregisterPlugin(id: string): boolean {
+  const idx = pluginRegistry.findIndex((p) => p.id === id);
+  if (idx === -1) return false;
+  pluginRegistry.splice(idx, 1);
+  return true;
+}
+
+/**
+ * Get all registered plugins, sorted by priority (highest first).
+ * Returns a frozen copy.
+ */
+export function getPlugins(): readonly GeographyPlugin[] {
+  return [...pluginRegistry];
+}
+
+/**
+ * Remove all registered plugins. For testing only.
+ */
+export function clearPlugins(): void {
+  pluginRegistry.length = 0;
+}
+
+/**
+ * Get the number of registered plugins.
+ */
+export function pluginCount(): number {
+  return pluginRegistry.length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin runner: detection enrichment
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Collected plugin contributions for detection enrichment.
+ */
+export interface PluginDetectionEnrichment {
+  /** Best code match result from any plugin (highest confidence). */
+  codeMatch: CodeMatchResult | null;
+  /** All known dimension matches from applicable plugins. */
+  knownDimensions: Array<KnownGeoDimension & { pluginId: string }>;
+  /** Confidence adjustments to apply after detection. */
+  confidenceHints: Array<ConfidenceHint & { pluginId: string }>;
+  /** Which plugins were consulted. */
+  consultedPlugins: string[];
+}
+
+/**
+ * Run all applicable plugins to collect detection enrichment.
+ *
+ * Does NOT modify the detection result — returns enrichment data
+ * that the detector can use.
+ *
+ * @param source - The normalized source result
+ * @param geoDimension - The candidate geo dimension (if known)
+ */
+export function collectDetectionEnrichment(
+  source: NormalizedSourceResult,
+  geoDimension?: NormalizedDimension,
+): PluginDetectionEnrichment {
+  const result: PluginDetectionEnrichment = {
+    codeMatch: null,
+    knownDimensions: [],
+    confidenceHints: [],
+    consultedPlugins: [],
+  };
+
+  let bestCodeConfidence = -1;
+
+  for (const plugin of pluginRegistry) {
+    if (!plugin.appliesTo(source)) continue;
+    result.consultedPlugins.push(plugin.id);
+
+    // Collect code matches
+    if (plugin.matchCodes && geoDimension) {
+      const codes = geoDimension.values.map((v) => v.code);
+      const match = plugin.matchCodes(codes, geoDimension);
+      if (match && match.confidence > bestCodeConfidence) {
+        result.codeMatch = match;
+        bestCodeConfidence = match.confidence;
+      }
+    }
+
+    // Collect known dimensions
+    if (plugin.knownDimensions) {
+      for (const kd of plugin.knownDimensions()) {
+        result.knownDimensions.push({ ...kd, pluginId: plugin.id });
+      }
+    }
+
+    // Collect detection confidence hints
+    if (plugin.confidenceHints) {
+      for (const hint of plugin.confidenceHints()) {
+        if (hint.target === "detection") {
+          result.confidenceHints.push({ ...hint, pluginId: plugin.id });
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin runner: join enrichment
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Collected plugin contributions for join planning enrichment.
+ */
+export interface PluginJoinEnrichment {
+  /** Join-key families from applicable plugins. */
+  joinKeyFamilies: Array<JoinKeyFamily & { pluginId: string }>;
+  /** Alias normalizers from applicable plugins. */
+  aliasNormalizers: Array<{ name: string; normalizer: AliasNormalizer; pluginId: string }>;
+  /** Confidence adjustments for the join planner. */
+  confidenceHints: Array<ConfidenceHint & { pluginId: string }>;
+  /** Which plugins were consulted. */
+  consultedPlugins: string[];
+}
+
+/**
+ * Run all applicable plugins to collect join enrichment.
+ *
+ * Does NOT modify the join plan — returns enrichment data
+ * that the planner can use.
+ */
+export function collectJoinEnrichment(
+  source: NormalizedSourceResult,
+): PluginJoinEnrichment {
+  const result: PluginJoinEnrichment = {
+    joinKeyFamilies: [],
+    aliasNormalizers: [],
+    confidenceHints: [],
+    consultedPlugins: [],
+  };
+
+  for (const plugin of pluginRegistry) {
+    if (!plugin.appliesTo(source)) continue;
+    result.consultedPlugins.push(plugin.id);
+
+    // Collect join-key families
+    if (plugin.joinKeyFamilies) {
+      for (const jkf of plugin.joinKeyFamilies()) {
+        result.joinKeyFamilies.push({ ...jkf, pluginId: plugin.id });
+      }
+    }
+
+    // Collect alias normalizers
+    if (plugin.aliasNormalizers) {
+      for (const an of plugin.aliasNormalizers()) {
+        result.aliasNormalizers.push({ ...an, pluginId: plugin.id });
+      }
+    }
+
+    // Collect join confidence hints
+    if (plugin.confidenceHints) {
+      for (const hint of plugin.confidenceHints()) {
+        if (hint.target === "join") {
+          result.confidenceHints.push({ ...hint, pluginId: plugin.id });
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Enrichment application
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Apply plugin detection enrichment to a detection result.
+ *
+ * Merges plugin signals into the existing detection — never replaces.
+ * Returns a new DetectionResult with adjusted confidence and reasons.
+ */
+export function applyDetectionEnrichment(
+  detection: DetectionResult,
+  enrichment: PluginDetectionEnrichment,
+  source: NormalizedSourceResult,
+): DetectionResult {
+  if (enrichment.consultedPlugins.length === 0) {
+    return detection; // No plugins applied — return unchanged
+  }
+
+  const reasons = [...detection.reasons];
+  let confidence = detection.confidence;
+  let level = detection.level;
+  let codeFamily = detection.codeFamily;
+
+  reasons.push(`plugins consulted: [${enrichment.consultedPlugins.join(", ")}]`);
+
+  // ── Apply code match if it's stronger than generic detection ──
+  if (enrichment.codeMatch && enrichment.codeMatch.confidence > 0.3) {
+    const cm = enrichment.codeMatch;
+    // Only upgrade, never downgrade
+    if (cm.confidence > confidence || detection.level === "unknown") {
+      // Blend: plugin provides a strong signal but doesn't force
+      const pluginWeight = Math.min(cm.confidence, 0.7);
+      const blended = confidence * (1 - pluginWeight) + cm.confidence * pluginWeight;
+      confidence = blended;
+      level = cm.level;
+      codeFamily = cm.codeFamily;
+      reasons.push(`plugin code match: ${cm.reason} (blended confidence: ${r2(blended)})`);
+    }
+  }
+
+  // ── Apply known dimension matches ────────────────────────────
+  const geoDimId = detection.geoDimensionId;
+  if (geoDimId) {
+    for (const kd of enrichment.knownDimensions) {
+      const matches = typeof kd.dimensionId === "string"
+        ? kd.dimensionId === geoDimId
+        : kd.dimensionId.test(geoDimId);
+      if (matches) {
+        // Known dimension is a strong signal — boost confidence
+        const boost = kd.confidence * 0.2; // max +0.2 from known dim
+        confidence = Math.min(1.0, confidence + boost);
+        if (level === "unknown") {
+          level = kd.level;
+        }
+        codeFamily = kd.codeFamily;
+        reasons.push(
+          `plugin known dimension "${geoDimId}" → ${kd.level} ` +
+          `(+${r2(boost)} from ${kd.pluginId})`,
+        );
+      }
+    }
+  }
+
+  // ── Apply confidence hints ──────────────────────────────────
+  for (const hint of enrichment.confidenceHints) {
+    if (matchesCondition(hint.condition, source, level, codeFamily)) {
+      confidence = clamp01(confidence + hint.delta);
+      reasons.push(`plugin hint: ${hint.reason} (${hint.delta >= 0 ? "+" : ""}${r2(hint.delta)} from ${hint.pluginId})`);
+    }
+  }
+
+  return {
+    ...detection,
+    level,
+    codeFamily,
+    confidence: clamp01(confidence),
+    reasons,
+  };
+}
+
+/**
+ * Apply plugin join enrichment to a join plan result.
+ *
+ * Adjusts confidence and reasons. Never changes mapReady directly —
+ * the threshold check is reapplied after adjustment.
+ */
+export function applyJoinEnrichment(
+  plan: JoinPlanResult,
+  enrichment: PluginJoinEnrichment,
+  source: NormalizedSourceResult,
+  detectionLevel: GeographyLevel,
+  detectionFamily: CodeFamily,
+): JoinPlanResult {
+  if (enrichment.consultedPlugins.length === 0) {
+    return plan; // No plugins applied
+  }
+
+  const reasons = [...plan.reasons];
+  let confidence = plan.confidence;
+
+  reasons.push(`join plugins consulted: [${enrichment.consultedPlugins.join(", ")}]`);
+
+  // ── Apply join-key family boosts ────────────────────────────
+  for (const jkf of enrichment.joinKeyFamilies) {
+    if (
+      familiesMatch(jkf.sourceFamily, detectionFamily) &&
+      jkf.confidence > 0.5
+    ) {
+      const boost = jkf.confidence * 0.1; // max +0.1 from join key family
+      confidence = Math.min(1.0, confidence + boost);
+      reasons.push(
+        `plugin join-key family: ${jkf.description} ` +
+        `(+${r2(boost)} from ${jkf.pluginId})`,
+      );
+    }
+  }
+
+  // ── Apply join confidence hints ─────────────────────────────
+  for (const hint of enrichment.confidenceHints) {
+    if (matchesCondition(hint.condition, source, detectionLevel, detectionFamily)) {
+      confidence = clamp01(confidence + hint.delta);
+      reasons.push(`plugin join hint: ${hint.reason} (${hint.delta >= 0 ? "+" : ""}${r2(hint.delta)} from ${hint.pluginId})`);
+    }
+  }
+
+  confidence = clamp01(confidence);
+
+  return {
+    ...plan,
+    confidence,
+    mapReady: confidence >= 0.5, // re-apply threshold
+    reasons,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════
+
+/** Check if a confidence condition matches the current state. */
+function matchesCondition(
+  cond: ConfidenceCondition,
+  source: NormalizedSourceResult,
+  level: GeographyLevel,
+  codeFamily: CodeFamily,
+): boolean {
+  if (cond.sourceId && source.sourceMetadata.sourceId !== cond.sourceId) return false;
+  if (cond.level && cond.level !== level) return false;
+  if (cond.codeFamily) {
+    if (cond.codeFamily.family !== codeFamily.family) return false;
+    if (cond.codeFamily.namespace && cond.codeFamily.namespace !== codeFamily.namespace) return false;
+  }
+  // Unit count checks — use dimension values if available
+  const geoDim = source.dimensions.find((d) => d.role === "geo");
+  const unitCount = geoDim ? new Set(geoDim.values.map((v) => v.code)).size : 0;
+  if (cond.minUnits !== undefined && unitCount < cond.minUnits) return false;
+  if (cond.maxUnits !== undefined && unitCount > cond.maxUnits) return false;
+  return true;
+}
+
+/** Check if two code families are compatible. */
+function familiesMatch(a: CodeFamily, b: CodeFamily): boolean {
+  if (a.family !== b.family) return false;
+  if (a.namespace && b.namespace) return a.namespace === b.namespace;
+  return true;
+}
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, Math.round(v * 100) / 100));
+}
+
+function r2(v: number): string {
+  return (Math.round(v * 100) / 100).toFixed(2);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Built-in plugins
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Swedish SCB PxWeb plugin.
+ *
+ * Recognizes SCB-style county codes (2-digit "01"–"25") and
+ * municipality codes (4-digit "0114"–"2584").
+ */
+export const swedenScbPlugin: GeographyPlugin = {
+  id: "pxweb-se-scb",
+  name: "Sweden SCB (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("se-scb") || sid.includes("scb") ||
+      source.countryHints.includes("SE");
+  },
+
+  matchCodes(codes, _dimension) {
+    // SCB county codes: 2-digit, "01"–"25"
+    const countyMatch = codes.filter((c) => /^\d{2}$/.test(c) && Number(c) >= 1 && Number(c) <= 25);
+    if (countyMatch.length / codes.length >= 0.8 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "se-scb" },
+        level: "admin1",
+        confidence: 0.75,
+        reason: `${countyMatch.length}/${codes.length} match SCB county code pattern (2-digit 01–25)`,
+      };
+    }
+
+    // SCB municipality codes: 4-digit, "0114"–"2584"
+    const munMatch = codes.filter((c) => /^\d{4}$/.test(c));
+    if (munMatch.length / codes.length >= 0.8 && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "se-scb" },
+        level: "municipality",
+        confidence: 0.7,
+        reason: `${munMatch.length}/${codes.length} match SCB municipality code pattern (4-digit)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        dimensionId: "Region",
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "se-scb" },
+        confidence: 0.8,
+      },
+      {
+        dimensionId: "Kommun",
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "se-scb" },
+        confidence: 0.8,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        sourceFamily: { family: "national" as const, namespace: "se-scb" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "alias_crosswalk",
+        confidence: 0.9,
+        description: "SCB county codes → ISO 3166-2 via mapping",
+      },
+      {
+        sourceFamily: { family: "national" as const, namespace: "se-scb" },
+        targetFamily: { family: "name" as const },
+        strategy: "fuzzy_name",
+        confidence: 0.7,
+        description: "SCB names → geometry names (fuzzy)",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // SCB 2-digit county code → ISO 3166-2 mapping
+    const SCB_TO_ISO: Record<string, string> = {
+      "01": "SE-AB", "03": "SE-C", "04": "SE-D", "05": "SE-E",
+      "06": "SE-F", "07": "SE-G", "08": "SE-H", "09": "SE-I",
+      "10": "SE-K", "12": "SE-M", "13": "SE-N", "14": "SE-O",
+      "17": "SE-S", "18": "SE-T", "19": "SE-U", "20": "SE-W",
+      "21": "SE-X", "22": "SE-Y", "23": "SE-Z", "24": "SE-AC",
+      "25": "SE-BD",
+    };
+    return [
+      {
+        name: "scb-county-to-iso",
+        normalizer: (code: string) => {
+          // Map SCB 2-digit county code → ISO 3166-2
+          const padded = code.padStart(2, "0");
+          return SCB_TO_ISO[padded] ?? null;
+        },
+      },
+      {
+        name: "scb-leading-zero",
+        normalizer: (code: string) => {
+          // Ensure county codes are zero-padded to 2 digits
+          if (/^\d{1,2}$/.test(code)) return code.padStart(2, "0");
+          // Ensure municipality codes are zero-padded to 4 digits
+          if (/^\d{3,4}$/.test(code)) return code.padStart(4, "0");
+          return null;
+        },
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "se-scb",
+          level: "admin1" as GeographyLevel,
+          minUnits: 15,
+        },
+        reason: "SCB county data with ≥15 counties — high confidence",
+      },
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "se-scb",
+          level: "municipality" as GeographyLevel,
+          minUnits: 100,
+        },
+        reason: "SCB municipality data with ≥100 municipalities — high confidence",
+      },
+    ];
+  },
+};
+
+/**
+ * Eurostat NUTS plugin.
+ *
+ * Recognizes NUTS codes (2 letter prefix + 1–3 alphanumeric suffix)
+ * and provides level inference from code length.
+ */
+export const eurostatNutsPlugin: GeographyPlugin = {
+  id: "eurostat-nuts",
+  name: "Eurostat NUTS",
+  family: "eurostat",
+  priority: 5,
+
+  appliesTo(source) {
+    // Applies when hints suggest EU data or NUTS geography
+    if (source.geographyHints.some((h) => h.startsWith("nuts"))) return true;
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("eurostat") || sid.includes("nuts");
+  },
+
+  matchCodes(codes, _dimension) {
+    const nutsRe = /^[A-Z]{2}[A-Z0-9]{0,3}$/;
+    const matches = codes.filter((c) => nutsRe.test(c));
+    if (matches.length / codes.length < 0.7 || codes.length < 3) return null;
+
+    // Determine NUTS level from code length distribution
+    const lengths = matches.map((c) => c.length);
+    const avgLen = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+
+    let level: GeographyLevel;
+    if (avgLen <= 2.2) level = "nuts0";
+    else if (avgLen <= 3.2) level = "nuts1";
+    else if (avgLen <= 4.2) level = "nuts2";
+    else level = "nuts3";
+
+    return {
+      codeFamily: { family: "eurostat", namespace: "nuts" },
+      level,
+      confidence: 0.7,
+      reason: `${matches.length}/${codes.length} match NUTS pattern, avg length ${avgLen.toFixed(1)} → ${level}`,
+    };
+  },
+
+  knownDimensions() {
+    return [
+      {
+        dimensionId: /^(geo|GEO)$/,
+        level: "nuts2" as GeographyLevel, // default, refined by matchCodes
+        codeFamily: { family: "eurostat" as const, namespace: "nuts" },
+        confidence: 0.75,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        sourceFamily: { family: "eurostat" as const, namespace: "nuts" },
+        targetFamily: { family: "eurostat" as const, namespace: "nuts" },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.9,
+        description: "NUTS codes → Eurostat geometry (direct match)",
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "join" as const,
+        delta: 0.1,
+        condition: {
+          codeFamily: { family: "eurostat" as const, namespace: "nuts" },
+          minUnits: 20,
+        },
+        reason: "NUTS data with ≥20 regions — reliable Eurostat coverage",
+      },
+    ];
+  },
+};
+
+/**
+ * US FIPS plugin.
+ *
+ * Recognizes US FIPS state (2-digit) and county (5-digit) codes.
+ */
+export const usFipsPlugin: GeographyPlugin = {
+  id: "us-fips",
+  name: "US FIPS Codes",
+  family: "fips",
+  priority: 5,
+
+  appliesTo(source) {
+    if (source.countryHints.includes("US")) return true;
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("census") || sid.includes("fips") || sid.includes("us-");
+  },
+
+  matchCodes(codes, _dimension) {
+    // FIPS state codes: 2-digit, "01"–"72" (includes territories)
+    const stateMatch = codes.filter((c) => /^\d{2}$/.test(c) && Number(c) >= 1 && Number(c) <= 72);
+    if (stateMatch.length / codes.length >= 0.8 && codes.length >= 10) {
+      return {
+        codeFamily: { family: "fips" },
+        level: "admin1",
+        confidence: 0.65,
+        reason: `${stateMatch.length}/${codes.length} match FIPS state code pattern (2-digit 01–72)`,
+      };
+    }
+
+    // FIPS county codes: 5-digit
+    const countyMatch = codes.filter((c) => /^\d{5}$/.test(c));
+    if (countyMatch.length / codes.length >= 0.7 && codes.length >= 20) {
+      return {
+        codeFamily: { family: "fips" },
+        level: "admin2",
+        confidence: 0.6,
+        reason: `${countyMatch.length}/${codes.length} match FIPS county code pattern (5-digit)`,
+      };
+    }
+
+    return null;
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        sourceFamily: { family: "fips" as const },
+        targetFamily: { family: "fips" as const },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.8,
+        description: "FIPS codes → US Census geometry (direct match)",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    return [
+      {
+        name: "fips-leading-zero",
+        normalizer: (code: string) => {
+          // Ensure state FIPS is zero-padded to 2 digits
+          if (/^\d{1,2}$/.test(code)) return code.padStart(2, "0");
+          // Ensure county FIPS is zero-padded to 5 digits
+          if (/^\d{3,5}$/.test(code)) return code.padStart(5, "0");
+          return null;
+        },
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          level: "admin1" as GeographyLevel,
+          minUnits: 40,
+          maxUnits: 56,
+        },
+        reason: "FIPS state data with 40–56 units — matches US state count",
+      },
+    ];
+  },
+};
+
+/**
+ * Country admin-code plugin.
+ *
+ * Generic recognizer for ISO 3166-1 alpha-2 and alpha-3 codes.
+ * Lower priority — more specific plugins take precedence.
+ */
+export const countryAdminPlugin: GeographyPlugin = {
+  id: "country-admin",
+  name: "Country Admin Codes",
+  family: "admin_code",
+  priority: 1, // low — act as fallback
+
+  appliesTo() {
+    return true; // universal fallback
+  },
+
+  matchCodes(codes, _dimension) {
+    // ISO alpha-2
+    const a2 = codes.filter((c) => /^[A-Z]{2}$/.test(c));
+    if (a2.length / codes.length >= 0.8 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "alpha2" },
+        level: "country",
+        confidence: 0.6,
+        reason: `${a2.length}/${codes.length} match ISO alpha-2 pattern`,
+      };
+    }
+
+    // ISO alpha-3
+    const a3 = codes.filter((c) => /^[A-Z]{3}$/.test(c) && !/\d/.test(c));
+    if (a3.length / codes.length >= 0.8 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "alpha3" },
+        level: "country",
+        confidence: 0.6,
+        reason: `${a3.length}/${codes.length} match ISO alpha-3 pattern`,
+      };
+    }
+
+    return null;
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.05,
+        condition: {
+          level: "country" as GeographyLevel,
+          minUnits: 10,
+        },
+        reason: "Country-level data with ≥10 countries — decent coverage",
+      },
+    ];
+  },
+};

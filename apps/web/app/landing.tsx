@@ -362,6 +362,7 @@ export default function Landing() {
   const cleanupRef = useRef<(() => void) | null>(null);
   const [sceneIndex, setSceneIndex] = useState(0);
   const [prompt, setPrompt] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -475,6 +476,30 @@ export default function Landing() {
     },
     [handleSubmit],
   );
+
+  const handleEnhance = useCallback(async () => {
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+    setIsEnhancing(true);
+    try {
+      const res = await fetch("/api/ai/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: trimmed }),
+      });
+      if (!res.ok) return;
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("json")) return;
+      const data = await res.json();
+      if (data.enhanced) {
+        setPrompt(data.enhanced);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [prompt]);
 
   const currentLabel = SCENES[sceneIndex].label;
 
@@ -602,6 +627,19 @@ export default function Landing() {
             placeholder="Ask Atlas to create a map of..."
             className="flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/30 outline-none"
           />
+
+          {/* Enhance button */}
+          {prompt.trim() && (
+            <button
+              type="button"
+              onClick={handleEnhance}
+              disabled={isEnhancing}
+              className="shrink-0 text-xs text-white/50 hover:text-white/80 transition-colors px-1.5 py-1 rounded-md hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Improve prompt"
+            >
+              {isEnhancing ? "\u2026" : "\u2728"}
+            </button>
+          )}
 
           {/* Send button */}
           <button

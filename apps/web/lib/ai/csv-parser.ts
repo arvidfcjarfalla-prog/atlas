@@ -15,26 +15,88 @@ export interface CSVParseResult {
 
 // ─── Column name heuristics ─────────────────────────────────
 
-const LAT_NAMES = new Set([
+/** Exact-match names (after lowercase + trim). */
+const LAT_EXACT = new Set([
   "lat", "latitude", "y", "lat_wgs84", "breddgrad", "latitud",
+  "lat_dd", "decimallatitude", "lat_y", "geo_lat",
 ]);
 
-const LNG_NAMES = new Set([
+const LNG_EXACT = new Set([
   "lon", "lng", "longitude", "x", "lon_wgs84", "long",
   "langd", "längd", "longitud",
+  "lng_dd", "lon_dd", "decimallongitude", "lon_x", "geo_lon", "geo_lng",
 ]);
 
+/**
+ * Prefix patterns — a column starting with these (after stripping
+ * non-alphanumeric chars) is a lat/lng candidate.
+ * Handles "Lat (decimal degrees)", "Longitude_WGS84", etc.
+ */
+const LAT_PREFIXES = ["latitude", "lat"];
+const LNG_PREFIXES = ["longitude", "lng", "lon", "long"];
+
+/** Normalise a header for prefix matching: lowercase, strip parens/brackets/units. */
+function normaliseHeader(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9_]/g, "").trim();
+}
+
 function isLatName(name: string): boolean {
-  return LAT_NAMES.has(name.toLowerCase().trim());
+  const lower = name.toLowerCase().trim();
+  if (LAT_EXACT.has(lower)) return true;
+  const norm = normaliseHeader(name);
+  return LAT_PREFIXES.some((p) => norm.startsWith(p));
 }
 
 function isLngName(name: string): boolean {
-  return LNG_NAMES.has(name.toLowerCase().trim());
+  const lower = name.toLowerCase().trim();
+  if (LNG_EXACT.has(lower)) return true;
+  const norm = normaliseHeader(name);
+  return LNG_PREFIXES.some((p) => norm.startsWith(p));
 }
 
 // ─── CSV parser (state machine) ─────────────────────────────
 
-function parseCSV(text: string): string[][] {
+export function parseCSV(text: string): string[][] {
+  const delimiter = detectDelimiter(text);
+  return parseWithDelimiter(text, delimiter);
+}
+
+/**
+ * Detect whether the CSV uses comma or semicolon as delimiter.
+ *
+ * Checks the first non-empty line (header row). If it contains more
+ * semicolons than commas, uses semicolon. This handles European CSVs
+ * where comma is the decimal separator and semicolon is the field
+ * delimiter.
+ */
+function detectDelimiter(text: string): string {
+  // Get first line
+  const firstNewline = text.indexOf("\n");
+  const firstLine = firstNewline === -1 ? text : text.slice(0, firstNewline);
+
+  let commas = 0;
+  let semicolons = 0;
+  let tabs = 0;
+  let inQuotes = false;
+
+  for (const ch of firstLine) {
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (!inQuotes) {
+      if (ch === ",") commas++;
+      else if (ch === ";") semicolons++;
+      else if (ch === "\t") tabs++;
+    }
+  }
+
+  // Prefer tab if dominant (TSV files)
+  if (tabs > commas && tabs > semicolons) return "\t";
+  // Prefer semicolon over comma for European CSVs
+  if (semicolons > commas) return ";";
+  return ",";
+}
+
+function parseWithDelimiter(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -56,7 +118,7 @@ function parseCSV(text: string): string[][] {
     } else {
       if (ch === '"') {
         inQuotes = true;
-      } else if (ch === ",") {
+      } else if (ch === delimiter) {
         row.push(field);
         field = "";
       } else if (ch === "\n" || (ch === "\r" && next === "\n")) {
@@ -143,6 +205,59 @@ function detectCoordinateColumns(
   return null;
 }
 
+// ─── Numeric parsing ────────────────────────────────────────
+
+/**
+ * Parse a numeric string, stripping thousands separators.
+ *
+ * Handles:
+ *   "1,234,567"     → 1234567      (US/UK thousands separator)
+ *   "1,234.56"      → 1234.56      (US/UK with decimal)
+ *   "1234"          → 1234
+ *   "-42.5"         → -42.5
+ *   "1 234"         → 1234         (space as thousands separator)
+ *   ""              → NaN
+ *   "abc"           → NaN
+ *
+ * Does NOT handle European comma-as-decimal ("1.234,56") because
+ * that conflicts with the CSV comma delimiter. European decimals
+ * require semicolon-delimited CSVs, handled separately.
+ */
+export function parseNumericValue(raw: string): number {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return NaN;
+
+  // Strip spaces used as thousands separators (e.g. "1 234 567")
+  let cleaned = trimmed.replace(/\s/g, "");
+
+  // Strip commas used as thousands separators (e.g. "1,234,567")
+  // Only strip if the pattern looks like thousands grouping:
+  // commas between digit groups, with optional decimal point
+  if (/^-?[\d,]+(\.\d+)?$/.test(cleaned)) {
+    cleaned = cleaned.replace(/,/g, "");
+  }
+
+  const num = parseFloat(cleaned);
+  return isFinite(num) ? num : NaN;
+}
+
+// ─── Skip reason helper ─────────────────────────────────────
+
+/** Describe why a row's coordinates are invalid — for user-facing warnings. */
+function describeSkipReason(
+  rawLat: string,
+  rawLng: string,
+  lat: number,
+  lng: number,
+): string {
+  if (isNaN(lat) && isNaN(lng)) return `lat="${rawLat}", lng="${rawLng}" (not numeric)`;
+  if (isNaN(lat)) return `lat="${rawLat}" (not numeric)`;
+  if (isNaN(lng)) return `lng="${rawLng}" (not numeric)`;
+  if (lat < -90 || lat > 90) return `lat=${lat} (outside -90..90)`;
+  if (lng < -180 || lng > 180) return `lng=${lng} (outside -180..180)`;
+  return `lat=${lat}, lng=${lng} (invalid)`;
+}
+
 // ─── Main converter ─────────────────────────────────────────
 
 /**
@@ -165,14 +280,22 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
     };
   }
 
-  const headers = allRows[0].map((h) => h.trim());
+  // Strip UTF-8 BOM from first header (common in Excel exports)
+  const headers = allRows[0].map((h, i) =>
+    (i === 0 ? h.replace(/^\uFEFF/, "") : h).trim(),
+  );
   const dataRows = allRows.slice(1);
 
   const coords = detectCoordinateColumns(headers, dataRows);
   if (!coords) {
+    const colList = headers.slice(0, 8).join(", ");
+    const suffix = headers.length > 8 ? `, ... (${headers.length} columns total)` : "";
     return {
       featureCollection: { type: "FeatureCollection", features: [] },
-      warnings: ["Could not detect latitude/longitude columns"],
+      warnings: [
+        `Could not detect latitude/longitude columns. ` +
+        `Available columns: ${colList}${suffix}`,
+      ],
       latColumn: "",
       lngColumn: "",
       skippedRows: dataRows.length,
@@ -182,12 +305,16 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
   const latColumn = headers[coords.latIdx];
   const lngColumn = headers[coords.lngIdx];
   let skippedRows = 0;
+  const skippedSamples: string[] = []; // first few skip reasons
 
   const features: GeoJSON.Feature[] = [];
 
-  for (const row of dataRows) {
-    const lat = parseFloat(row[coords.latIdx] ?? "");
-    const lng = parseFloat(row[coords.lngIdx] ?? "");
+  for (let rowIdx = 0; rowIdx < dataRows.length; rowIdx++) {
+    const row = dataRows[rowIdx];
+    const rawLat = row[coords.latIdx] ?? "";
+    const rawLng = row[coords.lngIdx] ?? "";
+    const lat = parseFloat(rawLat);
+    const lng = parseFloat(rawLng);
 
     if (
       isNaN(lat) ||
@@ -198,6 +325,10 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
       lng > 180
     ) {
       skippedRows++;
+      if (skippedSamples.length < 3) {
+        const reason = describeSkipReason(rawLat, rawLng, lat, lng);
+        skippedSamples.push(`Row ${rowIdx + 2}: ${reason}`);
+      }
       continue;
     }
 
@@ -205,11 +336,9 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
     for (let i = 0; i < headers.length; i++) {
       if (i === coords.latIdx || i === coords.lngIdx) continue;
       const val = row[i]?.trim() ?? "";
-      const num = parseFloat(val);
-      // Store as number if it's a valid number, otherwise keep as string
-      properties[headers[i]] = val.length > 0 && !isNaN(num) && String(num) === val
-        ? num
-        : val;
+      const num = parseNumericValue(val);
+      // Store as number if parseable, otherwise keep as string
+      properties[headers[i]] = !isNaN(num) ? num : val;
     }
 
     features.push({
@@ -224,7 +353,13 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
 
   if (skippedRows > 0) {
     const pct = Math.round((skippedRows / dataRows.length) * 100);
-    warnings.push(`Skipped ${skippedRows} rows (${pct}%) with invalid coordinates`);
+    warnings.push(
+      `Skipped ${skippedRows} of ${dataRows.length} rows (${pct}%) with invalid coordinates ` +
+      `in columns "${latColumn}" and "${lngColumn}"`,
+    );
+    if (skippedSamples.length > 0) {
+      warnings.push(`Sample issues: ${skippedSamples.join("; ")}`);
+    }
   }
 
   if (features.length > 100_000) {

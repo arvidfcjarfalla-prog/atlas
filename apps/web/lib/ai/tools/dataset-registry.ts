@@ -27,6 +27,8 @@ export interface RegistryEntry {
   format: "geojson" | "csv" | "api";
   metricField?: string;
   geographyField?: string;
+  /** Geographic scope (e.g. "Brazil", "US", "global"). Prevents cross-country false matches. */
+  geography?: string;
   cacheKey: string;
   confidence: number;
   discoveredAt: number;
@@ -71,6 +73,8 @@ const METRIC_WORDS = new Set([
   "path", "flow", "flows", "level", "levels", "index", "score",
   "ratio", "percentage", "per capita", "emissions", "production",
   "consumption", "coverage", "volume", "intensity",
+  "income", "salary", "wage", "price", "prices", "cost", "gdp",
+  "population", "unemployment", "poverty", "temperature",
 ]);
 
 const GEOGRAPHY_PATTERNS: [RegExp, string][] = [
@@ -81,8 +85,21 @@ const GEOGRAPHY_PATTERNS: [RegExp, string][] = [
   [/\b(north america|south america|latin america)\b/i, "$1"],
   [/\b(us|usa|united states|american)\b/i, "US"],
   [/\b(uk|united kingdom|british)\b/i, "UK"],
+  [/\b(brazil|brasil)\b/i, "Brazil"],
+  [/\b(germany|deutschland|tyskland)\b/i, "Germany"],
+  [/\b(france|frankrike)\b/i, "France"],
+  [/\b(india|indien)\b/i, "India"],
+  [/\b(japan)\b/i, "Japan"],
+  [/\b(mexico|méxico)\b/i, "Mexico"],
+  [/\b(australia|australien)\b/i, "Australia"],
+  [/\b(canada|kanada)\b/i, "Canada"],
+  [/\b(china|kina)\b/i, "China"],
+  [/\b(spain|españa|spanien)\b/i, "Spain"],
+  [/\b(italy|italia|italien)\b/i, "Italy"],
+  [/\b(sweden|sverige)\b/i, "Sweden"],
+  [/\b(norway|norge)\b/i, "Norway"],
   [/\b(countries|nations|country)\b/i, "countries"],
-  [/\b(states|state-level)\b/i, "states"],
+  [/\b(states|state-level|state)\b/i, "states"],
   [/\b(cities|city|urban)\b/i, "cities"],
 ];
 
@@ -153,26 +170,42 @@ export async function checkRegistry(
   for (const entry of entries) {
     let score = 0;
 
-    // Direct topic match
+    // Direct topic match (exact or substring containment)
     if (entry.topic === needle) {
       score = 1.0;
     } else if (needle.includes(entry.topic) || entry.topic.includes(needle)) {
-      score = 0.7;
+      score = 0.8;
     } else {
-      // Check keywords
+      // Keyword matching — require ≥2 keyword matches to avoid
+      // false positives from single shared words like "sweden".
+      let kwMatches = 0;
       for (const kw of entry.keywords) {
-        if (needle.includes(kw) || kw.includes(needle)) {
-          score = Math.max(score, 0.6);
-        }
+        if (kw.length > 2 && needle.includes(kw)) kwMatches++;
+      }
+      if (kwMatches >= 2) score = Math.max(score, 0.7);
+    }
+
+    // Geography mismatch — skip entry if both have geography and they differ.
+    // e.g. entry has "US" but user asks for "Brazil" → score 0.
+    if (intent.geography && entry.geography) {
+      const intentGeo = intent.geography.toLowerCase();
+      const entryGeo = entry.geography.toLowerCase();
+      if (intentGeo !== entryGeo && !intentGeo.includes(entryGeo) && !entryGeo.includes(intentGeo)) {
+        score = 0;
       }
     }
 
-    // Boost for metric match
-    if (intent.metric && entry.metricField && entry.metricField.toLowerCase().includes(intent.metric)) {
-      score = Math.min(score + 0.1, 1.0);
+    // Boost for metric match, penalize geometry-only entries when user wants a metric
+    if (intent.metric) {
+      if (entry.metricField && entry.metricField.toLowerCase().includes(intent.metric)) {
+        score = Math.min(score + 0.1, 1.0);
+      } else if (!entry.metricField) {
+        // Geometry-only dataset can't satisfy a metric query — skip
+        score = 0;
+      }
     }
 
-    if (score > bestScore && score >= 0.5) {
+    if (score > bestScore && score >= 0.7) {
       bestScore = score;
       bestMatch = entry;
     }
@@ -183,7 +216,7 @@ export async function checkRegistry(
 
 /**
  * Register a newly discovered dataset for future reuse.
- * Deduplicates by topic + URL.
+ * Deduplicates by topic + URL. Stores geography from intent for cross-country filtering.
  */
 export async function registerDataset(
   intent: DatasetIntent,
@@ -199,6 +232,7 @@ export async function registerDataset(
 
   const newEntry: RegistryEntry = {
     ...entry,
+    geography: entry.geography ?? intent.geography,
     topic,
     discoveredAt: Date.now(),
   };

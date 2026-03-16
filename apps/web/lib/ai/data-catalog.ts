@@ -166,9 +166,26 @@ const STOP_WORDS = new Set([
  * Catalog entries with global/country-level bounds should not match these prompts.
  */
 const SUBNATIONAL_KEYWORDS = [
+  // English
   "state", "states", "province", "provinces", "county", "counties",
-  "region", "regions", "district", "districts", "municipality",
+  "region", "regions", "district", "districts", "municipality", "municipalities",
+  "prefecture", "prefectures",
+  // German
+  "bundesland", "bundesländer", "kreis", "kreise", "landkreis", "landkreise",
+  // French
+  "département", "départements", "région", "régions",
+  // Spanish
+  "comunidad", "comunidades", "provincia", "provincias",
+  // Italian
+  "regione", "regioni",
+  // Swedish
   "län", "kommun", "kommuner",
+  // Norwegian
+  "fylke", "fylker",
+  // Danish/Finnish
+  "maakunta",
+  // Generic sub-national indicators
+  "subnational", "sub-national", "federal",
 ];
 
 /**

@@ -16,6 +16,7 @@ import {
   getCachedData,
   setCache,
   fetchGeoJSON,
+  hasNumericProperties,
   type DataSearchResult,
   type CacheEntry,
 } from "./data-search";
@@ -25,6 +26,7 @@ import {
   registerDataset,
   type DatasetIntent,
 } from "./dataset-registry";
+import { csvToGeoFeatures } from "../csv-geo-resolver";
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -33,6 +35,51 @@ const MAX_CANDIDATES = 3;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_CSV_ROWS = 10_000;
 const MAX_GEOJSON_FEATURES = 50_000;
+
+/**
+ * Country name → ISO2 code lookup.
+ * Covers countries with static admin1 geometry in public/geo/.
+ * Used to pass country hints when joining CSVs to subnational geometry.
+ */
+const COUNTRY_NAME_TO_ISO2: Record<string, string> = {
+  brazil: "BR", brasil: "BR",
+  germany: "DE", deutschland: "DE", tyskland: "DE",
+  france: "FR", frankrike: "FR",
+  india: "IN", indien: "IN",
+  japan: "JP",
+  mexico: "MX",
+  australia: "AU", australien: "AU",
+  canada: "CA", kanada: "CA",
+  china: "CN", kina: "CN",
+  spain: "ES", spanien: "ES", españa: "ES",
+  italy: "IT", italien: "IT", italia: "IT",
+  indonesia: "ID", indonesien: "ID",
+  nigeria: "NG",
+  "south africa": "ZA", sydafrika: "ZA",
+  "united states": "US", usa: "US",
+  "united kingdom": "GB", uk: "GB", storbritannien: "GB",
+  sweden: "SE", sverige: "SE",
+  norway: "NO", norge: "NO",
+  finland: "FI",
+  denmark: "DK", danmark: "DK",
+  netherlands: "NL", holland: "NL", nederländerna: "NL",
+  poland: "PL", polen: "PL",
+  turkey: "TR", turkiet: "TR", türkiye: "TR",
+  argentina: "AR",
+  colombia: "CO",
+  thailand: "TH",
+};
+
+/**
+ * Extract ISO2 country code from a query string.
+ */
+function extractCountryCode(query: string): string | undefined {
+  const lower = query.toLowerCase();
+  for (const [name, code] of Object.entries(COUNTRY_NAME_TO_ISO2)) {
+    if (lower.includes(name)) return code;
+  }
+  return undefined;
+}
 
 const ALLOWED_DOMAINS = [
   "data.gov",
@@ -270,6 +317,10 @@ async function csvToCountryFeatures(
   return { type: "FeatureCollection", features };
 }
 
+// ─── Data quality checks ─────────────────────────────────────
+
+// hasNumericProperties is imported from data-search.ts
+
 // ─── Fetch + validate a candidate URL ───────────────────────
 
 /**
@@ -278,6 +329,7 @@ async function csvToCountryFeatures(
  */
 async function fetchCandidate(
   candidate: WebDatasetCandidate,
+  countryHint?: string,
 ): Promise<{ fc: GeoJSON.FeatureCollection; description: string } | null> {
   try {
     const res = await fetch(candidate.url, {
@@ -303,6 +355,8 @@ async function fetchCandidate(
           if (fc.features.length > MAX_GEOJSON_FEATURES) {
             fc.features = fc.features.slice(0, MAX_GEOJSON_FEATURES);
           }
+          // Reject boundary-only GeoJSON (no numeric data properties)
+          if (!hasNumericProperties(fc)) return null;
           return { fc, description: `${candidate.datasetName} (GeoJSON, ${fc.features.length} features)` };
         }
       } catch {
@@ -336,6 +390,19 @@ async function fetchCandidate(
         const fc = await csvToCountryFeatures(rows, countryCol.column, countryCol.type);
         if (fc.features.length === 0) return null;
         return { fc, description: `${candidate.datasetName} (CSV → Countries, ${fc.features.length} features)` };
+      }
+
+      // Fallback: full geography pipeline (subnational ISO 3166-2, region names, etc.)
+      try {
+        const geoResult = await csvToGeoFeatures(text, countryHint);
+        if (geoResult.features && geoResult.features.features.length > 0) {
+          return {
+            fc: geoResult.features,
+            description: `${candidate.datasetName} (CSV → ${geoResult.geoType ?? "regions"}, ${geoResult.features.features.length} features)`,
+          };
+        }
+      } catch {
+        // Pipeline failed — fall through
       }
 
       return null; // CSV but no geographic columns
@@ -376,6 +443,7 @@ function extractCandidates(
  */
 export async function searchWebDatasets(
   query: string,
+  officialSourceHints?: Array<{ agencyName: string; baseUrl: string; formats: string[] }>,
 ): Promise<DataSearchResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -384,40 +452,56 @@ export async function searchWebDatasets(
 
   const intent = extractIntent(query);
   const searchQuery = buildSearchQuery(intent);
-  const hash = createHash("sha256").update(searchQuery).digest("hex").slice(0, 12);
+  const countryHint = extractCountryCode(query);
+  // Include full query in hash so different prompts with same intent don't collide
+  const hash = createHash("sha256").update(query + "|" + searchQuery).digest("hex").slice(0, 12);
   const cacheKey = `web-${hash}`;
 
-  // Check cache first
+  // Check cache first — validate cached data is relevant to current query
   const cached = await getCachedData(cacheKey);
   if (cached) {
-    return {
-      found: true,
-      source: cached.source,
-      description: cached.description,
-      featureCount: cached.profile.featureCount,
-      geometryType: cached.profile.geometryType,
-      attributes: cached.profile.attributes.map((a) => a.name),
-      cacheKey,
-      profile: cached.profile,
-    };
+    const cachedDesc = (cached.description ?? cached.source ?? "").toLowerCase();
+    const topicWords = intent.topic.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    const descOverlap = topicWords.filter((w) => cachedDesc.includes(w)).length;
+
+    if (descOverlap > 0 || topicWords.length === 0) {
+      return {
+        found: true,
+        source: cached.source,
+        description: cached.description,
+        featureCount: cached.profile.featureCount,
+        geometryType: cached.profile.geometryType,
+        attributes: cached.profile.attributes.map((a) => a.name),
+        cacheKey,
+        profile: cached.profile,
+      };
+    }
+    // Cached data description doesn't match current query — skip, do fresh search
   }
 
   try {
     const client = new Anthropic({ apiKey });
 
-    const systemPrompt = `You are a dataset search assistant. Find downloadable geographic datasets.
+    const sourceHintBlock = officialSourceHints && officialSourceHints.length > 0
+      ? `\n\nKnown official statistics sources for this query:\n${officialSourceHints.map((s) => `- ${s.agencyName}: ${s.baseUrl} (formats: ${s.formats.join(", ")})`).join("\n")}\nSearch for downloadable CSV/JSON data from these agencies or their open data portals.`
+      : "";
+
+    const systemPrompt = `You are a dataset search assistant. Find downloadable datasets with ACTUAL DATA VALUES (not just boundaries/geometry).
 
 The user needs data about:
 - Topic: ${intent.topic}
 - Metric: ${intent.metric ?? "any relevant metric"}
 - Geography: ${intent.geography ?? "global"}
-- Timeframe: ${intent.timeframe ?? "latest available"}
+- Timeframe: ${intent.timeframe ?? "latest available"}${sourceHintBlock}
+
+CRITICAL: The dataset MUST contain numeric metric values (population numbers, GDP figures, rates, etc.), not just geographic boundaries or administrative metadata.
 
 Rules:
 - Only return REAL URLs you found via web search
-- Prefer direct download links: GeoJSON files, CSV with coordinates or country codes
-- Avoid: HTML tables, API documentation pages, paywalled sources, landing pages
-- Prioritize: data.gov, HDX, Natural Earth, GitHub raw files, Our World in Data
+- Prefer: CSV files with region/country names AND numeric data columns
+- Also accept: GeoJSON with data properties, API endpoints returning data
+- Avoid: boundary-only GeoJSON (just shapes, no data), HTML tables, API docs, paywalled sources
+- Prioritize: Eurostat, OECD, Our World in Data, data.gov, HDX, GitHub raw data files
 - Never invent or guess URLs — every URL must come from a search result
 - Call the extract_dataset_urls tool with your findings
 - If you find nothing downloadable, call extract_dataset_urls with an empty candidates array`;
@@ -562,7 +646,7 @@ Rules:
     for (const candidate of candidates) {
       // For GeoJSON URLs, try the existing fetchGeoJSON first (it handles caching)
       if (candidate.format === "geojson") {
-        const result = await fetchGeoJSON(candidate.url);
+        const result = await fetchGeoJSON(candidate.url, { requireNumericData: true });
         if (result.found && result.cacheKey && result.profile) {
           // Re-cache under the web search key for topic-based lookup
           const cachedEntry = await getCachedData(result.cacheKey);
@@ -599,7 +683,7 @@ Rules:
       }
 
       // General fetch + validate
-      const fetchResult = await fetchCandidate(candidate);
+      const fetchResult = await fetchCandidate(candidate, countryHint);
       if (fetchResult) {
         const profile = profileDataset(fetchResult.fc);
 

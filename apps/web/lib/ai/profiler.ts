@@ -60,7 +60,7 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
 }
 
 function resolveGeometryType(types: Set<string>): ProfileGeometryType {
-  if (types.size === 0) return "Point";
+  if (types.size === 0) return "Mixed";
   if (types.size === 1) {
     const t = [...types][0];
     if (t === "Point" || t === "MultiPoint") return t as ProfileGeometryType;

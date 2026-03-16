@@ -16,6 +16,7 @@
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import Anthropic from "@anthropic-ai/sdk";
 import { profileDataset } from "../profiler";
 import type { DatasetProfile } from "../types";
 
@@ -42,6 +43,8 @@ export interface CacheEntry {
   source: string;
   description: string;
   timestamp: number;
+  /** Pipeline resolution status at cache-write time (absent in legacy entries). */
+  resolutionStatus?: "map_ready" | "tabular_only";
 }
 
 // L1: In-memory cache (fast, volatile)
@@ -141,6 +144,28 @@ export async function setCache(key: string, entry: CacheEntry): Promise<void> {
 
 // ─── World Bank API ─────────────────────────────────────────
 
+const COUNTRIES_GEO_FILE = "geo/global/admin0_110m.geojson";
+const WB_AI_TIMEOUT_MS = 2_500;
+const WB_INTENT_MODEL = "claude-haiku-4-5-20251001";
+
+let countriesGeoCache: GeoJSON.FeatureCollection | null = null;
+
+async function loadCountryGeometry(): Promise<GeoJSON.FeatureCollection | null> {
+  if (countriesGeoCache) return countriesGeoCache;
+  try {
+    const filePath = join(process.cwd(), "public", COUNTRIES_GEO_FILE);
+    const raw = await readFile(filePath, "utf-8");
+    const data = JSON.parse(raw);
+    if (data?.type === "FeatureCollection" && Array.isArray(data.features)) {
+      countriesGeoCache = data as GeoJSON.FeatureCollection;
+      return countriesGeoCache;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Known World Bank indicator codes.
  */
@@ -175,14 +200,117 @@ const WORLD_BANK_INDICATORS: Record<string, { code: string; label: string; unit:
  * World Bank only has country-level data, so skip if these appear.
  */
 const SUBNATIONAL_KEYWORDS = [
+  // English
   "state", "states", "province", "provinces", "county", "counties",
   "district", "districts", "municipality", "municipalities",
+  "region", "regions", "prefecture", "prefectures",
+  // German
+  "bundesland", "bundesländer", "kreis", "kreise", "landkreis", "landkreise",
+  // French
+  "département", "départements", "région", "régions",
+  // Spanish
+  "comunidad", "comunidades", "provincia", "provincias",
+  // Italian
+  "regione", "regioni",
+  // Swedish
   "län", "kommun", "kommuner",
+  // Norwegian
+  "fylke", "fylker",
+  // Danish/Finnish
+  "maakunta",
+  // Portuguese
+  "estado", "estados", "município", "municípios",
+  // Japanese
+  "prefecture",
+  // Generic sub-national indicators
+  "subnational", "sub-national", "federal",
 ];
+
+// ─── World Bank AI intent extraction ─────────────────────────
+
+const WB_INDICATOR_KEYS = Object.keys(WORLD_BANK_INDICATORS);
+const WB_INDICATOR_DESCRIPTIONS = [...new Set(
+  Object.entries(WORLD_BANK_INDICATORS).map(
+    ([k, v]) => `${k}: ${v.label} (${v.code})`,
+  ),
+)].join("\n");
+
+interface WBIntentResult {
+  isCountryLevel: boolean;
+  indicatorKey: string | null;
+  englishPrompt: string;
+}
+
+const WB_INTENT_SYSTEM = `You extract structured intent from map prompts about country-level world statistics. Any language.
+
+Reply with a single JSON object:
+{
+  "isCountryLevel": true/false,
+  "indicatorKey": "key" or null,
+  "englishPrompt": "translated prompt"
+}
+
+Rules:
+- isCountryLevel: true if the user wants data compared ACROSS countries (not subnational like states/provinces).
+- indicatorKey: pick the best match from the list below. null if none match.
+- englishPrompt: translate the prompt to concise English (max 15 words).
+
+Available indicators:
+${WB_INDICATOR_DESCRIPTIONS}
+
+Output ONLY the JSON object, nothing else.`;
+
+async function extractWorldBankIntent(query: string): Promise<WBIntentResult | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const promise = client.messages.create({
+      model: WB_INTENT_MODEL,
+      max_tokens: 128,
+      system: WB_INTENT_SYSTEM,
+      messages: [{ role: "user", content: query }],
+    });
+    const timeout = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), WB_AI_TIMEOUT_MS),
+    );
+    const res = await Promise.race([promise, timeout]);
+    if (!res) return null;
+
+    const text = res.content.find(
+      (b): b is Anthropic.TextBlock => b.type === "text",
+    )?.text.trim();
+    if (!text) return null;
+
+    const jsonStart = text.indexOf("{");
+    const jsonEnd = text.lastIndexOf("}");
+    if (jsonStart === -1 || jsonEnd === -1) return null;
+
+    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    return {
+      isCountryLevel: !!parsed.isCountryLevel,
+      indicatorKey:
+        typeof parsed.indicatorKey === "string" &&
+        WB_INDICATOR_KEYS.includes(parsed.indicatorKey)
+          ? parsed.indicatorKey
+          : null,
+      englishPrompt:
+        typeof parsed.englishPrompt === "string"
+          ? parsed.englishPrompt
+          : query,
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Search World Bank API for a matching indicator.
- * Returns country-level data joined with Natural Earth geometries.
+ * Returns country-level data joined with local Natural Earth geometries.
+ *
+ * Uses keyword matching first (fast, no AI call), then AI intent extraction
+ * as fallback for non-English prompts.
  *
  * Skips if the prompt explicitly asks for sub-national data (e.g. "US states")
  * since World Bank only provides country-level statistics.
@@ -197,8 +325,7 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
     return { found: false, error: "World Bank only has country-level data; prompt asks for sub-national" };
   }
 
-  // Find matching indicator — sort by keyword length (longest first)
-  // so "gdp per capita" matches before "gdp"
+  // Find matching indicator — keyword match first (instant), then AI fallback
   let matched: { code: string; label: string; unit: string } | null = null;
   const sortedEntries = Object.entries(WORLD_BANK_INDICATORS)
     .sort((a, b) => b[0].length - a[0].length);
@@ -206,6 +333,19 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
     if (lower.includes(keyword)) {
       matched = indicator;
       break;
+    }
+  }
+
+  // AI fallback for non-English prompts or unusual phrasing
+  if (!matched) {
+    const intent = await extractWorldBankIntent(query);
+    if (intent) {
+      if (!intent.isCountryLevel) {
+        return { found: false, error: "World Bank only has country-level data; AI detected sub-national intent" };
+      }
+      if (intent.indicatorKey) {
+        matched = WORLD_BANK_INDICATORS[intent.indicatorKey];
+      }
     }
   }
 
@@ -246,13 +386,9 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
       return { found: false, error: "No data returned from World Bank" };
     }
 
-    // Fetch country geometries
-    const geoRes = await fetch("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson", {
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!geoRes.ok) return { found: false, error: "Failed to fetch country geometries" };
-
-    const geoData = await geoRes.json() as GeoJSON.FeatureCollection;
+    // Load local country geometries
+    const geoData = await loadCountryGeometry();
+    if (!geoData) return { found: false, error: `Country geometry not found: ${COUNTRIES_GEO_FILE}` };
 
     // Build lookup: ISO_A3 → World Bank value
     const valueLookup = new Map<string, { value: number; date: string; countryName: string }>();
@@ -585,15 +721,70 @@ export async function searchRESTCountries(query: string): Promise<DataSearchResu
   }
 }
 
+// ─── Numeric data check ─────────────────────────────────────
+
+/** Property names that are administrative metadata, not data. */
+const METADATA_PROPS = new Set([
+  "name", "shapename", "shapeiso", "shapeid", "shapegroup", "shapetype",
+  "iso_a2", "iso_a3", "iso_3166_2", "admin", "id", "fid", "objectid",
+  "type", "code", "level", "boundary",
+  // CartoDB / database IDs
+  "cartodb_id", "gid", "ogc_fid",
+  // Common admin code fields
+  "codigo_ibg", "codigo_ibge", "cod_ibge", "geocodigo",
+  "hasc", "iso", "iso_code",
+]);
+
+/** Patterns for property names that are metadata, not data. */
+const METADATA_SUFFIXES = ["_id", "_code", "_iso", "_fid"];
+
+/**
+ * Check if a property name looks like administrative metadata.
+ */
+function isMetadataKey(key: string): boolean {
+  const lower = key.toLowerCase();
+  if (METADATA_PROPS.has(lower)) return true;
+  for (const suffix of METADATA_SUFFIXES) {
+    if (lower.endsWith(suffix)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a FeatureCollection has at least one numeric data property
+ * (not just boundary metadata like shapeName, shapeISO, ids, codes, etc.).
+ *
+ * Samples up to 5 features. Returns false for geometry-only datasets.
+ */
+export function hasNumericProperties(fc: GeoJSON.FeatureCollection): boolean {
+  const sample = fc.features.slice(0, 5);
+  for (const feature of sample) {
+    const props = feature.properties;
+    if (!props) continue;
+    for (const [key, value] of Object.entries(props)) {
+      if (isMetadataKey(key)) continue;
+      if (typeof value === "number" && isFinite(value)) return true;
+    }
+  }
+  return false;
+}
+
 // ─── Direct URL fetch ───────────────────────────────────────
 
 /**
  * Fetch a URL and try to parse it as GeoJSON.
  */
-export async function fetchGeoJSON(url: string): Promise<DataSearchResult> {
+export async function fetchGeoJSON(
+  url: string,
+  options?: { requireNumericData?: boolean },
+): Promise<DataSearchResult> {
   const cacheKey = `url-${url}`;
   const cached = await getCachedData(cacheKey);
   if (cached) {
+    // Reject cached boundary-only data when numeric data is required
+    if (options?.requireNumericData && !hasNumericProperties(cached.data)) {
+      return { found: false, error: "Cached data has no numeric properties (boundary-only)" };
+    }
     return {
       found: true,
       source: url,
@@ -618,6 +809,11 @@ export async function fetchGeoJSON(url: string): Promise<DataSearchResult> {
     const fc = data as GeoJSON.FeatureCollection;
     if (fc.features.length === 0) {
       return { found: false, error: "Empty FeatureCollection" };
+    }
+
+    // Reject boundary-only GeoJSON when numeric data is required
+    if (options?.requireNumericData && !hasNumericProperties(fc)) {
+      return { found: false, error: "GeoJSON has no numeric properties (boundary-only)" };
     }
 
     const profile = profileDataset(fc);

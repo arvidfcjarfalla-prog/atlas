@@ -16,6 +16,7 @@ import type {
   ClarificationQuestion,
   RefinementSuggestion,
 } from "../../../lib/ai/types";
+import { decideClarifyAction } from "../../../lib/ai/clarify-action";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -98,10 +99,12 @@ function CreateMapPageInner() {
 
   // Prompt state
   const [prompt, setPrompt] = useState(urlPrompt);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   // Clarification state
   const [clarifyQuestions, setClarifyQuestions] = useState<ClarificationQuestion[]>([]);
   const [clarifyWarning, setClarifyWarning] = useState<string | null>(null);
+  const [tabularSuggestions, setTabularSuggestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   // Resolved data from clarification
@@ -114,6 +117,9 @@ function CreateMapPageInner() {
 
   // Pre-fetched GeoJSON data (so the compiler has real data for expressions)
   const [fetchedGeoJSON, setFetchedGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+
+  // Coverage ratio from join pipeline (0-1)
+  const [coverageRatio, setCoverageRatio] = useState<number | null>(null);
 
   // Track whether we've auto-submitted the URL prompt
   const autoSubmittedRef = useRef(false);
@@ -132,6 +138,7 @@ function CreateMapPageInner() {
       setError(null);
       setClarifyQuestions([]);
       setClarifyWarning(null);
+      setTabularSuggestions([]);
 
       try {
         const res = await fetch("/api/ai/clarify", {
@@ -151,21 +158,31 @@ function CreateMapPageInner() {
           );
         }
 
-        if (data.ready) {
-          // Data resolved — proceed to generation
-          if (data.dataUrl) setResolvedDataUrl(data.dataUrl);
-          if (data.dataProfile) setResolvedProfile(data.dataProfile);
+        // Store resolved data for all ready responses (including tabular_only)
+        // so the user can later upload geometry and reuse the tabular data.
+        if (data.dataUrl) setResolvedDataUrl(data.dataUrl);
+        if (data.dataProfile) setResolvedProfile(data.dataProfile);
 
-          // Auto-generate with resolved data
+        const action = decideClarifyAction(data, promptText);
+
+        if (action.kind === "generate") {
+          setCoverageRatio(action.coverageRatio);
           await handleGenerateWithData(
-            data.resolvedPrompt ?? promptText,
-            data.dataUrl ?? null,
-            data.dataProfile ?? null,
+            action.resolvedPrompt,
+            action.dataUrl,
+            action.dataProfile,
           );
+        } else if (action.kind === "tabular_warning") {
+          setClarifyWarning(action.message);
+          setTabularSuggestions(action.suggestions);
+          setState("idle");
+        } else if (action.kind === "auto_answer") {
+          // All questions have recommended defaults — re-submit automatically
+          setAnswers(action.answers);
+          await handleClarify(promptText, action.answers);
         } else {
-          // Need more info — show questions
-          if (data.questions) setClarifyQuestions(data.questions);
-          if (data.dataWarning) setClarifyWarning(data.dataWarning);
+          setClarifyQuestions(action.questions);
+          if (action.warning) setClarifyWarning(action.warning);
           setState("clarifying");
         }
       } catch (err) {
@@ -394,13 +411,41 @@ function CreateMapPageInner() {
     setLegendItems([]);
     setClarifyQuestions([]);
     setClarifyWarning(null);
+    setTabularSuggestions([]);
     setAnswers({});
     setResolvedDataUrl(null);
     setResolvedProfile(null);
     setFetchedGeoJSON(null);
+    setCoverageRatio(null);
     autoSubmittedRef.current = false;
     if (fileRef.current) fileRef.current.value = "";
   }, []);
+
+  // ── Enhance prompt ────────────────────────────────────
+
+  const handleEnhance = useCallback(async () => {
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+    setIsEnhancing(true);
+    try {
+      const res = await fetch("/api/ai/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: trimmed }),
+      });
+      if (!res.ok) return;
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("json")) return;
+      const data = await res.json();
+      if (data.enhanced) {
+        setPrompt(data.enhanced);
+      }
+    } catch {
+      // Silently fail — user can still submit the original prompt
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [prompt]);
 
   // ── Rendered state: show map ────────────────────────────
 
@@ -437,6 +482,15 @@ function CreateMapPageInner() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Coverage warning */}
+        {coverageRatio != null && coverageRatio < 0.8 && (
+          <div className="p-4 border-b border-border">
+            <p className="text-caption text-yellow-400/80">
+              {Math.round(coverageRatio * 100)}% of regions matched map boundaries.
+            </p>
           </div>
         )}
 
@@ -621,6 +675,15 @@ function CreateMapPageInner() {
             className="w-full rounded-md border border-border bg-card px-3 py-2 text-body text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
           <div className="flex gap-3 mt-3">
+            {prompt.trim() && !isLoading && (
+              <button
+                onClick={handleEnhance}
+                disabled={isEnhancing}
+                className="rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-body text-primary hover:bg-primary/10 transition-colors duration-fast disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isEnhancing ? "Improving\u2026" : "\u2728 Improve"}
+              </button>
+            )}
             <button
               onClick={handleGenerate}
               disabled={!prompt.trim() || isLoading}
@@ -666,7 +729,11 @@ function CreateMapPageInner() {
                     <button
                       key={option}
                       onClick={() => handleAnswer(q.id, option)}
-                      className="rounded-full border border-border bg-background px-3 py-1.5 text-caption text-muted-foreground hover:bg-card hover:text-foreground transition-colors"
+                      className={`rounded-full border px-3 py-1.5 text-caption transition-colors ${
+                        option === q.recommended
+                          ? "border-primary/50 bg-primary/10 text-foreground hover:bg-primary/20"
+                          : "border-border bg-background text-muted-foreground hover:bg-card hover:text-foreground"
+                      }`}
                     >
                       {option}
                     </button>
@@ -677,10 +744,29 @@ function CreateMapPageInner() {
           </div>
         )}
 
-        {/* Data warning */}
+        {/* Data warning + suggestion chips */}
         {clarifyWarning && (
           <div className="mb-6 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
             <p className="text-caption text-yellow-400/80">{clarifyWarning}</p>
+            {tabularSuggestions.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                <p className="text-caption text-yellow-400/60 w-full mb-1">Try instead:</p>
+                {tabularSuggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setPrompt(s);
+                      setClarifyWarning(null);
+                      setTabularSuggestions([]);
+                      handleClarify(s);
+                    }}
+                    className="rounded-full border border-yellow-500/30 bg-yellow-500/5 px-3 py-1.5 text-caption text-yellow-300 hover:bg-yellow-500/10 hover:text-yellow-200 transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

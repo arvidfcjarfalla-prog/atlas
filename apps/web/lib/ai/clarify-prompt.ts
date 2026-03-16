@@ -48,6 +48,8 @@ is mentioned. Always try searching before asking the user.
 6. Maximum 2 questions per response
 7. Always provide quick-select options when asking questions
 8. Keep questions under 15 words
+9a. Always put the MOST LIKELY option first in the options array
+9b. Set "recommended" to the single best default option when you are ≥70% confident it is correct
 9. If you cannot resolve the data source at all, set dataWarning to suggest the user uploads data
 10. Prefer using tools in this order: (1) search_public_data, (2) search_web_datasets if search_public_data has no exact match. Only ask the user for data as a LAST resort after both tools fail. Never suggest external APIs (BLS, FRED) — use search_web_datasets to find the data yourself
 11. Do not substitute related but different metrics when searching. "forest area" (current coverage %) is NOT "deforestation" (annual forest loss). "GDP" is NOT "GDP per capita". If search_public_data doesn't have the EXACT metric, use search_web_datasets instead
@@ -61,7 +63,7 @@ After using tools (or if no tool is needed), return a JSON object:
   "matchedCatalogId": "id from available-datasets" | null,
   "useOverpass": { "type": "restaurant", "city": "Malmö" } | null,
   "searchedData": { "cacheKey": "string", "description": "string" } | null,
-  "questions": [{ "id": "string", "question": "string", "options": ["a","b","c"], "aspect": "geography"|"metric"|"timeframe"|"data-source"|"visualization" }] | null,
+  "questions": [{ "id": "string", "question": "string", "options": ["a","b","c"], "recommended": "a" | null, "aspect": "geography"|"metric"|"timeframe"|"data-source"|"visualization" }] | null,
   "dataWarning": "string" | null
 }
 

@@ -16,13 +16,13 @@ describe("extractIntent", () => {
   it("extracts Europe geography", () => {
     const intent = extractIntent("poverty rate in Europe");
     expect(intent.geography).toBe("europe");
-    expect(intent.metric).toBe("rate");
+    expect(intent.metric).toBe("poverty");
   });
 
   it("extracts US geography", () => {
     const intent = extractIntent("US state unemployment rates");
     expect(intent.geography).toBe("US");
-    expect(intent.metric).toBe("rates");
+    expect(intent.metric).toBe("unemployment");
   });
 
   it("extracts timeframe from year", () => {

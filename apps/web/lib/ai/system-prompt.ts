@@ -229,6 +229,7 @@ interface MapManifest {
 }
 
 Do NOT include comments in JSON. Output valid JSON only.
+Always write title, description, layer labels, legend titles, and assumptions in English, regardless of the input language.
 </output-format>`.trim();
 
 /**

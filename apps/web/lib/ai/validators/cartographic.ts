@@ -53,11 +53,16 @@ export function validateCartographic(
       );
     }
 
-    // Choropleth without normalization → warning (skip for categorical/editorial choropleths)
+    // Choropleth without normalization → warning (skip for categorical/editorial choropleths
+    // and fields that are already rates/indices)
     if (family === "choropleth" && !layer.style?.normalization && !isCategoricalChoropleth(layer)) {
-      warnings.push(
-        `Layer "${id}": choropleth without normalization — raw counts may be misleading`,
-      );
+      const cf = (layer.style?.colorField ?? "").toLowerCase();
+      const isAlreadyNormalized = /rate|pct|percent|index|wage|salary|expectancy|coefficient|median|average|per_capita|per_hab|gini|hdi|fertility|literacy/.test(cf);
+      if (!isAlreadyNormalized) {
+        warnings.push(
+          `Layer "${id}": choropleth without normalization — raw counts may be misleading`,
+        );
+      }
     }
 
     // Proportional symbol requires sizeField

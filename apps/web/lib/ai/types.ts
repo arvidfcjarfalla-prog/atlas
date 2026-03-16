@@ -49,8 +49,22 @@ export interface ClarificationQuestion {
   id: string;
   question: string;
   options?: string[];
+  /** The single best default answer when the AI is ≥70% confident. */
+  recommended?: string;
   aspect: "geography" | "metric" | "timeframe" | "data-source" | "visualization";
 }
+
+/**
+ * Resolution status from the map pipeline.
+ *
+ * - "map_ready"    — data + geometry joined, can render a map
+ * - "tabular_only" — data found but no geometry available or joinable
+ *
+ * Only set when the universal resolution pipeline was used.
+ * Absent for legacy fast paths (catalog, World Bank, Overpass, etc.)
+ * which predate the pipeline.
+ */
+export type ClarifyResolutionStatus = "map_ready" | "tabular_only";
 
 /** Response from the /api/ai/clarify endpoint. */
 export interface ClarifyResponse {
@@ -66,6 +80,24 @@ export interface ClarifyResponse {
   questions?: ClarificationQuestion[];
   /** Warning when data is unavailable for the requested topic. */
   dataWarning?: string;
+  /**
+   * Resolution status from the universal map pipeline.
+   *
+   * When present, indicates what the pipeline decided:
+   * - "map_ready": safe to auto-generate a map
+   * - "tabular_only": data exists but geometry join failed;
+   *   frontend should NOT auto-generate a choropleth
+   *
+   * When absent, the response came from a legacy fast path and
+   * `ready: true` has its original meaning (data URL resolved).
+   */
+  resolutionStatus?: ClarifyResolutionStatus;
+  /** AI-generated follow-up prompt suggestions (tabular_only). */
+  suggestions?: string[];
+  /** Pipeline confidence 0-1. */
+  confidence?: number;
+  /** Join coverage ratio 0-1 (fraction of regions matched). */
+  coverageRatio?: number;
 }
 
 /** Request body for /api/ai/clarify. */
