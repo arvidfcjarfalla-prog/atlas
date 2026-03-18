@@ -1013,7 +1013,13 @@ export default function Landing() {
       <header className="absolute inset-x-0 top-0 flex items-center justify-between px-4 sm:px-6 md:px-8"
         style={{ zIndex: 2, height: isMobile ? 56 : 64, transition: "opacity 300ms ease", opacity: heroStage === "idle" ? 1 : 0, pointerEvents: heroStage === "idle" ? "auto" : "none" }}>
         <span className="text-[18px] font-medium tracking-[-0.01em] text-[#F8F9FB]" style={{ fontFamily: "'Geist',sans-serif" }}>atlas</span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Utforska — always visible */}
+          <a href="/explore" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 400, color: "rgba(248,249,251,0.45)", textDecoration: "none", transition: "color 150ms ease" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.80)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.45)"; }}>
+            Utforska
+          </a>
           {user ? (
             <a href="/dashboard" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 500, color: "rgba(248,249,251,0.70)", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, padding: "6px 13px", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "all 150ms ease" }}
               onMouseEnter={(e) => { const a = e.currentTarget as HTMLAnchorElement; a.style.color = "#F8F9FB"; a.style.background = "rgba(255,255,255,0.12)"; a.style.borderColor = "rgba(255,255,255,0.18)"; }}

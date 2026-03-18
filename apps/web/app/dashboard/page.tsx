@@ -397,11 +397,18 @@ export default function DashboardPage() {
 
       {/* Header */}
       <header style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 52, background: "rgba(8,10,18,0.90)", borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}>
-        <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 16, fontWeight: 500, color: "rgba(248,249,251,0.90)", letterSpacing: "-0.01em" }}>atlas</span>
-          <span style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)" }} />
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: "rgba(248,249,251,0.35)" }}>Mina kartor</span>
-        </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 16, fontWeight: 500, color: "rgba(248,249,251,0.90)", letterSpacing: "-0.01em" }}>atlas</span>
+            <span style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)" }} />
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: "rgba(248,249,251,0.35)" }}>Mina kartor</span>
+          </a>
+          <a href="/explore" style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: "rgba(248,249,251,0.28)", textDecoration: "none", transition: "color 150ms ease" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.65)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.28)"; }}>
+            Utforska
+          </a>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {user && (
