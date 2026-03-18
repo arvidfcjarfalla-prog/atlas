@@ -123,18 +123,58 @@ function formatNumber(n: number) {
 
 // ─── Simulation component ───
 export default function PricingModelPage() {
-  const [totalUsers, setTotalUsers] = useState(2000);
-  const [freePercent, setFreePercent] = useState(75);
-  const [starterPercent, setStarterPercent] = useState(15);
-  const [proPercent, setProPercent] = useState(7);
-  const [avgMapsPerFree, setAvgMapsPerFree] = useState(3);
-  const [avgOverageStarter, setAvgOverageStarter] = useState(10);
-  const [avgOveragePro, setAvgOveragePro] = useState(30);
-  const [avgOverageTeam, setAvgOverageTeam] = useState(100);
-  const [creditPackSalesPerMonth, setCreditPackSalesPerMonth] = useState(50);
-  const [avgPackIndex, setAvgPackIndex] = useState(1); // 50-credit pack
+  const [totalUsers, setTotalUsers] = useState(800);
+  const [freePercent, setFreePercent] = useState(95);
+  const [starterPercent, setStarterPercent] = useState(3);
+  const [proPercent, setProPercent] = useState(1.5);
+  const [avgMapsPerFree, setAvgMapsPerFree] = useState(1);
+  const [avgOverageStarter, setAvgOverageStarter] = useState(5);
+  const [avgOveragePro, setAvgOveragePro] = useState(15);
+  const [avgOverageTeam, setAvgOverageTeam] = useState(50);
+  const [creditPackSalesPerMonth, setCreditPackSalesPerMonth] = useState(8);
+  const [avgPackIndex, setAvgPackIndex] = useState(0); // 10-credit pack
 
   const teamPercent = Math.max(0, 100 - freePercent - starterPercent - proPercent);
+
+  const SCENARIOS = {
+    realistic: {
+      label: "Realistiskt (År 1)",
+      totalUsers: 800, freePercent: 95, starterPercent: 3, proPercent: 1.5,
+      avgMapsPerFree: 1, avgOverageStarter: 5, avgOveragePro: 15, avgOverageTeam: 50,
+      creditPackSalesPerMonth: 8, avgPackIndex: 0,
+    },
+    good: {
+      label: "Bra traction (År 1)",
+      totalUsers: 2000, freePercent: 93, starterPercent: 4, proPercent: 2,
+      avgMapsPerFree: 2, avgOverageStarter: 8, avgOveragePro: 20, avgOverageTeam: 80,
+      creditPackSalesPerMonth: 25, avgPackIndex: 1,
+    },
+    pmf: {
+      label: "Product-Market Fit (År 2)",
+      totalUsers: 8000, freePercent: 90, starterPercent: 5, proPercent: 3,
+      avgMapsPerFree: 2, avgOverageStarter: 10, avgOveragePro: 30, avgOverageTeam: 100,
+      creditPackSalesPerMonth: 80, avgPackIndex: 1,
+    },
+    scale: {
+      label: "Scale (År 3)",
+      totalUsers: 30000, freePercent: 88, starterPercent: 6, proPercent: 4,
+      avgMapsPerFree: 2, avgOverageStarter: 15, avgOveragePro: 40, avgOverageTeam: 150,
+      creditPackSalesPerMonth: 300, avgPackIndex: 2,
+    },
+  };
+
+  function applyScenario(s: (typeof SCENARIOS)[keyof typeof SCENARIOS]) {
+    setTotalUsers(s.totalUsers);
+    setFreePercent(s.freePercent);
+    setStarterPercent(s.starterPercent);
+    setProPercent(s.proPercent);
+    setAvgMapsPerFree(s.avgMapsPerFree);
+    setAvgOverageStarter(s.avgOverageStarter);
+    setAvgOveragePro(s.avgOveragePro);
+    setAvgOverageTeam(s.avgOverageTeam);
+    setCreditPackSalesPerMonth(s.creditPackSalesPerMonth);
+    setAvgPackIndex(s.avgPackIndex);
+  }
 
   const sim = useMemo(() => {
     const users = {
@@ -237,6 +277,19 @@ export default function PricingModelPage() {
         <p className="mb-8 text-gray-500">
           Hybrid subscription + credits — interactive simulation
         </p>
+
+        {/* ─── Scenario Presets ─── */}
+        <div className="mb-6 flex flex-wrap gap-2">
+          {Object.entries(SCENARIOS).map(([key, s]) => (
+            <button
+              key={key}
+              onClick={() => applyScenario(s)}
+              className="rounded-full border bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 hover:shadow active:bg-gray-100"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
 
         {/* ─── KPI Cards ─── */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -734,6 +787,44 @@ export default function PricingModelPage() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Reality check */}
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+              <h3 className="mb-3 font-semibold">Reality Check</h3>
+              <div className="space-y-3">
+                <div>
+                  <div className="font-medium">Konvertering</div>
+                  <p>Freemium SaaS konverterar typiskt 2–5%. Slack ~5%, Dropbox ~4%, Midjourney ~6.7% (outlier med massiv viral spridning). Default ovan: {sim.conversionRate.toFixed(1)}%.</p>
+                </div>
+                <div>
+                  <div className="font-medium">Retention</div>
+                  <p>De flesta gör en karta, tycker det är coolt, och försvinner. Utan repeat use case (journalister, konsulter, analytiker) spelar pricing ingen roll.</p>
+                </div>
+                <div>
+                  <div className="font-medium">Användaranskaffning</div>
+                  <p>800 användare år 1 kräver antingen viral produkt, content marketing, eller betald acquisition. Felt tog ~2 år med VC-pengar.</p>
+                </div>
+                <div>
+                  <div className="font-medium">B2B vs B2C</div>
+                  <p>En enda Team-kund ($79/mo) = {Math.round(79/9)} Starter-kunder. Tre B2B-kunder &gt; 100 privatanvändare. B2B-fokus ger snabbare väg till intäkt.</p>
+                </div>
+                <div>
+                  <div className="font-medium">API-kostnad kan öka</div>
+                  <p>$0.087/karta antar 1.5 försök snitt. Komplexa kartor med retry-logik kan dubbla kostnaden. Marginalerna ser bra ut nu men kräver optimering vid scale.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* What to do first */}
+            <div className="rounded-lg border border-green-300 bg-green-50 p-5 text-sm text-green-900">
+              <h3 className="mb-3 font-semibold">Fokusera på detta först</h3>
+              <ol className="list-inside list-decimal space-y-2">
+                <li><strong>Hitta 10 betalande användare</strong> och förstå varför de betalar. Det ger mer signal än alla simuleringar.</li>
+                <li><strong>Mät retention</strong> — hur många kommer tillbaka vecka 2? Om &lt;20% återvänder, fixa produkten före pricing.</li>
+                <li><strong>Starta med enkel pricing</strong> — Free (5/dag) + Pro ($29/mo). Lägg till tiers och credits senare när du har data.</li>
+                <li><strong>Credit packs som komplement</strong> — fångar engångsanvändare som inte vill prenumerera. Bra net, inte huvudintäkt.</li>
+              </ol>
             </div>
 
             {/* Industry insight */}
