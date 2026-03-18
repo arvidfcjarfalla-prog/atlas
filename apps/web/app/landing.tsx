@@ -1015,17 +1015,16 @@ export default function Landing() {
         <span className="text-[18px] font-medium tracking-[-0.01em] text-[#F8F9FB]" style={{ fontFamily: "'Geist',sans-serif" }}>atlas</span>
         <div className="flex items-center gap-4">
           {user ? (
-            <>
-              <a href="/dashboard" style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 400, color: "rgba(248,249,251,0.55)", textDecoration: "none", transition: "color 150ms ease" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.85)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.55)"; }}>
-                Mina kartor
-              </a>
-            </>
+            <a href="/dashboard" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 500, color: "rgba(248,249,251,0.70)", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, padding: "6px 13px", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "all 150ms ease" }}
+              onMouseEnter={(e) => { const a = e.currentTarget as HTMLAnchorElement; a.style.color = "#F8F9FB"; a.style.background = "rgba(255,255,255,0.12)"; a.style.borderColor = "rgba(255,255,255,0.18)"; }}
+              onMouseLeave={(e) => { const a = e.currentTarget as HTMLAnchorElement; a.style.color = "rgba(248,249,251,0.70)"; a.style.background = "rgba(255,255,255,0.07)"; a.style.borderColor = "rgba(255,255,255,0.10)"; }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Mina kartor
+            </a>
           ) : (
-            <a href="/login" style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 400, color: "rgba(248,249,251,0.55)", textDecoration: "none", transition: "color 150ms ease" }}
+            <a href="/login" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 400, color: "rgba(248,249,251,0.50)", textDecoration: "none", transition: "color 150ms ease" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.85)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.55)"; }}>
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.50)"; }}>
               Logga in
             </a>
           )}
@@ -1322,8 +1321,12 @@ export default function Landing() {
             {/* Save button — shows auth nudge if not logged in */}
             {saveState === "saved" && savedMapId ? (
               <a href="/dashboard"
-                style={{ width: "100%", display: "block", textAlign: "center", fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#34d399", background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.25)", borderRadius: 10, padding: "11px 0", textDecoration: "none", transition: "background 150ms ease", boxSizing: "border-box" }}>
-                ✓ Sparad — se i Mina kartor
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#F8F9FB", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "11px 0", textDecoration: "none", boxSizing: "border-box", transition: "all 150ms ease" }}
+                onMouseEnter={(e) => { const a = e.currentTarget as HTMLAnchorElement; a.style.background = "rgba(255,255,255,0.14)"; a.style.borderColor = "rgba(255,255,255,0.22)"; }}
+                onMouseLeave={(e) => { const a = e.currentTarget as HTMLAnchorElement; a.style.background = "rgba(255,255,255,0.09)"; a.style.borderColor = "rgba(255,255,255,0.14)"; }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Sparad — gå till Mina kartor
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.45 }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </a>
             ) : (
               <button
