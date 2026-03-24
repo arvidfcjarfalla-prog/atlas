@@ -27,19 +27,91 @@ export interface CompiledLegendItem {
 export interface CompiledSourceConfig {
   type: "geojson";
   data: GeoJSON.FeatureCollection | string;
+  generateId?: boolean;
   cluster?: boolean;
   clusterRadius?: number;
   clusterMaxZoom?: number;
 }
 
+export interface TimelineMetadata {
+  timeField: string;
+  min: number;
+  max: number;
+  steps: number[];
+  cumulative: boolean;
+  playSpeed: number;
+}
+
 export interface CompiledLayer {
   sourceId: string;
   sourceConfig: CompiledSourceConfig;
+  /** Extra sources needed by layers (e.g. centroid points for polygon labels). */
+  extraSources?: Record<string, CompiledSourceConfig>;
   layers: LayerSpecification[];
   legendItems: CompiledLegendItem[];
+  /** When true, the renderer should animate a marker along the route. */
+  _animatable?: boolean;
+  /** Timeline metadata for time-based filtering. */
+  _timeline?: TimelineMetadata;
 }
 
 // ─── Helpers ────────────────────────────────────────────────
+
+/**
+ * Returns the centroid of a polygon ring (array of [lng, lat] positions).
+ * Simple average — good enough for label placement.
+ */
+function ringCentroid(ring: number[][]): [number, number] {
+  if (ring.length === 0) return [0, 0];
+  let sumLng = 0, sumLat = 0;
+  for (const [lng, lat] of ring) { sumLng += lng; sumLat += lat; }
+  return [sumLng / ring.length, sumLat / ring.length];
+}
+
+/**
+ * Returns the area (in squared degrees) of a polygon ring using the shoelace formula.
+ * Used to pick the largest ring in a MultiPolygon.
+ */
+function ringArea(ring: number[][]): number {
+  let area = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    area += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1]);
+  }
+  return Math.abs(area / 2);
+}
+
+/**
+ * Builds a FeatureCollection of Point features at the centroid of the largest
+ * polygon ring for each feature. Properties are copied over for label access.
+ * Used to avoid duplicate labels on MultiPolygon archipelago geometries.
+ */
+function buildCentroidCollection(
+  data: GeoJSON.FeatureCollection,
+): GeoJSON.FeatureCollection {
+  const points: GeoJSON.Feature[] = [];
+  for (const f of data.features) {
+    if (!f.geometry) continue;
+    let bestRing: number[][] | null = null;
+    let bestArea = -1;
+    if (f.geometry.type === "Polygon") {
+      bestRing = f.geometry.coordinates[0] as number[][];
+    } else if (f.geometry.type === "MultiPolygon") {
+      for (const poly of f.geometry.coordinates as number[][][][]) {
+        const outer = poly[0];
+        const a = ringArea(outer);
+        if (a > bestArea) { bestArea = a; bestRing = outer; }
+      }
+    }
+    if (!bestRing) continue;
+    const [lng, lat] = ringCentroid(bestRing);
+    points.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [lng, lat] },
+      properties: { ...f.properties },
+    });
+  }
+  return { type: "FeatureCollection", features: points };
+}
 
 function numericValues(
   data: GeoJSON.FeatureCollection,
@@ -96,7 +168,7 @@ function uniqueStringValues(
 type Expr = unknown[];
 
 function scheme(layer: LayerManifest): ColorScheme {
-  return layer.style.color?.scheme ?? "viridis";
+  return layer.style.color?.scheme ?? "blues";
 }
 
 function classes(layer: LayerManifest): number {
@@ -112,26 +184,48 @@ export function compileLayer(
   layer: LayerManifest,
   data: GeoJSON.FeatureCollection,
 ): CompiledLayer {
+  // Defensive: ensure features array exists (malformed GeoJSON or empty response)
+  if (!data.features) {
+    data = { ...data, features: [] };
+  }
   const family: MapFamily = layer.style.mapFamily ?? "point";
 
+  let result: CompiledLayer;
   switch (family) {
     case "point":
-      return compilePoint(layer, data);
+      result = compilePoint(layer, data); break;
     case "cluster":
-      return compileCluster(layer, data);
+      result = compileCluster(layer, data); break;
     case "choropleth":
-      return compileChoropleth(layer, data);
+      result = compileChoropleth(layer, data); break;
     case "heatmap":
-      return compileHeatmap(layer, data);
+      result = compileHeatmap(layer, data); break;
     case "proportional-symbol":
-      return compileProportionalSymbol(layer, data);
+      result = compileProportionalSymbol(layer, data); break;
     case "flow":
-      return compileFlow(layer, data);
+      result = compileFlow(layer, data); break;
     case "isochrone":
-      return compileIsochrone(layer, data);
+      result = compileIsochrone(layer, data); break;
+    case "extrusion":
+      result = compileExtrusion(layer, data); break;
+    case "animated-route":
+      result = compileAnimatedRoute(layer, data); break;
+    case "timeline":
+      result = compileTimeline(layer, data); break;
     default:
-      return compilePoint(layer, data);
+      result = compilePoint(layer, data); break;
   }
+
+  // Apply user-provided filter to all generated layers
+  if (layer.filter) {
+    for (const spec of result.layers) {
+      const s = spec as Record<string, unknown>;
+      const existing = s.filter as unknown[] | undefined;
+      s.filter = existing ? ["all", existing, layer.filter] : layer.filter;
+    }
+  }
+
+  return result;
 }
 
 // ─── Point ──────────────────────────────────────────────────
@@ -185,7 +279,7 @@ function compilePoint(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data, generateId: true },
     layers,
     legendItems: buildLegendItems(layer, data, "circle"),
   };
@@ -261,6 +355,7 @@ function compileCluster(
     sourceConfig: {
       type: "geojson",
       data,
+      generateId: true,
       cluster: true,
       clusterRadius: radius,
       clusterMaxZoom: 14,
@@ -283,7 +378,13 @@ function compileChoropleth(
 
   const colorField = layer.style.colorField;
   const classCount = classes(layer);
-  const method = layer.style.classification?.method ?? "quantile";
+  // Force quantile for choropleth — it distributes features evenly across color
+  // classes, ensuring visual distinction even with skewed data. Only manual and
+  // categorical are exempt (they have explicit user-defined breaks/categories).
+  const requestedMethod = layer.style.classification?.method ?? "quantile";
+  const method = requestedMethod === "manual" || requestedMethod === "categorical"
+    ? requestedMethod
+    : "quantile";
   const colorScheme = scheme(layer);
   const paletteColors = getColors(colorScheme, classCount);
   const normField = layer.style.normalization?.field;
@@ -356,18 +457,29 @@ function compileChoropleth(
     } as LayerSpecification,
   ];
 
-  // Optional text labels on polygons
+  // Optional text labels on polygons — use centroid points to avoid duplicate
+  // labels on MultiPolygon archipelago features (one label per largest ring).
   const labelField = layer.style.labelField;
+  let extraSources: Record<string, CompiledSourceConfig> | undefined;
   if (labelField) {
     const labelsId = `${layer.id}-labels`;
+    const centroidsSourceId = `${sourceId}-centroids`;
     const textFieldExpr: string | Expr = layer.style.labelFormat
       ? layer.style.labelFormat
       : ["get", labelField];
 
+    const centroidData = typeof data === "string"
+      ? { type: "FeatureCollection" as const, features: [] }
+      : buildCentroidCollection(data);
+
+    extraSources = {
+      [centroidsSourceId]: { type: "geojson", data: centroidData },
+    };
+
     layers.push({
       id: labelsId,
       type: "symbol",
-      source: sourceId,
+      source: centroidsSourceId,
       layout: {
         "symbol-placement": "point",
         "text-field": textFieldExpr as string,
@@ -391,7 +503,8 @@ function compileChoropleth(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data, generateId: true },
+    extraSources,
     layers,
     legendItems: buildChoroplethLegend(layer, data, paletteColors),
   };
@@ -465,7 +578,7 @@ function compileHeatmap(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data, generateId: true },
     layers,
     legendItems: [
       { label: "Low density", color: ramp[0], shape: "square" },
@@ -538,7 +651,7 @@ function compileProportionalSymbol(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data, generateId: true },
     layers,
     legendItems: buildProportionalLegend(layer, data),
   };
@@ -631,7 +744,7 @@ function compileFlow(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data: sourceData },
+    sourceConfig: { type: "geojson", data: sourceData, generateId: true },
     layers,
     legendItems: buildFlowLegend(layer, data),
   };
@@ -725,10 +838,206 @@ function compileIsochrone(
 
   return {
     sourceId,
-    sourceConfig: { type: "geojson", data },
+    sourceConfig: { type: "geojson", data, generateId: true },
     layers,
     legendItems,
   };
+}
+
+// ─── Extrusion ─────────────────────────────────────────────
+
+function compileExtrusion(
+  layer: LayerManifest,
+  data: GeoJSON.FeatureCollection,
+): CompiledLayer {
+  const sourceId = `${layer.id}-source`;
+  const extrusionId = `${layer.id}-extrusion`;
+  const highlightId = `${layer.id}-highlight`;
+
+  const heightField = layer.extrusion?.heightField ?? layer.style.sizeField ?? layer.style.colorField;
+  const minHeight = layer.extrusion?.minHeight ?? 0;
+  const maxHeight = layer.extrusion?.maxHeight ?? 500_000;
+
+  let heightExpr: Expr | number = (minHeight + maxHeight) / 2;
+
+  if (heightField) {
+    const vals = numericValues(data, heightField);
+    const valMin = vals.length > 0 ? Math.min(...vals) : 0;
+    const valMax = vals.length > 0 ? Math.max(...vals) : 1;
+    if (valMax > valMin) {
+      heightExpr = [
+        "interpolate", ["linear"], ["get", heightField],
+        valMin, minHeight,
+        valMax, maxHeight,
+      ];
+    }
+  }
+
+  const colorExpr = buildColorExpression(layer, data);
+
+  const layers: LayerSpecification[] = [
+    {
+      id: extrusionId,
+      type: "fill-extrusion",
+      source: sourceId,
+      paint: {
+        "fill-extrusion-color": colorExpr as string,
+        "fill-extrusion-height": heightExpr as number,
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": layer.style.fillOpacity ?? 0.85,
+      },
+    } as LayerSpecification,
+    {
+      id: highlightId,
+      type: "fill-extrusion",
+      source: sourceId,
+      paint: {
+        "fill-extrusion-color": "rgba(255,255,255,0.3)",
+        "fill-extrusion-height": heightExpr as number,
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": [
+          "case",
+          ["boolean", ["feature-state", "hover"], false],
+          0.5,
+          0,
+        ],
+      },
+    } as LayerSpecification,
+  ];
+
+  return {
+    sourceId,
+    sourceConfig: { type: "geojson", data, generateId: true },
+    layers,
+    legendItems: buildLegendItems(layer, data, "square"),
+  };
+}
+
+// ─── Animated Route ────────────────────────────────────────
+
+function compileAnimatedRoute(
+  layer: LayerManifest,
+  data: GeoJSON.FeatureCollection,
+): CompiledLayer {
+  const sourceId = `${layer.id}-source`;
+  const lineId = `${layer.id}-line`;
+  const stopsId = `${layer.id}-stops`;
+  const labelsId = `${layer.id}-labels`;
+
+  const color = getColors(scheme(layer), 1)[0];
+
+  // Separate LineStrings from Points
+  const lines = data.features.filter(
+    (f) => f.geometry && (f.geometry.type === "LineString" || f.geometry.type === "MultiLineString"),
+  );
+  const points = data.features.filter(
+    (f) => f.geometry && f.geometry.type === "Point",
+  );
+
+  const layers: LayerSpecification[] = [
+    {
+      id: lineId,
+      type: "line",
+      source: sourceId,
+      filter: ["any",
+        ["==", ["geometry-type"], "LineString"],
+        ["==", ["geometry-type"], "MultiLineString"],
+      ],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": color,
+        "line-width": 3,
+        "line-opacity": 0.7,
+        "line-dasharray": [2, 2],
+      },
+    } as LayerSpecification,
+    {
+      id: stopsId,
+      type: "circle",
+      source: sourceId,
+      filter: ["==", ["geometry-type"], "Point"],
+      paint: {
+        "circle-radius": 6,
+        "circle-color": color,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": "#ffffff",
+      },
+    } as LayerSpecification,
+  ];
+
+  // Add labels if points have names
+  if (points.some((p) => p.properties?.name)) {
+    layers.push({
+      id: labelsId,
+      type: "symbol",
+      source: sourceId,
+      filter: ["==", ["geometry-type"], "Point"],
+      layout: {
+        "text-field": ["get", "name"],
+        "text-size": 12,
+        "text-offset": [0, 1.5],
+        "text-anchor": "top",
+      },
+      paint: {
+        "text-color": "#ffffff",
+        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-width": 1,
+      },
+    } as LayerSpecification);
+  }
+
+  const legendItems: CompiledLegendItem[] = [
+    { label: layer.label, color, shape: "line" },
+  ];
+
+  return {
+    sourceId,
+    sourceConfig: { type: "geojson", data, generateId: true },
+    layers,
+    legendItems,
+    _animatable: true,
+  };
+}
+
+// ─── Timeline ──────────────────────────────────────────────
+
+function compileTimeline(
+  layer: LayerManifest,
+  data: GeoJSON.FeatureCollection,
+): CompiledLayer {
+  const timeField = layer.timeline?.timeField;
+
+  // Detect geometry type and delegate to appropriate base compiler
+  const hasPolygons = data.features.some(
+    (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+  );
+
+  // Compile base layers (choropleth for polygons, point for points)
+  const base = hasPolygons
+    ? compileChoropleth(layer, data)
+    : compilePoint(layer, data);
+
+  // Attach timeline metadata for the renderer
+  if (timeField) {
+    const timeValues = data.features
+      .map((f) => f.properties?.[timeField])
+      .filter((v) => v != null)
+      .map(Number)
+      .filter(isFinite);
+
+    const uniqueTimes = [...new Set(timeValues)].sort((a, b) => a - b);
+
+    base._timeline = {
+      timeField,
+      min: uniqueTimes[0] ?? 0,
+      max: uniqueTimes[uniqueTimes.length - 1] ?? 0,
+      steps: uniqueTimes,
+      cumulative: layer.timeline?.cumulative ?? true,
+      playSpeed: layer.timeline?.playSpeed ?? 1000,
+    };
+  }
+
+  return base;
 }
 
 // ─── Color expression builders ──────────────────────────────
@@ -742,13 +1051,19 @@ function buildColorExpression(
     return getColors(scheme(layer), 1)[0];
   }
 
-  // Check if field is numeric or string
-  const sample = data.features[0]?.properties?.[colorField];
+  // Check if field is numeric or string — sample multiple features
+  // to avoid false negatives when first feature has null
+  let sample: unknown = undefined;
+  for (const f of data.features) {
+    const v = f.properties?.[colorField];
+    if (v != null) { sample = v; break; }
+  }
 
   if (typeof sample === "number") {
     // Numeric → classified step expression
     const classCount = classes(layer);
-    const method = layer.style.classification?.method ?? "quantile";
+    const reqMethod = layer.style.classification?.method ?? "quantile";
+    const method = reqMethod === "manual" || reqMethod === "categorical" ? reqMethod : "quantile";
     const paletteColors = getColors(scheme(layer), classCount);
     const vals = numericValues(data, colorField);
 
@@ -798,12 +1113,18 @@ function buildLegendItems(
     ];
   }
 
-  const sample = data.features[0]?.properties?.[colorField];
+  // Sample multiple features to avoid false negatives when first has null
+  let sample: unknown = undefined;
+  for (const f of data.features) {
+    const v = f.properties?.[colorField];
+    if (v != null) { sample = v; break; }
+  }
 
   if (typeof sample === "number") {
     // Numeric → class-based legend
     const classCount = classes(layer);
-    const method = layer.style.classification?.method ?? "quantile";
+    const reqMethod = layer.style.classification?.method ?? "quantile";
+    const method = reqMethod === "manual" || reqMethod === "categorical" ? reqMethod : "quantile";
     const paletteColors = getColors(scheme(layer), classCount);
     const vals = numericValues(data, colorField);
     if (vals.length === 0) return [];
@@ -845,7 +1166,8 @@ function buildChoroplethLegend(
   }
 
   const classCount = classes(layer);
-  const method = layer.style.classification?.method ?? "quantile";
+  const reqMethod2 = layer.style.classification?.method ?? "quantile";
+  const method = reqMethod2 === "manual" || reqMethod2 === "categorical" ? reqMethod2 : "quantile";
   const normField = layer.style.normalization?.field;
   const multiplier = layer.style.normalization?.multiplier ?? 1;
   const vals = normField

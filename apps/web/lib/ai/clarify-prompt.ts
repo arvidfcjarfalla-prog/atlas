@@ -1,5 +1,18 @@
 import { catalogContext } from "./data-catalog";
-import type Anthropic from "@anthropic-ai/sdk";
+import type { ResolutionExample } from "./clarify-resolution-store";
+
+function formatPastResolutions(examples: ResolutionExample[]): string {
+  if (examples.length === 0) return "";
+  const blocks = examples.map(
+    (ex) =>
+      `  <example>\n    <prompt>${ex.promptOriginal}</prompt>\n    <resolved>${ex.resolvedPrompt}</resolved>\n    <data-url>${ex.dataUrl}</data-url>\n    <source>${ex.sourceType}</source>\n  </example>`,
+  );
+  return `\n<past-resolutions>
+Here are successful resolutions of similar past prompts. Use them as reference when deciding how to resolve the current prompt.
+
+${blocks.join("\n\n")}
+</past-resolutions>\n`;
+}
 
 /**
  * System prompt for the clarification AI.
@@ -8,7 +21,7 @@ import type Anthropic from "@anthropic-ai/sdk";
  * available data, search public APIs, and ask smart follow-ups when
  * the prompt is ambiguous.
  */
-export function buildClarifyPrompt(): string {
+export function buildClarifyPrompt(examples: ResolutionExample[] = []): string {
   return `You are a clarification assistant for Atlas, an AI mapping platform.
 Your job is to understand what map the user wants and resolve how to get the data.
 
@@ -38,7 +51,7 @@ is mentioned. Always try searching before asking the user.
   and CSV files. Provide a descriptive query including topic, metric, and geography.
   Avoids HTML tables and paywalled sources. Only returns validated real datasets.
 </tools>
-
+${formatPastResolutions(examples)}
 <rules>
 1. If the prompt clearly matches an available dataset, return ready: true with matchedCatalogId immediately
 2. If the prompt is about a specific place + amenity type (e.g. "restaurants in Malmö"), return ready: true with useOverpass: true
@@ -71,46 +84,3 @@ Output valid JSON only. No comments or explanations.
 </output-format>`.trim();
 }
 
-/**
- * Tool definitions for the clarification AI.
- * Used with Anthropic's tool use API.
- */
-export const CLARIFY_TOOLS: Anthropic.Tool[] = [
-  {
-    name: "search_public_data",
-    description:
-      "Search public data APIs for geographic datasets. Sources: World Bank (population, GDP, CO2, etc. with country polygons), NASA EONET (active wildfires, volcanoes, storms, floods as points), REST Countries (country metadata with capitals as points). Can also fetch/validate direct GeoJSON URLs.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "Search query describing the data needed (e.g. 'population by country', 'GDP per capita', 'CO2 emissions')",
-        },
-        url: {
-          type: "string",
-          description:
-            "Optional direct URL to a GeoJSON file to fetch and validate",
-        },
-      },
-      required: ["query"],
-    },
-  },
-  {
-    name: "search_web_datasets",
-    description:
-      "Search the internet for downloadable geographic datasets (GeoJSON, CSV). Use AFTER search_public_data returns no results. Searches open data portals, GitHub, and government data sites. Provide a descriptive query with topic, metric, and geography.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "Descriptive search query including topic, metric, and geography (e.g. 'global shipping routes geojson', 'US state poverty rate csv')",
-        },
-      },
-      required: ["query"],
-    },
-  },
-];

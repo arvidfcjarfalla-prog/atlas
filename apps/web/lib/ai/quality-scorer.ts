@@ -13,11 +13,12 @@ export interface QualityScore {
   total: number;
   breakdown: {
     schemaCompleteness: number;    // 0–20
-    familyAppropriateness: number; // 0–25
+    familyAppropriateness: number; // 0–20
     colorSchemeQuality: number;    // 0–20
     classificationQuality: number; // 0–15
     normalization: number;         // 0–10
-    legendCompleteness: number;    // 0–10
+    legendCompleteness: number;    // 0–5
+    runtimeQuality: number;        // 0–10
   };
   /** Human-readable reasons for lost points. */
   deductions: string[];
@@ -106,8 +107,8 @@ export function scoreManifest(
     deductions.push(`Only ${optionalCount}/6 optional fields filled (description, center, zoom, bounds, legend, interaction)`);
   }
 
-  // ── Family appropriateness (0–25) ──
-  let familyAppropriateness = 25; // full score unless profile says otherwise
+  // ── Family appropriateness (0–20) ──
+  let familyAppropriateness = 20; // full score unless profile says otherwise
 
   if (profile && family) {
     const geoType = profile.geometryType;
@@ -128,7 +129,7 @@ export function scoreManifest(
     }
   } else if (!profile) {
     // Without profile, we can't score family appropriateness — give benefit of the doubt
-    familyAppropriateness = 15;
+    familyAppropriateness = 12;
   }
 
   // ── Color scheme quality (0–20) ──
@@ -216,20 +217,59 @@ export function scoreManifest(
     }
   }
 
-  // ── Legend completeness (0–10) ──
+  // ── Legend completeness (0–5) ──
   let legendCompleteness = 0;
   const legend = layer?.legend;
 
   if (legend?.title) {
-    legendCompleteness += 5;
+    legendCompleteness += 3;
   } else {
     deductions.push("Legend is missing a title");
   }
 
   if (legend?.type) {
-    legendCompleteness += 5;
+    legendCompleteness += 2;
   } else {
     deductions.push("Legend is missing a type");
+  }
+
+  // ── Runtime quality (0–10) ──
+  // Data-driven checks that catch problems the structural validator misses.
+  // These deductions feed into the retry loop so the AI can self-correct.
+  let runtimeQuality = 10;
+
+  if (profile) {
+    const fc = profile.featureCount ?? 0;
+
+    // Sparse choropleth: fewer than 5 regions is too few for meaningful comparison
+    if (family === "choropleth" && fc > 0 && fc < 5) {
+      runtimeQuality -= 5;
+      deductions.push(`Choropleth with only ${fc} features — too sparse for meaningful comparison`);
+    }
+
+    // Zoom mismatch: global data at city zoom or city data at global zoom
+    const defaultZoom = manifest.defaultZoom;
+    const bounds = profile.bounds;
+    if (defaultZoom !== undefined && bounds) {
+      const latSpan = Math.abs(bounds[1][0] - bounds[0][0]);
+      const lngSpan = Math.abs(bounds[1][1] - bounds[0][1]);
+      const dataSpan = Math.max(latSpan, lngSpan);
+
+      if (dataSpan > 100 && defaultZoom > 12) {
+        runtimeQuality -= 3;
+        deductions.push(`Zoom level ${defaultZoom} too high for global/continental data (span ${Math.round(dataSpan)}°)`);
+      }
+      if (dataSpan < 1 && defaultZoom < 6) {
+        runtimeQuality -= 3;
+        deductions.push(`Zoom level ${defaultZoom} too low for local data (span ${dataSpan.toFixed(2)}°)`);
+      }
+    }
+
+    // Label overflow: labels on large datasets cause clutter
+    if (layer?.style?.labelField && fc > 100) {
+      runtimeQuality -= 2;
+      deductions.push(`Labels enabled with ${fc} features — will cause overlap and clutter`);
+    }
   }
 
   const total =
@@ -238,7 +278,8 @@ export function scoreManifest(
     colorSchemeQuality +
     classificationQuality +
     normalization +
-    legendCompleteness;
+    legendCompleteness +
+    runtimeQuality;
 
   return {
     total,
@@ -249,6 +290,7 @@ export function scoreManifest(
       classificationQuality,
       normalization,
       legendCompleteness,
+      runtimeQuality,
     },
     deductions,
   };

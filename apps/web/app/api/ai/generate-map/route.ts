@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { type ModelMessage } from "ai";
+import { MODELS, generateTextWithRetry } from "../../../../lib/ai/ai-client";
 import type { MapManifest } from "@atlas/data-models";
 import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
 import { validateManifest } from "../../../../lib/ai/validators";
@@ -9,20 +10,57 @@ import { profileDataset } from "../../../../lib/ai/profiler";
 import { saveCase, findRelevantLessons, formatLessons } from "../../../../lib/ai/case-memory";
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
+import { log } from "../../../../lib/logger";
+import { reportError } from "../../../../lib/error-reporter";
 
 const QUALITY_THRESHOLD = 60;
 
-const MODEL = "claude-sonnet-4-5-20250929";
+/**
+ * Validate a URL to prevent SSRF attacks.
+ * Blocks private/loopback/link-local IPs, non-http(s) schemes, and AWS metadata.
+ */
+function validateFetchUrl(raw: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only http and https URLs are allowed");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Block loopback
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1" ||
+    hostname.startsWith("127.")
+  ) {
+    throw new Error("Loopback addresses are not allowed");
+  }
+
+  // Block RFC-1918 private ranges, link-local, and AWS metadata
+  const ipMatch = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (ipMatch) {
+    const [, a, b] = ipMatch.map(Number);
+    if (
+      a === 10 ||                              // 10.0.0.0/8
+      (a === 172 && b! >= 16 && b! <= 31) ||   // 172.16.0.0/12
+      (a === 192 && b === 168) ||              // 192.168.0.0/16
+      (a === 169 && b === 254)                 // 169.254.0.0/16 (link-local + AWS metadata)
+    ) {
+      throw new Error("Private and link-local addresses are not allowed");
+    }
+  }
+}
+
 const MAX_TOKENS = 4096;
 const MAX_ATTEMPTS = 3;
-
-function getClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not set");
-  }
-  return new Anthropic({ apiKey });
-}
 
 /**
  * Extract JSON from a string that may contain markdown fences or preamble.
@@ -37,16 +75,35 @@ function extractJSON(text: string): unknown {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+const ALLOWED_REGIONS = new Set([
+  "Europe", "Africa", "Asia", "South America", "North America", "Oceania",
+]);
+const ALLOWED_FILTER_FIELDS = new Set(["continent", "region", "subregion"]);
+
 /**
  * Build the user message, optionally including a dataset profile and source URL.
  */
-function buildUserMessage(prompt: string, profile: DatasetProfile | null, sourceUrl?: string): string {
+function buildUserMessage(
+  prompt: string,
+  profile: DatasetProfile | null,
+  sourceUrl?: string,
+  scopeHint?: { region: string; filterField: string },
+): string {
   const parts: string[] = [];
   if (profile) {
     parts.push(`<dataset-profile>\n${JSON.stringify(profile, null, 2)}\n</dataset-profile>`);
   }
   if (sourceUrl) {
     parts.push(`<source-url>${sourceUrl}</source-url>`);
+  }
+  if (
+    scopeHint &&
+    ALLOWED_REGIONS.has(scopeHint.region) &&
+    ALLOWED_FILTER_FIELDS.has(scopeHint.filterField)
+  ) {
+    parts.push(
+      `<scope-hint>The data source is global but the user asked about ${scopeHint.region} only. You MUST add a filter to the layer: ["==", ["get", "${scopeHint.filterField}"], "${scopeHint.region}"]. Also set defaultCenter and defaultZoom appropriate for ${scopeHint.region}.</scope-hint>`,
+    );
   }
   parts.push(prompt.trim());
   return parts.join("\n\n");
@@ -57,6 +114,7 @@ function buildUserMessage(prompt: string, profile: DatasetProfile | null, source
  */
 async function fetchAndProfile(url: string): Promise<DatasetProfile | null> {
   try {
+    validateFetchUrl(url);
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     const geojson = await res.json();
@@ -83,9 +141,11 @@ async function fetchAndProfile(url: string): Promise<DatasetProfile | null> {
  * Response: { manifest, validation, model, usage, profile? }
  */
 export async function POST(request: Request) {
+  const t0 = Date.now();
+  let prompt: string | undefined;
   try {
     const body = await request.json();
-    const prompt = body?.prompt;
+    prompt = body?.prompt;
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return NextResponse.json(
@@ -101,6 +161,8 @@ export async function POST(request: Request) {
       );
     }
 
+    log("generate.start", { promptLength: prompt.length });
+
     // Resolve dataset profile: explicit > fetched > none
     const sourceUrl: string | undefined = body.sourceUrl ?? body.dataUrl;
     let profile: DatasetProfile | null = body.dataProfile ?? null;
@@ -108,7 +170,8 @@ export async function POST(request: Request) {
       profile = await fetchAndProfile(sourceUrl);
     }
 
-    const client = getClient();
+    // Read optional scope hint (e.g. { region: "Europe", filterField: "continent" })
+    const scopeHint: { region: string; filterField: string } | undefined = body.scopeHint;
 
     // Retrieve lessons from past cases (non-blocking — empty on first run)
     const geoType = profile?.geometryType;
@@ -116,8 +179,8 @@ export async function POST(request: Request) {
     const lessonsBlock = formatLessons(lessons);
 
     // Self-correction loop: generate → validate → retry on errors
-    const messages: Anthropic.Messages.MessageParam[] = [
-      { role: "user", content: buildUserMessage(prompt, profile, sourceUrl) },
+    const messages: ModelMessage[] = [
+      { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint) },
     ];
 
     let manifest: MapManifest | null = null;
@@ -128,25 +191,23 @@ export async function POST(request: Request) {
     let attempts = 0;
 
     for (attempts = 1; attempts <= MAX_ATTEMPTS; attempts++) {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
+      const result = await generateTextWithRetry({
+        model: MODELS.generation(),
+        maxOutputTokens: MAX_TOKENS,
         system: buildSystemPrompt(profile, lessonsBlock),
         messages,
       });
 
-      totalInputTokens += response.usage.input_tokens;
-      totalOutputTokens += response.usage.output_tokens;
+      totalInputTokens += result.usage.inputTokens ?? 0;
+      totalOutputTokens += result.usage.outputTokens ?? 0;
 
-      const textBlock = response.content.find((b) => b.type === "text");
-      if (!textBlock || textBlock.type !== "text") {
+      const responseText = result.text;
+      if (!responseText) {
         return NextResponse.json(
           { error: "No text in AI response" },
           { status: 502 },
         );
       }
-
-      const responseText = textBlock.text;
 
       try {
         manifest = extractJSON(responseText) as MapManifest;
@@ -237,13 +298,21 @@ export async function POST(request: Request) {
       refinements: [],
     }).catch(() => {});
 
+    log("generate.complete", {
+      attempts,
+      qualityScore: quality.total,
+      latencyMs: Date.now() - t0,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+    });
+
     return NextResponse.json({
       manifest,
       validation,
       quality,
       caseId,
       suggestions,
-      model: MODEL,
+      model: "generation",
       attempts,
       usage: {
         inputTokens: totalInputTokens,
@@ -278,7 +347,8 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error("[generate-map] unhandled error:", message, err);
+    log("generate.error", { error: message, attempts: 0, latencyMs: Date.now() - t0 });
+    reportError(err, { route: "generate-map", prompt: prompt?.slice(0, 100) });
     return NextResponse.json(
       { error: "Failed to generate map", detail: message },
       { status: 502 },

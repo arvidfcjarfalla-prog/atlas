@@ -103,7 +103,7 @@ describe("scoreManifest", () => {
 
   it("scores full marks when family matches geometry", () => {
     const score = scoreManifest(fullManifest(), polygonProfile());
-    expect(score.breakdown.familyAppropriateness).toBe(25);
+    expect(score.breakdown.familyAppropriateness).toBe(20);
   });
 
   it("deducts when choropleth used with point data", () => {
@@ -114,14 +114,14 @@ describe("scoreManifest", () => {
 
   it("gives partial score without profile", () => {
     const score = scoreManifest(fullManifest());
-    expect(score.breakdown.familyAppropriateness).toBe(15);
+    expect(score.breakdown.familyAppropriateness).toBe(12);
   });
 
   it("gives full marks for point family with point geometry", () => {
     const manifest = fullManifest();
     (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "point";
     const score = scoreManifest(manifest, pointProfile());
-    expect(score.breakdown.familyAppropriateness).toBe(25);
+    expect(score.breakdown.familyAppropriateness).toBe(20);
   });
 
   // ── Color scheme quality ──
@@ -204,14 +204,14 @@ describe("scoreManifest", () => {
 
   it("gives full legend score with title and type", () => {
     const score = scoreManifest(fullManifest(), polygonProfile());
-    expect(score.breakdown.legendCompleteness).toBe(10);
+    expect(score.breakdown.legendCompleteness).toBe(5);
   });
 
   it("deducts for missing legend title", () => {
     const manifest = fullManifest();
     manifest.layers[0].legend = { title: "", type: "gradient" };
     const score = scoreManifest(manifest, polygonProfile());
-    expect(score.breakdown.legendCompleteness).toBe(5);
+    expect(score.breakdown.legendCompleteness).toBe(2);
   });
 
   it("deducts for missing legend entirely", () => {

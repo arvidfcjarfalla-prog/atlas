@@ -114,7 +114,7 @@ describe("validateSchema", () => {
     const result = validateSchema(manifest);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(
-      'Layer "layer-1": classification classes must be 2–7, got 0'
+      'Layer "layer-1": classification classes must be 2–9, got 0'
     );
   });
 
@@ -129,7 +129,7 @@ describe("validateSchema", () => {
     const result = validateSchema(manifest);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(
-      'Layer "layer-1": classification classes must be 2–7, got 1'
+      'Layer "layer-1": classification classes must be 2–9, got 1'
     );
   });
 
@@ -138,13 +138,13 @@ describe("validateSchema", () => {
       style: {
         markerShape: "circle",
         mapFamily: "choropleth",
-        classification: { method: "quantile", classes: 8 },
+        classification: { method: "quantile", classes: 10 },
       },
     });
     const result = validateSchema(manifest);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain(
-      'Layer "layer-1": classification classes must be 2–7, got 8'
+      'Layer "layer-1": classification classes must be 2–9, got 10'
     );
   });
 

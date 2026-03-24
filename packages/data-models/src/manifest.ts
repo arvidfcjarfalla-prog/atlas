@@ -13,7 +13,10 @@ export type MapFamily =
   | "heatmap"
   | "proportional-symbol"
   | "flow"
-  | "isochrone";
+  | "isochrone"
+  | "extrusion"
+  | "animated-route"
+  | "timeline";
 
 // ─── v2: Travel mode (for isochrone) ────────────────────────
 
@@ -57,13 +60,47 @@ export interface IsochroneConfig {
   origin?: [number, number];
 }
 
+// ─── v2: Extrusion config ────────────────────────────────────
+
+export interface ExtrusionConfig {
+  /** Property driving the extrusion height. */
+  heightField: string;
+  /** Minimum height in meters (default 0). */
+  minHeight?: number;
+  /** Maximum height in meters (default 500000). */
+  maxHeight?: number;
+}
+
+// ─── v2: Animated route config ──────────────────────────────
+
+export interface AnimatedRouteConfig {
+  /** Property with stop order for sorting. */
+  orderField?: string;
+  /** Full animation duration in ms (default 10000). */
+  durationMs?: number;
+  /** Loop the animation (default true). */
+  loop?: boolean;
+}
+
+// ─── v2: Timeline config ────────────────────────────────────
+
+export interface TimelineConfig {
+  /** Property containing the time value (year, date, epoch). */
+  timeField: string;
+  /** Show all features up to current time (default true). */
+  cumulative?: boolean;
+  /** Auto-play speed in ms per step (default 1000). */
+  playSpeed?: number;
+}
+
 // ─── v2: Classification ──────────────────────────────────────
 
 export type ClassificationMethod =
   | "quantile"
   | "equal-interval"
   | "natural-breaks"
-  | "manual";
+  | "manual"
+  | "categorical";
 
 export interface ClassificationConfig {
   method: ClassificationMethod;
@@ -217,16 +254,25 @@ export interface LayerManifest {
   refreshIntervalMs?: number;
   style: LayerStyle;
   attribution?: string;
+  attributionUrl?: string;
   license?: string;
   // v2 fields (all optional)
   geometryType?: GeometryType;
   legend?: LegendConfig;
   interaction?: InteractionConfig;
   performance?: PerformanceConfig;
+  /** MapLibre filter expression applied to all rendered layers (e.g. ["==", ["get", "continent"], "Europe"]). */
+  filter?: unknown[];
   /** Flow-specific configuration. Required when mapFamily is "flow". */
   flow?: FlowConfig;
   /** Isochrone-specific configuration. Required when mapFamily is "isochrone". */
   isochrone?: IsochroneConfig;
+  /** Extrusion-specific configuration. Required when mapFamily is "extrusion". */
+  extrusion?: ExtrusionConfig;
+  /** Animated route configuration. Required when mapFamily is "animated-route". */
+  animatedRoute?: AnimatedRouteConfig;
+  /** Timeline configuration. Required when mapFamily is "timeline". */
+  timeline?: TimelineConfig;
 }
 
 // ─── MapManifest (extended) ──────────────────────────────────

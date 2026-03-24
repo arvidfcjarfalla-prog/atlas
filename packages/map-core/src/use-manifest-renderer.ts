@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
+import maplibregl from "maplibre-gl";
 import type { MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
 import { useMap } from "./use-map";
 import type { LayerManifest } from "@atlas/data-models";
@@ -42,6 +43,7 @@ export function useManifestRenderer({
 }: UseManifestRendererOptions): UseManifestRendererResult {
   const { map, isReady } = useMap();
   const addedRef = useRef(false);
+  const prevCompiledRef = useRef<CompiledLayer | null>(null);
   const onClickRef = useRef(onFeatureClick);
   onClickRef.current = onFeatureClick;
   const onHoverRef = useRef(onFeatureHover);
@@ -58,7 +60,29 @@ export function useManifestRenderer({
 
   // Add source + layers
   useEffect(() => {
-    if (!map || !isReady || !compiled || addedRef.current) return;
+    if (!map || !isReady || !compiled) return;
+
+    // compiled identity changed — clean up previous layers/sources before adding new ones
+    if (prevCompiledRef.current && prevCompiledRef.current !== compiled && addedRef.current) {
+      const prev = prevCompiledRef.current;
+      try {
+        for (let i = prev.layers.length - 1; i >= 0; i--) {
+          const id = prev.layers[i].id;
+          if (map.getLayer(id)) map.removeLayer(id);
+        }
+        if (map.getSource(prev.sourceId)) map.removeSource(prev.sourceId);
+        for (const extraId of Object.keys(prev.extraSources ?? {})) {
+          if (map.getSource(extraId)) map.removeSource(extraId);
+        }
+      } catch {
+        // Map may already be in a bad state
+      }
+      addedRef.current = false;
+    }
+
+    prevCompiledRef.current = compiled;
+
+    if (addedRef.current) return;
 
     try {
       const sourceConfig =
@@ -68,6 +92,12 @@ export function useManifestRenderer({
 
       if (!map.getSource(compiled.sourceId)) {
         map.addSource(compiled.sourceId, sourceConfig);
+      }
+
+      for (const [extraId, extraConfig] of Object.entries(compiled.extraSources ?? {})) {
+        if (!map.getSource(extraId)) {
+          map.addSource(extraId, extraConfig);
+        }
       }
 
       for (const layerSpec of compiled.layers) {
@@ -122,7 +152,79 @@ export function useManifestRenderer({
     if (!interactiveLayerId) return;
 
     const canvas = map.getCanvas();
+    const tooltipFields = layer.interaction?.tooltipFields ?? [];
     let hoveredFeatureId: string | number | null = null;
+    let activePopup: maplibregl.Popup | null = null;
+    let hoverPopup: maplibregl.Popup | null = null;
+
+    /** Format a property value for display. */
+    function formatValue(v: unknown): string {
+      if (v == null) return "–";
+      if (typeof v === "number") {
+        if (!isFinite(v)) return "–";
+        return v >= 1_000_000
+          ? `${(v / 1_000_000).toFixed(1)}M`
+          : v >= 1_000
+            ? `${(v / 1_000).toFixed(1)}k`
+            : v % 1 === 0
+              ? v.toLocaleString()
+              : v.toFixed(2);
+      }
+      return String(v);
+    }
+
+    /** Build HTML for a popup from feature properties + tooltipFields. */
+    function buildPopupHTML(props: Record<string, unknown>, fields: string[]): string {
+      const name = props["name"] ?? props["NAME"] ?? props["title"] ?? "";
+      const rows = fields
+        .filter((f) => f !== "name" && f !== "NAME" && f !== "title" && props[f] != null)
+        .map((f) => {
+          const label = f.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          return `<tr><td style="color:rgba(200,210,225,0.55);padding:1px 8px 1px 0;font-size:11px">${label}</td><td style="color:rgba(240,245,250,0.90);font-size:12px;font-weight:500;text-align:right">${formatValue(props[f])}</td></tr>`;
+        })
+        .join("");
+      return `<div style="font-family:'Geist',system-ui,sans-serif;line-height:1.4">
+        ${name ? `<div style="font-weight:600;font-size:13px;color:rgba(240,245,250,0.95);margin-bottom:${rows ? "6px" : "0"}">${name}</div>` : ""}
+        ${rows ? `<table style="border-collapse:collapse">${rows}</table>` : ""}
+      </div>`;
+    }
+
+    /** Compute the normalized metric value if the layer has normalization config. */
+    function getNormalizedValue(props: Record<string, unknown>): number | null {
+      const norm = layer.style?.normalization;
+      const colorField = layer.style?.colorField;
+      if (!norm || !colorField) return null;
+      const raw = props[colorField];
+      const divisor = props[norm.field];
+      if (typeof raw !== "number" || typeof divisor !== "number" || divisor === 0) return null;
+      return (raw * (norm.multiplier ?? 1)) / divisor;
+    }
+
+    /** Extract a unit suffix from the legend title, e.g. "(%)" → "%", "(USD)" → "USD". */
+    const legendTitle = layer.legend?.title ?? "";
+    const unitMatch = legendTitle.match(/\(([^)]+)\)\s*$/);
+    const unitSuffix = unitMatch ? ` ${unitMatch[1]}` : (legendTitle.toLowerCase().includes("%") ? "%" : "");
+
+    /** Build a short hover label: name + primary metric value + unit. */
+    function buildHoverHTML(props: Record<string, unknown>): string | null {
+      const name = props["name"] ?? props["NAME"] ?? props["title"];
+      if (!name) return null;
+
+      // Prefer the normalized value (e.g. GDP per capita) over the raw field
+      const normalized = getNormalizedValue(props);
+      let metric = "";
+      if (normalized != null) {
+        metric = ` <span style="opacity:0.6;font-weight:400">${formatValue(normalized)}${unitSuffix}</span>`;
+      } else {
+        const metricField = tooltipFields.find(
+          (f) => f !== "name" && f !== "NAME" && f !== "title" && props[f] != null,
+        );
+        if (metricField) {
+          metric = ` <span style="opacity:0.6;font-weight:400">${formatValue(props[metricField])}${unitSuffix}</span>`;
+        }
+      }
+      return `<div style="font-family:'Geist',system-ui,sans-serif;font-size:12px;font-weight:500;color:rgba(240,245,250,0.90)">${name}${metric}</div>`;
+    }
 
     const handleMouseEnter = (e: MapLayerMouseEvent) => {
       canvas.style.cursor = "pointer";
@@ -137,11 +239,82 @@ export function useManifestRenderer({
         );
       }
 
+      // Show hover tooltip (if no click popup is open)
+      if (!activePopup && tooltipFields.length > 0) {
+        const props = (feature.properties ?? {}) as Record<string, unknown>;
+        const html = buildHoverHTML(props);
+        if (html) {
+          hoverPopup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: "atlas-hover-popup",
+            offset: 12,
+          })
+            .setLngLat(e.lngLat)
+            .setHTML(html)
+            .addTo(map);
+        }
+      }
+
       if (onHoverRef.current) {
         onHoverRef.current(
           (feature.properties as Record<string, unknown>) ?? {},
         );
       }
+    };
+
+    const handleMouseMove = (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+
+      // Detect feature change (land → land transition) for polygon layers
+      const newId = feature?.id ?? null;
+      if (newId !== hoveredFeatureId) {
+        // Clear old highlight
+        if (hoveredFeatureId != null) {
+          map.setFeatureState(
+            { source: compiled.sourceId, id: hoveredFeatureId },
+            { hover: false },
+          );
+        }
+        // Set new highlight
+        if (hoverEffect === "highlight" && newId != null) {
+          map.setFeatureState(
+            { source: compiled.sourceId, id: newId },
+            { hover: true },
+          );
+        }
+        hoveredFeatureId = newId;
+
+        // Update hover popup content
+        if (!activePopup && tooltipFields.length > 0 && feature) {
+          const props = (feature.properties ?? {}) as Record<string, unknown>;
+          const html = buildHoverHTML(props);
+          if (html) {
+            if (hoverPopup) {
+              hoverPopup.setHTML(html);
+            } else {
+              hoverPopup = new maplibregl.Popup({
+                closeButton: false,
+                closeOnClick: false,
+                className: "atlas-hover-popup",
+                offset: 12,
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(html)
+                .addTo(map);
+            }
+          }
+        }
+
+        if (onHoverRef.current) {
+          onHoverRef.current(
+            feature ? ((feature.properties as Record<string, unknown>) ?? {}) : null,
+          );
+        }
+      }
+
+      // Always update popup position
+      if (hoverPopup) hoverPopup.setLngLat(e.lngLat);
     };
 
     const handleMouseLeave = () => {
@@ -153,6 +326,7 @@ export function useManifestRenderer({
         );
         hoveredFeatureId = null;
       }
+      if (hoverPopup) { hoverPopup.remove(); hoverPopup = null; }
       onHoverRef.current?.(null);
     };
 
@@ -169,19 +343,41 @@ export function useManifestRenderer({
         });
       }
 
+      // Show click popup with full details
+      if (clickBehavior === "popup" && tooltipFields.length > 0) {
+        if (hoverPopup) { hoverPopup.remove(); hoverPopup = null; }
+        if (activePopup) { activePopup.remove(); activePopup = null; }
+
+        const props = (feature.properties ?? {}) as Record<string, unknown>;
+        activePopup = new maplibregl.Popup({
+          closeButton: true,
+          maxWidth: "280px",
+          className: "atlas-click-popup",
+          offset: 14,
+        })
+          .setLngLat(e.lngLat)
+          .setHTML(buildPopupHTML(props, tooltipFields))
+          .addTo(map);
+        activePopup.on("close", () => { activePopup = null; });
+      }
+
       onClickRef.current?.(
         (feature.properties as Record<string, unknown>) ?? {},
       );
     };
 
     map.on("mouseenter", interactiveLayerId, handleMouseEnter);
+    map.on("mousemove", interactiveLayerId, handleMouseMove);
     map.on("mouseleave", interactiveLayerId, handleMouseLeave);
     map.on("click", interactiveLayerId, handleClick);
 
     return () => {
       map.off("mouseenter", interactiveLayerId, handleMouseEnter);
+      map.off("mousemove", interactiveLayerId, handleMouseMove);
       map.off("mouseleave", interactiveLayerId, handleMouseLeave);
       map.off("click", interactiveLayerId, handleClick);
+      if (activePopup) activePopup.remove();
+      if (hoverPopup) hoverPopup.remove();
     };
   }, [map, isReady, compiled, layer.interaction]);
 
@@ -197,6 +393,9 @@ export function useManifestRenderer({
         }
         if (map.getSource(compiled.sourceId)) {
           map.removeSource(compiled.sourceId);
+        }
+        for (const extraId of Object.keys(compiled.extraSources ?? {})) {
+          if (map.getSource(extraId)) map.removeSource(extraId);
         }
       } catch {
         // Map may already be destroyed

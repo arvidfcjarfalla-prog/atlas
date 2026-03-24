@@ -1,4 +1,4 @@
-import type { MapManifest, ManifestValidation, ColorScheme, TravelMode } from "@atlas/data-models";
+import type { MapManifest, ManifestValidation, ColorScheme, TravelMode, ClassificationMethod } from "@atlas/data-models";
 
 const VALID_SCHEMES: ColorScheme[] = [
   "viridis", "magma", "plasma", "inferno", "cividis",
@@ -9,6 +9,10 @@ const VALID_SCHEMES: ColorScheme[] = [
 
 const VALID_TRAVEL_MODES: TravelMode[] = [
   "driving", "walking", "cycling", "transit",
+];
+
+const VALID_CLASSIFICATION_METHODS: ClassificationMethod[] = [
+  "quantile", "equal-interval", "natural-breaks", "manual", "categorical",
 ];
 
 /** Structural schema validation — required fields, value ranges, known enums. */
@@ -40,12 +44,23 @@ export function validateSchema(manifest: MapManifest): ManifestValidation {
       continue;
     }
 
-    // Classification classes must be 2–7
+    // Classification method must be known
+    const method = layer.style.classification?.method;
+    if (method && !VALID_CLASSIFICATION_METHODS.includes(method)) {
+      errors.push(`Layer "${layer.id}": unknown classification method "${method}"`);
+    }
+
+    // Classification classes must be 2–9
     const classes = layer.style.classification?.classes;
-    if (classes !== undefined && (classes < 2 || classes > 7)) {
+    if (classes !== undefined && (classes < 2 || classes > 9)) {
       errors.push(
-        `Layer "${layer.id}": classification classes must be 2–7, got ${classes}`,
+        `Layer "${layer.id}": classification classes must be 2–9, got ${classes}`,
       );
+    }
+
+    // Filter must be an array if present
+    if (layer.filter !== undefined && !Array.isArray(layer.filter)) {
+      errors.push(`Layer "${layer.id}": filter must be a MapLibre filter expression array`);
     }
 
     // Color scheme must be known
@@ -114,6 +129,31 @@ export function validateSchema(manifest: MapManifest): ManifestValidation {
         ) {
           errors.push(`Layer "${layer.id}": isochrone.unit must be "minutes" or "kilometers"`);
         }
+      }
+    }
+
+    // Extrusion: required fields
+    if (family === "extrusion") {
+      if (layer.extrusion && !layer.extrusion.heightField) {
+        errors.push(`Layer "${layer.id}": extrusion.heightField is required`);
+      } else if (!layer.extrusion?.heightField && !layer.style.sizeField && !layer.style.colorField) {
+        warnings.push(`Layer "${layer.id}": extrusion works best with extrusion.heightField set`);
+      }
+    }
+
+    // Animated-route: required fields
+    if (family === "animated-route") {
+      if (!layer.animatedRoute) {
+        warnings.push(`Layer "${layer.id}": animated-route family works best with an animatedRoute config`);
+      } else if (layer.animatedRoute.durationMs !== undefined && (typeof layer.animatedRoute.durationMs !== "number" || layer.animatedRoute.durationMs <= 0)) {
+        errors.push(`Layer "${layer.id}": animatedRoute.durationMs must be a positive number`);
+      }
+    }
+
+    // Timeline: required fields
+    if (family === "timeline") {
+      if (!layer.timeline?.timeField) {
+        errors.push(`Layer "${layer.id}": timeline family requires timeline.timeField`);
       }
     }
   }

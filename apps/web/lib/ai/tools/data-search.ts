@@ -6,19 +6,22 @@
  * that match the user's prompt.
  *
  * Two-layer cache:
- *   L1: In-memory Map (1 hour TTL, instant)
- *   L2: File-based (.next/cache/atlas-data/, 24 hour TTL, survives restart)
+ *   L1: In-memory Map (1 hour TTL, instant, volatile on serverless)
+ *   L2: Supabase data_cache table (24 hour TTL, survives cold starts)
  *
  * Supported sources:
  * - World Bank API (population, GDP, HDI, etc.)
  * - Direct GeoJSON URLs
  */
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { MODELS } from "../ai-client";
 import { profileDataset } from "../profiler";
+import { getServiceClient } from "../../supabase/service";
 import type { DatasetProfile } from "../types";
+import type { Json } from "../../supabase/types";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -33,6 +36,8 @@ export interface DataSearchResult {
   cacheKey?: string;
   profile?: DatasetProfile;
   error?: string;
+  /** Translated prompt (used by web research, Data Commons, Eurostat). */
+  englishPrompt?: string;
 }
 
 // ─── Cache ──────────────────────────────────────────────────
@@ -47,57 +52,63 @@ export interface CacheEntry {
   resolutionStatus?: "map_ready" | "tabular_only";
 }
 
-// L1: In-memory cache (fast, volatile)
+// L1: In-memory cache (fast, volatile — survives within a single lambda invocation)
 const memoryCache = new Map<string, CacheEntry>();
 const MEMORY_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// L2: File cache (slower, persistent across restarts)
-const FILE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const CACHE_DIR = join(process.cwd(), ".next", "cache", "atlas-data");
-let cacheDirReady = false;
+// L2: Supabase data_cache table (durable — survives serverless cold starts)
+const DB_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-/** Sanitize cache key for use as filename. */
-function toFileName(key: string): string {
-  return key.replace(/[^a-zA-Z0-9_-]/g, "_") + ".json";
-}
-
-async function ensureCacheDir(): Promise<void> {
-  if (cacheDirReady) return;
+async function readDbCache(key: string): Promise<CacheEntry | null> {
+  const client = getServiceClient();
+  if (!client) return null;
   try {
-    await mkdir(CACHE_DIR, { recursive: true });
-    cacheDirReady = true;
-  } catch {
-    // Directory might already exist or be unwritable
-  }
-}
-
-async function readFileCache(key: string): Promise<CacheEntry | null> {
-  try {
-    await ensureCacheDir();
-    const filePath = join(CACHE_DIR, toFileName(key));
-    const raw = await readFile(filePath, "utf-8");
-    const entry = JSON.parse(raw) as CacheEntry;
-    if (Date.now() - entry.timestamp > FILE_TTL_MS) {
-      return null; // Expired
-    }
-    return entry;
+    const { data, error } = await client
+      .from("data_cache")
+      .select("data, profile, source, description, resolution_status, created_at, expires_at")
+      .eq("cache_key", key)
+      .maybeSingle();
+    if (error || !data) return null;
+    // Check expiry
+    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
+    // Check age-based TTL for entries without explicit expiry
+    if (!data.expires_at && Date.now() - new Date(data.created_at).getTime() > DB_TTL_MS) return null;
+    return {
+      data: data.data as unknown as GeoJSON.FeatureCollection,
+      profile: data.profile as unknown as DatasetProfile,
+      source: data.source,
+      description: data.description,
+      timestamp: new Date(data.created_at).getTime(),
+      resolutionStatus: data.resolution_status as CacheEntry["resolutionStatus"],
+    };
   } catch {
     return null;
   }
 }
 
-async function writeFileCache(key: string, entry: CacheEntry): Promise<void> {
+async function writeDbCache(key: string, entry: CacheEntry): Promise<void> {
+  const client = getServiceClient();
+  if (!client) return;
   try {
-    await ensureCacheDir();
-    const filePath = join(CACHE_DIR, toFileName(key));
-    await writeFile(filePath, JSON.stringify(entry));
+    await client.from("data_cache").upsert(
+      {
+        cache_key: key,
+        data: entry.data as unknown as Json,
+        profile: entry.profile as unknown as Json,
+        source: entry.source,
+        description: entry.description,
+        resolution_status: entry.resolutionStatus ?? null,
+        expires_at: null, // Uses age-based TTL
+      },
+      { onConflict: "cache_key" },
+    );
   } catch {
-    // File write failed — non-critical, memory cache still works
+    // Non-critical — in-memory cache still works for this invocation
   }
 }
 
 /**
- * Get cached data by key. Checks L1 (memory) then L2 (file).
+ * Get cached data by key. Checks L1 (memory) then L2 (Supabase).
  * On L2 hit, promotes to L1 for faster subsequent access.
  */
 export async function getCachedData(key: string): Promise<CacheEntry | null> {
@@ -111,12 +122,12 @@ export async function getCachedData(key: string): Promise<CacheEntry | null> {
     }
   }
 
-  // L2: file
-  const fileEntry = await readFileCache(key);
-  if (fileEntry) {
+  // L2: Supabase
+  const dbEntry = await readDbCache(key);
+  if (dbEntry) {
     // Promote to L1
-    memoryCache.set(key, fileEntry);
-    return fileEntry;
+    memoryCache.set(key, dbEntry);
+    return dbEntry;
   }
 
   return null;
@@ -124,7 +135,7 @@ export async function getCachedData(key: string): Promise<CacheEntry | null> {
 
 /**
  * Synchronous L1-only cache check (used by the /api/geo/cached/[key] route
- * for fast serving without async overhead).
+ * for fast serving without async overhead when the entry is already in memory).
  */
 export function getCachedDataSync(key: string): CacheEntry | null {
   const entry = memoryCache.get(key);
@@ -136,17 +147,62 @@ export function getCachedDataSync(key: string): CacheEntry | null {
   return entry;
 }
 
-/** Write to both L1 and L2. */
+/** Write to both L1 (memory) and L2 (Supabase). */
 export async function setCache(key: string, entry: CacheEntry): Promise<void> {
   memoryCache.set(key, entry);
-  await writeFileCache(key, entry);
+  await writeDbCache(key, entry);
 }
 
 // ─── World Bank API ─────────────────────────────────────────
 
 const COUNTRIES_GEO_FILE = "geo/global/admin0_110m.geojson";
 const WB_AI_TIMEOUT_MS = 2_500;
-const WB_INTENT_MODEL = "claude-haiku-4-5-20251001";
+
+/** ISO 3166-1 alpha-3 → continent mapping for World Bank data filtering. */
+const ISO_TO_CONTINENT: Record<string, string> = {
+  // Europe
+  ALB:"Europe",AND:"Europe",AUT:"Europe",BLR:"Europe",BEL:"Europe",BIH:"Europe",
+  BGR:"Europe",HRV:"Europe",CYP:"Europe",CZE:"Europe",DNK:"Europe",EST:"Europe",
+  FIN:"Europe",FRA:"Europe",DEU:"Europe",GRC:"Europe",HUN:"Europe",ISL:"Europe",
+  IRL:"Europe",ITA:"Europe",XKX:"Europe",LVA:"Europe",LIE:"Europe",LTU:"Europe",
+  LUX:"Europe",MLT:"Europe",MDA:"Europe",MCO:"Europe",MNE:"Europe",NLD:"Europe",
+  MKD:"Europe",NOR:"Europe",POL:"Europe",PRT:"Europe",ROU:"Europe",RUS:"Europe",
+  SMR:"Europe",SRB:"Europe",SVK:"Europe",SVN:"Europe",ESP:"Europe",SWE:"Europe",
+  CHE:"Europe",UKR:"Europe",GBR:"Europe",VAT:"Europe",
+  // Africa
+  DZA:"Africa",AGO:"Africa",BEN:"Africa",BWA:"Africa",BFA:"Africa",BDI:"Africa",
+  CPV:"Africa",CMR:"Africa",CAF:"Africa",TCD:"Africa",COM:"Africa",COG:"Africa",
+  COD:"Africa",CIV:"Africa",DJI:"Africa",EGY:"Africa",GNQ:"Africa",ERI:"Africa",
+  SWZ:"Africa",ETH:"Africa",GAB:"Africa",GMB:"Africa",GHA:"Africa",GIN:"Africa",
+  GNB:"Africa",KEN:"Africa",LSO:"Africa",LBR:"Africa",LBY:"Africa",MDG:"Africa",
+  MWI:"Africa",MLI:"Africa",MRT:"Africa",MUS:"Africa",MAR:"Africa",MOZ:"Africa",
+  NAM:"Africa",NER:"Africa",NGA:"Africa",RWA:"Africa",STP:"Africa",SEN:"Africa",
+  SYC:"Africa",SLE:"Africa",SOM:"Africa",ZAF:"Africa",SSD:"Africa",SDN:"Africa",
+  TZA:"Africa",TGO:"Africa",TUN:"Africa",UGA:"Africa",ZMB:"Africa",ZWE:"Africa",
+  // Asia
+  AFG:"Asia",ARM:"Asia",AZE:"Asia",BHR:"Asia",BGD:"Asia",BTN:"Asia",BRN:"Asia",
+  KHM:"Asia",CHN:"Asia",GEO:"Asia",IND:"Asia",IDN:"Asia",IRN:"Asia",IRQ:"Asia",
+  ISR:"Asia",JPN:"Asia",JOR:"Asia",KAZ:"Asia",KWT:"Asia",KGZ:"Asia",LAO:"Asia",
+  LBN:"Asia",MYS:"Asia",MDV:"Asia",MNG:"Asia",MMR:"Asia",NPL:"Asia",PRK:"Asia",
+  OMN:"Asia",PAK:"Asia",PSE:"Asia",PHL:"Asia",QAT:"Asia",SAU:"Asia",SGP:"Asia",
+  KOR:"Asia",LKA:"Asia",SYR:"Asia",TWN:"Asia",TJK:"Asia",THA:"Asia",TLS:"Asia",
+  TUR:"Asia",TKM:"Asia",ARE:"Asia",UZB:"Asia",VNM:"Asia",YEM:"Asia",
+  // North America
+  ATG:"North America",BHS:"North America",BRB:"North America",BLZ:"North America",
+  CAN:"North America",CRI:"North America",CUB:"North America",DMA:"North America",
+  DOM:"North America",SLV:"North America",GRD:"North America",GTM:"North America",
+  HTI:"North America",HND:"North America",JAM:"North America",MEX:"North America",
+  NIC:"North America",PAN:"North America",KNA:"North America",LCA:"North America",
+  VCT:"North America",TTO:"North America",USA:"North America",
+  // South America
+  ARG:"South America",BOL:"South America",BRA:"South America",CHL:"South America",
+  COL:"South America",ECU:"South America",GUY:"South America",PRY:"South America",
+  PER:"South America",SUR:"South America",URY:"South America",VEN:"South America",
+  // Oceania
+  AUS:"Oceania",FJI:"Oceania",KIR:"Oceania",MHL:"Oceania",FSM:"Oceania",
+  NRU:"Oceania",NZL:"Oceania",PLW:"Oceania",PNG:"Oceania",WSM:"Oceania",
+  SLB:"Oceania",TON:"Oceania",TUV:"Oceania",VUT:"Oceania",
+};
 
 let countriesGeoCache: GeoJSON.FeatureCollection | null = null;
 
@@ -170,29 +226,181 @@ async function loadCountryGeometry(): Promise<GeoJSON.FeatureCollection | null> 
  * Known World Bank indicator codes.
  */
 const WORLD_BANK_INDICATORS: Record<string, { code: string; label: string; unit: string }> = {
+  // ── Population & demographics ─────────────────────────────
   population: { code: "SP.POP.TOTL", label: "Total Population", unit: "people" },
   befolkning: { code: "SP.POP.TOTL", label: "Total Population", unit: "people" },
+  "population growth": { code: "SP.POP.GROW", label: "Population Growth Rate", unit: "% annual" },
+  befolkningstillväxt: { code: "SP.POP.GROW", label: "Population Growth Rate", unit: "% annual" },
+  "population density": { code: "EN.POP.DNST", label: "Population Density", unit: "people per sq. km" },
+  befolkningstäthet: { code: "EN.POP.DNST", label: "Population Density", unit: "people per sq. km" },
+  "urban population": { code: "SP.URB.TOTL.IN.ZS", label: "Urban Population", unit: "% of total" },
+  "birth rate": { code: "SP.DYN.CBRT.IN", label: "Birth Rate", unit: "per 1,000 people" },
+  födelsetal: { code: "SP.DYN.CBRT.IN", label: "Birth Rate", unit: "per 1,000 people" },
+  "death rate": { code: "SP.DYN.CDRT.IN", label: "Crude Death Rate", unit: "per 1,000 people" },
+  dödstal: { code: "SP.DYN.CDRT.IN", label: "Crude Death Rate", unit: "per 1,000 people" },
+  fertility: { code: "SP.DYN.TFRT.IN", label: "Fertility Rate", unit: "births per woman" },
+  fertilitet: { code: "SP.DYN.TFRT.IN", label: "Fertility Rate", unit: "births per woman" },
+  refugee: { code: "SM.POP.REFG", label: "Refugee Population", unit: "people" },
+  flyktingar: { code: "SM.POP.REFG", label: "Refugee Population", unit: "people" },
+  migration: { code: "SM.POP.NETM", label: "Net Migration", unit: "people" },
+
+  // ── Economy ───────────────────────────────────────────────
   gdp: { code: "NY.GDP.MKTP.CD", label: "GDP (current US$)", unit: "USD" },
   bnp: { code: "NY.GDP.MKTP.CD", label: "GDP (current US$)", unit: "USD" },
   "gdp per capita": { code: "NY.GDP.PCAP.CD", label: "GDP per capita (current US$)", unit: "USD" },
   "bnp per capita": { code: "NY.GDP.PCAP.CD", label: "GDP per capita (current US$)", unit: "USD" },
-  "life expectancy": { code: "SP.DYN.LE00.IN", label: "Life Expectancy at Birth", unit: "years" },
-  livslängd: { code: "SP.DYN.LE00.IN", label: "Life Expectancy at Birth", unit: "years" },
-  "co2": { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
-  "co2 emissions": { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
-  literacy: { code: "SE.ADT.LITR.ZS", label: "Literacy Rate", unit: "%" },
   unemployment: { code: "SL.UEM.TOTL.ZS", label: "Unemployment Rate", unit: "%" },
   arbetslöshet: { code: "SL.UEM.TOTL.ZS", label: "Unemployment Rate", unit: "%" },
+  inflation: { code: "FP.CPI.TOTL.ZG", label: "Inflation (Consumer Prices)", unit: "% annual" },
+  poverty: { code: "SI.POV.DDAY", label: "Poverty Headcount ($2.15/day)", unit: "% of population" },
+  fattigdom: { code: "SI.POV.DDAY", label: "Poverty Headcount ($2.15/day)", unit: "% of population" },
+  gini: { code: "SI.POV.GINI", label: "Gini Index", unit: "index" },
+  inequality: { code: "SI.POV.GINI", label: "Gini Index", unit: "index" },
+  ojämlikhet: { code: "SI.POV.GINI", label: "Gini Index", unit: "index" },
+  trade: { code: "NE.TRD.GNFS.ZS", label: "Trade (% of GDP)", unit: "% of GDP" },
+  handel: { code: "NE.TRD.GNFS.ZS", label: "Trade (% of GDP)", unit: "% of GDP" },
+
+  // ── Health ────────────────────────────────────────────────
+  "life expectancy": { code: "SP.DYN.LE00.IN", label: "Life Expectancy at Birth", unit: "years" },
+  livslängd: { code: "SP.DYN.LE00.IN", label: "Life Expectancy at Birth", unit: "years" },
+  medellivslängd: { code: "SP.DYN.LE00.IN", label: "Life Expectancy at Birth", unit: "years" },
   "infant mortality": { code: "SP.DYN.IMRT.IN", label: "Infant Mortality Rate", unit: "per 1,000 live births" },
-  fertility: { code: "SP.DYN.TFRT.IN", label: "Fertility Rate", unit: "births per woman" },
-  "internet users": { code: "IT.NET.USER.ZS", label: "Internet Users", unit: "% of population" },
-  internet: { code: "IT.NET.USER.ZS", label: "Internet Users", unit: "% of population" },
+  spädbarnsdödlighet: { code: "SP.DYN.IMRT.IN", label: "Infant Mortality Rate", unit: "per 1,000 live births" },
+  "child mortality": { code: "SH.DYN.MORT", label: "Under-5 Mortality Rate", unit: "per 1,000 live births" },
+  barnmortalitet: { code: "SH.DYN.MORT", label: "Under-5 Mortality Rate", unit: "per 1,000 live births" },
+  "maternal mortality": { code: "SH.STA.MMRT", label: "Maternal Mortality Ratio", unit: "per 100,000 live births" },
+  mödradödlighet: { code: "SH.STA.MMRT", label: "Maternal Mortality Ratio", unit: "per 100,000 live births" },
+  "healthcare spending": { code: "SH.XPD.CHEX.GD.ZS", label: "Healthcare Expenditure (% of GDP)", unit: "% of GDP" },
+  sjukvårdskostnad: { code: "SH.XPD.CHEX.GD.ZS", label: "Healthcare Expenditure (% of GDP)", unit: "% of GDP" },
+
+  // ── Education ─────────────────────────────────────────────
+  literacy: { code: "SE.ADT.LITR.ZS", label: "Literacy Rate", unit: "%" },
+  "education spending": { code: "SE.XPD.TOTL.GD.ZS", label: "Education Expenditure (% of GDP)", unit: "% of GDP" },
+  utbildningskostnad: { code: "SE.XPD.TOTL.GD.ZS", label: "Education Expenditure (% of GDP)", unit: "% of GDP" },
+  "school enrollment": { code: "SE.PRM.ENRR", label: "Primary School Enrollment", unit: "% gross" },
+
+  // ── Military ──────────────────────────────────────────────
+  "military spending": { code: "MS.MIL.XPND.GD.ZS", label: "Military Expenditure (% of GDP)", unit: "% of GDP" },
+  militärutgifter: { code: "MS.MIL.XPND.GD.ZS", label: "Military Expenditure (% of GDP)", unit: "% of GDP" },
+  "military expenditure": { code: "MS.MIL.XPND.GD.ZS", label: "Military Expenditure (% of GDP)", unit: "% of GDP" },
+
+  // ── Environment ───────────────────────────────────────────
+  co2: { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
+  "co2 emissions": { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
+  "co2 per capita": { code: "EN.ATM.CO2E.PC", label: "CO2 Emissions Per Capita", unit: "metric tons" },
   "renewable energy": { code: "EG.FEC.RNEW.ZS", label: "Renewable Energy Consumption", unit: "% of total" },
+  "förnybar energi": { code: "EG.FEC.RNEW.ZS", label: "Renewable Energy Consumption", unit: "% of total" },
   "forest area": { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
   skogsareal: { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
   skogsyta: { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
-  "urban population": { code: "SP.URB.TOTL.IN.ZS", label: "Urban Population", unit: "% of total" },
+  "access to electricity": { code: "EG.ELC.ACCS.ZS", label: "Access to Electricity", unit: "% of population" },
+  "clean water": { code: "SH.H2O.SMDW.ZS", label: "Access to Clean Water", unit: "% of population" },
+  "drinking water": { code: "SH.H2O.SMDW.ZS", label: "Access to Clean Water", unit: "% of population" },
+  sanitation: { code: "SH.STA.SMSS.ZS", label: "Access to Sanitation", unit: "% of population" },
+  "air pollution": { code: "EN.ATM.PM25.MC.M3", label: "PM2.5 Air Pollution", unit: "µg/m³" },
+  luftföroreningar: { code: "EN.ATM.PM25.MC.M3", label: "PM2.5 Air Pollution", unit: "µg/m³" },
+
+  // ── Technology ────────────────────────────────────────────
+  "internet users": { code: "IT.NET.USER.ZS", label: "Internet Users", unit: "% of population" },
+  internet: { code: "IT.NET.USER.ZS", label: "Internet Users", unit: "% of population" },
+  "mobile phone": { code: "IT.CEL.SETS.P2", label: "Mobile Phone Subscriptions", unit: "per 100 people" },
+  mobiltelefon: { code: "IT.CEL.SETS.P2", label: "Mobile Phone Subscriptions", unit: "per 100 people" },
+
+  // ── Composite indexes ─────────────────────────────────────
   hdi: { code: "HD.HCI.OVRL", label: "Human Capital Index", unit: "index" },
+
+  // ── Water & sanitation ──────────────────────────────────────
+  "water stress": { code: "ER.H2O.FWST.ZS", label: "Water Stress", unit: "% of renewable resources" },
+  vattenstress: { code: "ER.H2O.FWST.ZS", label: "Water Stress", unit: "% of renewable resources" },
+  "water withdrawal": { code: "ER.H2O.FWTL.ZS", label: "Annual Freshwater Withdrawals", unit: "% of internal resources" },
+
+  // ── Energy ──────────────────────────────────────────────────
+  "energy use": { code: "EG.USE.PCAP.KG.OE", label: "Energy Use Per Capita", unit: "kg of oil equivalent" },
+  energianvändning: { code: "EG.USE.PCAP.KG.OE", label: "Energy Use Per Capita", unit: "kg of oil equivalent" },
+  "electric power": { code: "EG.USE.ELEC.KH.PC", label: "Electric Power Consumption Per Capita", unit: "kWh" },
+  "electricity consumption": { code: "EG.USE.ELEC.KH.PC", label: "Electric Power Consumption Per Capita", unit: "kWh" },
+  elanvändning: { code: "EG.USE.ELEC.KH.PC", label: "Electric Power Consumption Per Capita", unit: "kWh" },
+  "fossil fuel": { code: "EG.USE.COMM.FO.ZS", label: "Fossil Fuel Energy Consumption", unit: "% of total" },
+  "nuclear energy": { code: "EG.ELC.NUCL.ZS", label: "Nuclear Energy (% of electricity)", unit: "%" },
+  kärnkraft: { code: "EG.ELC.NUCL.ZS", label: "Nuclear Energy (% of electricity)", unit: "%" },
+
+  // ── Agriculture ─────────────────────────────────────────────
+  "arable land": { code: "AG.LND.ARBL.ZS", label: "Arable Land", unit: "% of land area" },
+  åkermark: { code: "AG.LND.ARBL.ZS", label: "Arable Land", unit: "% of land area" },
+  "agricultural land": { code: "AG.LND.AGRI.ZS", label: "Agricultural Land", unit: "% of land area" },
+  jordbruksmark: { code: "AG.LND.AGRI.ZS", label: "Agricultural Land", unit: "% of land area" },
+  "cereal yield": { code: "AG.YLD.CREL.KG", label: "Cereal Yield", unit: "kg per hectare" },
+  "food production": { code: "AG.PRD.FOOD.XD", label: "Food Production Index", unit: "index (2014-2016=100)" },
+  livsmedelsproduktion: { code: "AG.PRD.FOOD.XD", label: "Food Production Index", unit: "index (2014-2016=100)" },
+
+  // ── Health (extended) ───────────────────────────────────────
+  vaccination: { code: "SH.IMM.MEAS", label: "Measles Immunization", unit: "% of children (12-23 months)" },
+  immunization: { code: "SH.IMM.MEAS", label: "Measles Immunization", unit: "% of children (12-23 months)" },
+  vaccinering: { code: "SH.IMM.MEAS", label: "Measles Immunization", unit: "% of children (12-23 months)" },
+  "hospital beds": { code: "SH.MED.BEDS.ZS", label: "Hospital Beds", unit: "per 1,000 people" },
+  sjukhussängar: { code: "SH.MED.BEDS.ZS", label: "Hospital Beds", unit: "per 1,000 people" },
+  physicians: { code: "SH.MED.PHYS.ZS", label: "Physicians", unit: "per 1,000 people" },
+  läkartäthet: { code: "SH.MED.PHYS.ZS", label: "Physicians", unit: "per 1,000 people" },
+  nurses: { code: "SH.MED.NUMW.P3", label: "Nurses and Midwives", unit: "per 1,000 people" },
+  tuberculosis: { code: "SH.TBS.INCD", label: "Tuberculosis Incidence", unit: "per 100,000 people" },
+  tuberkulos: { code: "SH.TBS.INCD", label: "Tuberculosis Incidence", unit: "per 100,000 people" },
+  hiv: { code: "SH.DYN.AIDS.ZS", label: "HIV Prevalence", unit: "% of population (15-49)" },
+  malaria: { code: "SH.STA.MALR", label: "Malaria Incidence", unit: "per 1,000 at-risk population" },
+  obesity: { code: "SH.STA.OWAD.ZS", label: "Obesity Prevalence", unit: "% of adults" },
+  fetma: { code: "SH.STA.OWAD.ZS", label: "Obesity Prevalence", unit: "% of adults" },
+  smoking: { code: "SH.PRV.SMOK", label: "Smoking Prevalence", unit: "% of adults" },
+  rökning: { code: "SH.PRV.SMOK", label: "Smoking Prevalence", unit: "% of adults" },
+  suicide: { code: "SH.STA.SUIC.P5", label: "Suicide Mortality Rate", unit: "per 100,000 population" },
+  självmord: { code: "SH.STA.SUIC.P5", label: "Suicide Mortality Rate", unit: "per 100,000 population" },
+
+  // ── Education (extended) ────────────────────────────────────
+  "secondary enrollment": { code: "SE.SEC.ENRR", label: "Secondary School Enrollment", unit: "% gross" },
+  "tertiary enrollment": { code: "SE.TER.ENRR", label: "Tertiary Education Enrollment", unit: "% gross" },
+  "research spending": { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  "r&d spending": { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  "r&d": { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  "r&d expenditure": { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  "research and development": { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  forskning: { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+  forskningsutgifter: { code: "GB.XPD.RSDV.GD.ZS", label: "R&D Expenditure", unit: "% of GDP" },
+
+  // ── Economy (extended) ──────────────────────────────────────
+  "gdp growth": { code: "NY.GDP.MKTP.KD.ZG", label: "GDP Growth Rate", unit: "% annual" },
+  "bnp-tillväxt": { code: "NY.GDP.MKTP.KD.ZG", label: "GDP Growth Rate", unit: "% annual" },
+  "foreign investment": { code: "BX.KLT.DINV.WD.GD.ZS", label: "Foreign Direct Investment", unit: "% of GDP" },
+  "government debt": { code: "GC.DOD.TOTL.GD.ZS", label: "Government Debt", unit: "% of GDP" },
+  statsskuld: { code: "GC.DOD.TOTL.GD.ZS", label: "Government Debt", unit: "% of GDP" },
+  "tax revenue": { code: "GC.TAX.TOTL.GD.ZS", label: "Tax Revenue", unit: "% of GDP" },
+  skatteinkomster: { code: "GC.TAX.TOTL.GD.ZS", label: "Tax Revenue", unit: "% of GDP" },
+  remittances: { code: "BX.TRF.PWKR.DT.GD.ZS", label: "Personal Remittances Received", unit: "% of GDP" },
+  exports: { code: "NE.EXP.GNFS.ZS", label: "Exports of Goods and Services", unit: "% of GDP" },
+  export: { code: "NE.EXP.GNFS.ZS", label: "Exports of Goods and Services", unit: "% of GDP" },
+  imports: { code: "NE.IMP.GNFS.ZS", label: "Imports of Goods and Services", unit: "% of GDP" },
+  "current account": { code: "BN.CAB.XOKA.GD.ZS", label: "Current Account Balance", unit: "% of GDP" },
+  tourism: { code: "ST.INT.ARVL", label: "International Tourism Arrivals", unit: "number of arrivals" },
+  turism: { code: "ST.INT.ARVL", label: "International Tourism Arrivals", unit: "number of arrivals" },
+
+  // ── Gender & social ─────────────────────────────────────────
+  "female labor": { code: "SL.TLF.CACT.FE.ZS", label: "Female Labor Force Participation", unit: "% of female population 15+" },
+  "child labor": { code: "SL.TLF.0714.ZS", label: "Child Labor", unit: "% of children 7-14" },
+  barnarbete: { code: "SL.TLF.0714.ZS", label: "Child Labor", unit: "% of children 7-14" },
+  "women in parliament": { code: "SG.GEN.PARL.ZS", label: "Women in Parliament", unit: "% of seats" },
+
+  // ── Infrastructure ──────────────────────────────────────────
+  "road density": { code: "IS.ROD.DNST.K2", label: "Road Density", unit: "km per 100 sq. km" },
+  "rail lines": { code: "IS.RRS.TOTL.KM", label: "Rail Lines", unit: "total km" },
+  järnväg: { code: "IS.RRS.TOTL.KM", label: "Rail Lines", unit: "total km" },
+  "air transport": { code: "IS.AIR.PSGR", label: "Air Transport Passengers", unit: "passengers" },
+  flygtrafik: { code: "IS.AIR.PSGR", label: "Air Transport Passengers", unit: "passengers" },
+
+  // ── Environment (extended) ──────────────────────────────────
+  "greenhouse gas": { code: "EN.ATM.GHGT.KT.CE", label: "Total Greenhouse Gas Emissions", unit: "kt CO2 equivalent" },
+  växthusgaser: { code: "EN.ATM.GHGT.KT.CE", label: "Total Greenhouse Gas Emissions", unit: "kt CO2 equivalent" },
+  "protected areas": { code: "ER.LND.PTLD.ZS", label: "Terrestrial Protected Areas", unit: "% of land area" },
+  naturskyddat: { code: "ER.LND.PTLD.ZS", label: "Terrestrial Protected Areas", unit: "% of land area" },
+  "marine protected": { code: "ER.MRN.PTMR.ZS", label: "Marine Protected Areas", unit: "% of territorial waters" },
+  deforestation: { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
+  avskogning: { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
 };
 
 /**
@@ -238,6 +446,8 @@ const WB_INDICATOR_DESCRIPTIONS = [...new Set(
 interface WBIntentResult {
   isCountryLevel: boolean;
   indicatorKey: string | null;
+  indicatorCode: string | null;
+  indicatorLabel: string | null;
   englishPrompt: string;
 }
 
@@ -247,40 +457,36 @@ Reply with a single JSON object:
 {
   "isCountryLevel": true/false,
   "indicatorKey": "key" or null,
+  "indicatorCode": "XX.XXX.XXX" or null,
+  "indicatorLabel": "human-readable label" or null,
   "englishPrompt": "translated prompt"
 }
 
 Rules:
 - isCountryLevel: true if the user wants data compared ACROSS countries (not subnational like states/provinces).
-- indicatorKey: pick the best match from the list below. null if none match.
+- indicatorKey: pick the best match from the curated list below. null if none match.
+- indicatorCode: if indicatorKey is null, provide a World Bank API indicator code from your knowledge (e.g. "SH.TBS.INCD", "EN.ATM.CO2E.PC"). null if you cannot determine one.
+- indicatorLabel: human-readable label for indicatorCode (e.g. "Tuberculosis incidence per 100k"). null if indicatorCode is null.
 - englishPrompt: translate the prompt to concise English (max 15 words).
 
-Available indicators:
+Curated indicators (prefer these when they match):
 ${WB_INDICATOR_DESCRIPTIONS}
 
 Output ONLY the JSON object, nothing else.`;
 
 async function extractWorldBankIntent(query: string): Promise<WBIntentResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
   try {
-    const client = new Anthropic({ apiKey });
-    const promise = client.messages.create({
-      model: WB_INTENT_MODEL,
-      max_tokens: 128,
-      system: WB_INTENT_SYSTEM,
-      messages: [{ role: "user", content: query }],
-    });
     const timeout = new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), WB_AI_TIMEOUT_MS),
     );
-    const res = await Promise.race([promise, timeout]);
-    if (!res) return null;
+    const aiPromise = generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: 128,
+      system: WB_INTENT_SYSTEM,
+      messages: [{ role: "user", content: query }],
+    }).then((r) => r.text.trim());
 
-    const text = res.content.find(
-      (b): b is Anthropic.TextBlock => b.type === "text",
-    )?.text.trim();
+    const text = await Promise.race([aiPromise, timeout]);
     if (!text) return null;
 
     const jsonStart = text.indexOf("{");
@@ -294,6 +500,14 @@ async function extractWorldBankIntent(query: string): Promise<WBIntentResult | n
         typeof parsed.indicatorKey === "string" &&
         WB_INDICATOR_KEYS.includes(parsed.indicatorKey)
           ? parsed.indicatorKey
+          : null,
+      indicatorCode:
+        typeof parsed.indicatorCode === "string" && /^[A-Z]{2}[\w.]+$/.test(parsed.indicatorCode)
+          ? parsed.indicatorCode
+          : null,
+      indicatorLabel:
+        typeof parsed.indicatorLabel === "string"
+          ? parsed.indicatorLabel
           : null,
       englishPrompt:
         typeof parsed.englishPrompt === "string"
@@ -345,12 +559,31 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
       }
       if (intent.indicatorKey) {
         matched = WORLD_BANK_INDICATORS[intent.indicatorKey];
+      } else if (intent.indicatorCode && intent.indicatorLabel) {
+        // AI discovered an indicator code outside the curated list
+        matched = { code: intent.indicatorCode, label: intent.indicatorLabel, unit: "" };
       }
     }
   }
 
   if (!matched) {
     return { found: false, error: "No matching World Bank indicator found" };
+  }
+
+  // Reject known false-positive indicator matches — the AI fallback
+  // can map semantically wrong prompts to related-but-incorrect indicators
+  // (e.g. "deforestation" → forest area, "healthcare spending" → total GDP).
+  const INDICATOR_BLACKLIST: Record<string, string[]> = {
+    "AG.LND.FRST.ZS": ["deforestation", "forest loss", "wildfire", "fire", "bränder", "skogsbrand", "avskogning"],
+    "NY.GDP.MKTP.CD": ["healthcare", "health spending", "education spending", "military spending", "research spending", "r&d", "forskning", "sjukvård", "hälsa"],
+    // Crude death rate (all ages) must not match child/infant/neonatal mortality queries
+    "SP.DYN.CDRT.IN": ["child mortality", "under-5", "infant mortality", "neonatal", "barnmortalitet", "barnadödlighet", "spädbarnsdödlighet"],
+    // Child mortality must not match crude death rate queries
+    "SH.DYN.MORT": ["death rate", "crude death", "dödstal"],
+  };
+  const blacklistTerms = INDICATOR_BLACKLIST[matched.code];
+  if (blacklistTerms?.some((term) => lower.includes(term))) {
+    return { found: false, error: "Indicator does not match user intent" };
   }
 
   const cacheKey = `worldbank-${matched.code}`;
@@ -417,7 +650,7 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
           properties: {
             name: data.countryName,
             iso_a3: iso,
-            continent: f.properties?.["CONTINENT"] ?? f.properties?.["continent"] ?? "",
+            continent: ISO_TO_CONTINENT[iso as string] ?? "",
             [matched!.code]: data.value,
             value: data.value,
             year: data.date,
@@ -536,7 +769,7 @@ export async function searchEONET(query: string): Promise<DataSearchResult> {
         geometry: Array<{
           date: string;
           type: string;
-          coordinates: [number, number];
+          coordinates: unknown;
           magnitudeValue?: number;
           magnitudeUnit?: string;
         }>;
@@ -547,17 +780,18 @@ export async function searchEONET(query: string): Promise<DataSearchResult> {
       return { found: false, error: "No active events found" };
     }
 
-    // Use latest geometry point for each event
+    // Use latest geometry entry for each event, preserving the actual geometry type
     const features: GeoJSON.Feature[] = json.events
       .filter((e) => e.geometry.length > 0)
       .map((e) => {
         const latest = e.geometry[e.geometry.length - 1];
+        const geomType = latest.type ?? "Point";
         return {
           type: "Feature" as const,
           geometry: {
-            type: "Point" as const,
-            coordinates: latest.coordinates, // [lon, lat]
-          },
+            type: geomType,
+            coordinates: latest.coordinates,
+          } as GeoJSON.Geometry,
           properties: {
             name: e.title,
             event_id: e.id,
@@ -769,6 +1003,54 @@ export function hasNumericProperties(fc: GeoJSON.FeatureCollection): boolean {
   return false;
 }
 
+/**
+ * Return true when a FeatureCollection is worth serving as a map layer.
+ *
+ * Statistical data requires numeric properties (choropleth / proportional symbol).
+ * Point-of-interest data (landmarks, locations, etc.) is valid with only string
+ * properties — the user just wants to see where things are, not compare values.
+ *
+ * A dataset is usable when:
+ *   - It has numeric properties (statistical/metric data), OR
+ *   - All sampled features have Point geometry and at least one non-metadata
+ *     string property (name, title, description, etc.)
+ */
+export function isUsableDataset(fc: GeoJSON.FeatureCollection): boolean {
+  if (fc.features.length === 0) return false;
+  if (hasNumericProperties(fc)) return true;
+
+  // Accept pure point datasets with at least one named property
+  const sample = fc.features.slice(0, 5);
+  const allPoints = sample.every(
+    (f) => f.geometry?.type === "Point" || f.geometry?.type === "MultiPoint",
+  );
+  if (!allPoints) {
+    // Accept polygon/multipolygon data with categorical/name fields
+    // (e.g. historical boundaries, empire extents, land use zones)
+    const allPolygons = sample.every(
+      (f) => f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon",
+    );
+    if (allPolygons) {
+      return sample.some((f) => {
+        if (!f.properties) return false;
+        return Object.entries(f.properties).some(
+          ([k, v]) => !isMetadataKey(k) && typeof v === "string" && v.length > 0,
+        );
+      });
+    }
+    return false;
+  }
+
+  const NAME_KEYS = /^(name|title|label|description|site|place|location|monument|wonder|heritage)/i;
+  return sample.some((f) => {
+    const props = f.properties;
+    if (!props) return false;
+    return Object.entries(props).some(
+      ([k, v]) => typeof v === "string" && v.length > 0 && !isMetadataKey(k) && NAME_KEYS.test(k),
+    );
+  });
+}
+
 // ─── Direct URL fetch ───────────────────────────────────────
 
 /**
@@ -847,20 +1129,21 @@ export async function fetchGeoJSON(
 
 /**
  * Search all available public data sources.
- * Tries World Bank first (fastest for country-level stats),
- * then falls back to direct URL fetch if a URL is provided.
+ * Tries EONET first (natural events are unambiguous — wildfires, earthquakes),
+ * then World Bank (country-level stats), then REST Countries.
  */
 export async function searchPublicData(
   query: string,
   url?: string,
 ): Promise<DataSearchResult> {
+  // Try NASA EONET first (natural events/disasters) — prevents World Bank
+  // AI fallback from matching "wildfires" → forest area, etc.
+  const eonetResult = await searchEONET(query);
+  if (eonetResult.found) return eonetResult;
+
   // Try World Bank (country-level statistics)
   const wbResult = await searchWorldBank(query);
   if (wbResult.found) return wbResult;
-
-  // Try NASA EONET (natural events/disasters)
-  const eonetResult = await searchEONET(query);
-  if (eonetResult.found) return eonetResult;
 
   // Try REST Countries (country metadata)
   const rcResult = await searchRESTCountries(query);

@@ -26,6 +26,8 @@ export interface GenerateAction {
   dataProfile: DatasetProfile | null;
   /** Join coverage ratio 0-1, if available. */
   coverageRatio: number | null;
+  /** Geographic scope hint — tells generate-map to filter by region. */
+  scopeHint: { region: string; filterField: string } | null;
 }
 
 /** Data found but not mappable — show warning with suggestions, stay in prompt state. */
@@ -89,6 +91,7 @@ export function decideClarifyAction(
       dataUrl: data.dataUrl ?? null,
       dataProfile: data.dataProfile ?? null,
       coverageRatio: data.coverageRatio ?? null,
+      scopeHint: data.scopeHint ?? null,
     };
   }
 
