@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas — AI-Driven Cartography</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{overflow-x:hidden;background:#0f1419;font-family:Georgia,'Times New Roman',serif}
+a{color:inherit;text-decoration:none}input:focus,button:focus,textarea:focus{outline:none}
+::placeholder{color:rgba(228,224,216,0.22)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.05);border-radius:4px}
+@keyframes su{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.s0{animation:su .7s ease 0s both}.s1{animation:su .7s ease .1s both}.s2{animation:su .7s ease .2s both}.s3{animation:su .7s ease .3s both}.s4{animation:su .7s ease .45s both}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+const sage="#8ecba0",gold="#d4a574",cr="#e8a050",bl="#5db8ca",rd="#d06060",cy="#5abcaa";
+const c1="#0d1217",c2="#111820",c3="#182028",mapBg="#0f1419";
+const tx="#e4e0d8",tx2="#908c85",tx3="#5a5752",bd="rgba(255,255,255,0.05)",bd2="rgba(255,255,255,0.08)";
+const srf={fontFamily:"Georgia,'Times New Roman',serif"},mono={fontFamily:"'Courier New',monospace"},sans={fontFamily:"'Segoe UI',-apple-system,sans-serif"};
+const panelBg="rgba(16,22,30,0.72)";
+const glass={background:panelBg,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)"};
+const PROMPTS=["Where do people move when cities get too expensive?","Earthquake risk across the Pacific Rim","Coffee shops in Tokyo by foot traffic","European wind energy by region"];
+const EU=[{id:"NO",d:"M52,10L56,8L62,9L66,14L64,20L60,24L56,25L53,21L50,16Z",o:.72,v:38},{id:"SE",d:"M65,12L72,10L76,13L77,20L74,28L70,34L67,33L64,26L65,18Z",o:.55,v:28},{id:"GB",d:"M28,32L34,27L38,31L39,39L35,44L30,43L26,38Z",o:.68,v:35},{id:"FR",d:"M36,52L46,47L54,50L56,58L52,66L44,70L36,68L32,60Z",o:.82,v:42},{id:"DE",d:"M52,42L62,38L70,42L72,52L66,58L58,60L50,56L48,48Z",o:.91,v:47},{id:"ES",d:"M22,64L38,59L46,62L47,72L40,80L28,82L18,77L16,70Z",o:.58,v:30},{id:"IT",d:"M54,62L62,58L66,63L64,72L58,78L54,75L50,68Z",o:.69,v:36},{id:"DK",d:"M48,28L54,26L56,32L52,36L46,34Z",o:.95,v:52},{id:"PL",d:"M68,40L80,37L88,41L89,50L82,56L72,57L64,52Z",o:.48,v:25}];
+const DC=[{id:"DK",d:"M428,82L440,78L444,88L436,94L426,90Z",o:.95},{id:"DE",d:"M406,100L428,94L444,102L444,120L430,132L410,134L400,122L402,108Z",o:.88},{id:"NL",d:"M390,104L404,100L408,112L398,118L388,114Z",o:.82},{id:"GB",d:"M348,82L362,74L370,82L368,98L356,106L346,100Z",o:.78},{id:"SE",d:"M420,44L434,40L440,50L438,68L428,78L418,74L416,58Z",o:.7},{id:"ES",d:"M322,154L352,146L368,154L366,174L350,188L328,192L312,182L312,166Z",o:.72},{id:"FR",d:"M354,124L378,116L396,124L394,144L378,158L356,162L342,150L344,132Z",o:.65},{id:"NO",d:"M398,44L412,38L422,44L420,58L410,66L398,62Z",o:.62},{id:"FI",d:"M440,40L454,36L462,44L460,60L448,68L438,62Z",o:.48},{id:"PL",d:"M442,100L466,96L478,104L476,120L458,128L440,124Z",o:.55},{id:"IT",d:"M384,158L400,152L406,162L402,180L388,188L376,182L374,168Z",o:.4},{id:"AT",d:"M410,138L430,134L434,144L424,152L408,150Z",o:.5}];
+const BIG=["DK","DE","NL","GB","SE","ES","FR"];
+const P1="European wind energy capacity by region",P2="Show only countries above 10 GW",P3="Which grew fastest since 2020?",R3="Denmark — +4.2 GW, North Sea offshore expansion.";
+const GEN=["Matched → Eurostat · nrg_ind_ren","Generating MapManifest","Compiling GL layers · quantile","Rendering"];
+const US=[[0,0,"AK",.15],[0,10,"ME",.32],[1,1,"WA",.65],[1,4,"MT",.18],[1,5,"ND",.12],[1,6,"MN",.55],[1,8,"WI",.48],[1,9,"MI",.58],[1,10,"VT",.30],[2,1,"OR",.52],[2,2,"ID",.22],[2,3,"WY",.14],[2,4,"SD",.16],[2,5,"IA",.38],[2,6,"IL",.82],[2,7,"IN",.50],[2,8,"OH",.62],[2,9,"PA",.72],[2,10,"NY",.95],[3,1,"CA",.88],[3,2,"NV",.42],[3,3,"UT",.35],[3,4,"CO",.68],[3,5,"NE",.28],[3,6,"KS",.32],[3,7,"MO",.55],[3,8,"KY",.40],[3,9,"VA",.65],[3,10,"NJ",.78],[4,2,"AZ",.48],[4,3,"NM",.30],[4,4,"OK",.35],[4,5,"AR",.25],[4,6,"TN",.45],[4,7,"NC",.58],[4,8,"SC",.38],[4,9,"MD",.60],[4,10,"CT",.62],[5,3,"TX",.92],[5,5,"LA",.32],[5,6,"MS",.18],[5,7,"AL",.35],[5,8,"GA",.62],[5,9,"FL",.78],[5,10,"MA",.68],[6,10,"HI",.28]];
+const themes={clean:{name:"Clean",colors:["#184868","#2878a0","#48a8c4","#78d0e0","#a8f0f0"]},muted:{name:"Muted",colors:["#283848","#406068","#608888","#88b0b4","#b0d0d0"]},warm:{name:"Warm",colors:["#3a2a18","#6a4a2a","#9a7a4a","#c4a870","#e8d8a0"]},contrast:{name:"Vivid",colors:["#0a1830","#1a4898","#2a90e0","#58ccff","#c8f0ff"]}};
+const gallery=[{id:1,title:"EU GDP per capita",type:"Choropleth",color:sage,paths:[{d:"M30,12L38,10L40,16L36,18L30,16Z",o:.95},{d:"M24,20L34,17L40,20L40,28L34,32L28,33L22,28L23,22Z",o:.75},{d:"M18,22L24,20L26,26L22,28L16,26Z",o:.55}]},{id:2,title:"Coffee shops Tokyo",type:"Cluster",color:cr,dots:[[20,18],[22,20],[24,19],[21,22],[25,22],[28,20],[30,21],[26,24],[23,26],[27,18]]},{id:3,title:"Seismic risk Pacific",type:"Heatmap",color:rd,blobs:[[15,25,10],[32,20,14],[40,32,8],[22,38,11]]},{id:4,title:"Wind energy EU",type:"Proportional",color:bl,paths:[{d:"M30,12L38,10L40,16L36,18L30,16Z",o:.9},{d:"M24,20L34,17L40,20L40,28L34,32L28,33L22,28L23,22Z",o:.6}]},{id:5,title:"Regional sales",type:"Choropleth",color:cy,paths:[{d:"M24,20L34,17L40,20L40,28L34,32L28,33L22,28L23,22Z",o:.85},{d:"M12,32L22,28L28,32L26,38L20,42L14,40L10,36Z",o:.7}]}];
+function MiniThumb({map,s=28}){return<svg viewBox="0 0 50 50" width={s} height={s} style={{flexShrink:0,borderRadius:5,background:c1,display:"block"}}>{map.paths&&map.paths.map((p,i)=><path key={i} d={p.d} fill={map.color} fillOpacity={p.o*.6} stroke="none"/>)}{map.dots&&map.dots.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="1.2" fill={map.color} fillOpacity=".5"/>)}{map.blobs&&map.blobs.map(([x,y,r],i)=><circle key={i} cx={x} cy={y} r={r} fill={map.color} fillOpacity=".15"/>)}</svg>}
+function MapCard({map,onClick}){const[h,setH]=useState(false);return<div onClick={onClick} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{border:`1px solid ${h?bd2:bd}`,cursor:"pointer",overflow:"hidden",transition:"all .2s",transform:h?"translateY(-2px)":"none",borderRadius:8}}><div style={{height:100,background:c1,position:"relative"}}><svg viewBox="0 0 50 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{position:"absolute",inset:0}}>{map.paths&&map.paths.map((p,i)=><path key={i} d={p.d} fill={map.color} fillOpacity={h?p.o*.8:p.o*.5} stroke="rgba(0,0,0,0.3)" strokeWidth="0.3"/>)}{map.dots&&map.dots.map(([x,y],i)=><circle key={i} cx={x} cy={y} r={h?1.3:1} fill={map.color} fillOpacity=".5"/>)}{map.blobs&&map.blobs.map(([x,y,r],i)=><circle key={i} cx={x} cy={y} r={r} fill={map.color} fillOpacity={h?".2":".1"}/>)}</svg></div><div style={{padding:"8px 12px",background:c2}}><p style={{...srf,fontSize:11,color:h?tx:tx2,marginBottom:2}}>{map.title}</p><span style={{...mono,fontSize:8,color:map.color+"88"}}>{map.type}</span></div></div>}
+function Toggle({on,onChange}){return<div onClick={onChange} style={{width:34,height:18,borderRadius:9,background:on?sage+"66":"rgba(255,255,255,0.06)",padding:2,cursor:"pointer",transition:"background .2s",flexShrink:0}}><div style={{width:14,height:14,borderRadius:7,background:"#fff",transform:on?"translateX(16px)":"translateX(0)",transition:"transform .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/></div>}
+
+// ==================== SVG ICONS ====================
+function CaseIcon({name,color,hover}){
+  const s={width:28,height:28,flexShrink:0};
+  const o=hover?.7:.35;const sw=1.5;
+  const icons={
+    research:<svg style={s} viewBox="0 0 24 24" fill="none"><circle cx="10" cy="10" r="6" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M14.5,14.5L20,20" stroke={color} strokeWidth={sw} strokeOpacity={o} strokeLinecap="round"/><circle cx="10" cy="10" r="2" fill={color} fillOpacity={o*.5}/></svg>,
+    chart:<svg style={s} viewBox="0 0 24 24" fill="none"><rect x="3" y="12" width="4" height="8" rx="1" fill={color} fillOpacity={o*.6}/><rect x="10" y="6" width="4" height="14" rx="1" fill={color} fillOpacity={o*.8}/><rect x="17" y="9" width="4" height="11" rx="1" fill={color} fillOpacity={o*.7}/></svg>,
+    pen:<svg style={s} viewBox="0 0 24 24" fill="none"><path d="M4,20L8,19L19,8L16,5L5,16Z" stroke={color} strokeWidth={sw} strokeOpacity={o} strokeLinejoin="round"/><path d="M14,7L17,10" stroke={color} strokeWidth={sw} strokeOpacity={o}/></svg>,
+    grid:<svg style={s} viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth={sw} strokeOpacity={o}/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke={color} strokeWidth={sw} strokeOpacity={o}/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke={color} strokeWidth={sw} strokeOpacity={o}/><rect x="14" y="14" width="7" height="7" rx="1.5" fill={color} fillOpacity={o*.4} stroke={color} strokeWidth={sw} strokeOpacity={o}/></svg>,
+    globe:<svg style={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth={sw} strokeOpacity={o}/><ellipse cx="12" cy="12" rx="4" ry="9" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.6}/><path d="M3,12L21,12" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.5}/></svg>,
+    building:<svg style={s} viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke={color} strokeWidth={sw} strokeOpacity={o}/><rect x="8" y="8" width="3" height="3" rx=".5" fill={color} fillOpacity={o*.5}/><rect x="13" y="8" width="3" height="3" rx=".5" fill={color} fillOpacity={o*.5}/><rect x="8" y="14" width="3" height="6" rx=".5" fill={color} fillOpacity={o*.4}/><rect x="13" y="14" width="3" height="3" rx=".5" fill={color} fillOpacity={o*.5}/></svg>,
+    lock:<svg style={s} viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M8,11V8a4,4,0,0,1,8,0v3" stroke={color} strokeWidth={sw} strokeOpacity={o}/><circle cx="12" cy="16" r="1.5" fill={color} fillOpacity={o*.6}/></svg>,
+    database:<svg style={s} viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="6" rx="8" ry="3" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M4,6v12c0,1.66,3.58,3,8,3s8-1.34,8-3V6" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M4,12c0,1.66,3.58,3,8,3s8-1.34,8-3" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.5}/></svg>,
+    users:<svg style={s} viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.5" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M2,20c0-3.31,3.13-6,7-6s7,2.69,7,6" stroke={color} strokeWidth={sw} strokeOpacity={o}/><circle cx="17" cy="9" r="2.5" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.5}/><path d="M18,14c2.76,.58,4,2.42,4,4.5" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.5}/></svg>,
+    bolt:<svg style={s} viewBox="0 0 24 24" fill="none"><path d="M13,2L4,14h7l-2,8L20,10H13Z" stroke={color} strokeWidth={sw} strokeOpacity={o} strokeLinejoin="round" fill={color} fillOpacity={o*.15}/></svg>,
+    shield:<svg style={s} viewBox="0 0 24 24" fill="none"><path d="M12,3L4,7v5c0,4.42,3.42,8.56,8,9.5c4.58-.94,8-5.08,8-9.5V7Z" stroke={color} strokeWidth={sw} strokeOpacity={o}/><path d="M9,12l2,2l4-4" stroke={color} strokeWidth={sw} strokeOpacity={o} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    target:<svg style={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth={sw} strokeOpacity={o}/><circle cx="12" cy="12" r="5" stroke={color} strokeWidth={sw*.7} strokeOpacity={o*.6}/><circle cx="12" cy="12" r="1.5" fill={color} fillOpacity={o*.6}/></svg>,
+  };
+  return icons[name]||null;
+}
+
+// ==================== SHARED NAV ====================
+function Nav({onNav,onEnter,current}){
+  const links=[{k:"usecases",l:"Use Cases"},{k:"pricing",l:"Pricing"},{k:"enterprise",l:"Enterprise"}];
+  return(
+    <nav className="s0" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 36px",position:"sticky",top:0,zIndex:30,background:"rgba(13,18,23,0.85)",backdropFilter:"blur(14px)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>onNav("landing")}><div style={{width:8,height:8,borderRadius:"50%",background:sage,boxShadow:`0 0 10px ${sage}44`}}/><span style={{fontSize:16,...srf,color:tx}}>Atlas</span></div>
+      <div style={{display:"flex",gap:22,...mono,fontSize:11}}>{links.map(x=><a key={x.k} href="#" onClick={e=>{e.preventDefault();onNav(x.k)}} style={{color:current===x.k?tx:tx3,transition:"color .15s",textDecoration:"none"}} onMouseEnter={e=>e.target.style.color=tx2} onMouseLeave={e=>{if(current!==x.k)e.target.style.color=tx3}}>{x.l}</a>)}</div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={onEnter} style={{background:"transparent",border:`1px solid ${bd2}`,color:tx2,padding:"7px 18px",...mono,fontSize:10,cursor:"pointer",borderRadius:6}}>Sign in</button>
+        <button onClick={onEnter} style={{background:gold,color:c1,border:"none",padding:"7px 20px",...mono,fontSize:10,cursor:"pointer",fontWeight:700,borderRadius:6,boxShadow:`0 0 16px ${gold}33`}}>Get Started</button>
+      </div>
+    </nav>
+  );
+}
+function Footer({onNav}){
+  return(
+    <footer style={{padding:"40px 36px 24px",borderTop:`1px solid ${bd}`,maxWidth:1060,margin:"0 auto"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:32,marginBottom:32}}>
+        <div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><div style={{width:7,height:7,borderRadius:"50%",background:sage}}/><span style={{fontSize:14,...srf,color:tx}}>Atlas</span></div><p style={{...mono,fontSize:10,color:tx3,lineHeight:1.6}}>AI-driven cartography.<br/>From prompt to map.</p></div>
+        <div><p style={{...mono,fontSize:9,color:tx3,letterSpacing:"0.1em",marginBottom:12}}>PRODUCT</p>{["Use Cases","Pricing","Enterprise","Docs"].map(x=><p key={x} style={{marginBottom:6}}><a href="#" onClick={e=>{e.preventDefault();onNav(x.toLowerCase().replace(" ",""))}} style={{...mono,fontSize:11,color:tx2,textDecoration:"none"}}>{x}</a></p>)}</div>
+        <div><p style={{...mono,fontSize:9,color:tx3,letterSpacing:"0.1em",marginBottom:12}}>RESOURCES</p>{["API Reference","Changelog","Status","Blog"].map(x=><p key={x} style={{...mono,fontSize:11,color:tx2,marginBottom:6}}>{x}</p>)}</div>
+        <div><p style={{...mono,fontSize:9,color:tx3,letterSpacing:"0.1em",marginBottom:12}}>COMPANY</p>{["About","Careers","Contact","Security"].map(x=><p key={x} style={{...mono,fontSize:11,color:tx2,marginBottom:6}}>{x}</p>)}</div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",paddingTop:16,borderTop:`1px solid ${bd}`,...mono,fontSize:9,color:tx3+"66"}}><span>© 2026 Atlas</span><span>MapLibre GL JS</span></div>
+    </footer>
+  );
+}
+
+// ==================== CITY LIGHTS ====================
+function CityLights(){const ref=useRef(null);useEffect(()=>{const c=ref.current;if(!c)return;const ctx=c.getContext("2d");let w=c.width=c.parentElement.offsetWidth;let h=c.height=c.parentElement.offsetHeight;const raw=[[.52,.28,1],[.50,.30,.8],[.53,.32,.6],[.48,.34,.7],[.51,.35,.5],[.55,.30,.4],[.47,.37,.6],[.20,.32,.9],[.22,.35,.7],[.18,.34,.6],[.25,.38,.5],[.15,.30,.7],[.72,.30,.9],[.75,.28,.7],[.78,.32,.8],[.68,.34,.6],[.80,.35,.5],[.30,.60,.7],[.32,.55,.5],[.52,.48,.5],[.50,.55,.4],[.60,.34,.5],[.68,.38,.8],[.70,.40,.6],[.83,.62,.4]];const dots=raw.map(([px,py,s])=>({x:px*w,y:py*h,s,phase:Math.random()*Math.PI*2,speed:.2+Math.random()*.35,baseR:3+s*6}));let t=0,drift=0,raf;const draw=()=>{t+=.008;drift+=.15;ctx.clearRect(0,0,w,h);ctx.globalAlpha=.05;ctx.fillStyle="#8ecba0";ctx.beginPath();ctx.ellipse(w*.52,h*.32,w*.06,h*.08,-.1,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(w*.20,h*.34,w*.08,h*.07,.1,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(w*.74,h*.33,w*.1,h*.08,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;dots.forEach(d=>{const pulse=.5+.5*Math.sin(t*d.speed+d.phase);const r=d.baseR*(.6+pulse*.4);const ox=Math.sin(drift*.003+d.phase)*.8;const x=d.x+ox;const grad=ctx.createRadialGradient(x,d.y,0,x,d.y,r*6);grad.addColorStop(0,`rgba(255,190,90,${.45*pulse*d.s})`);grad.addColorStop(.3,`rgba(240,150,60,${.2*pulse*d.s})`);grad.addColorStop(1,"rgba(210,120,60,0)");ctx.fillStyle=grad;ctx.beginPath();ctx.arc(x,d.y,r*6,0,Math.PI*2);ctx.fill();ctx.fillStyle=`rgba(255,${200+Math.round(pulse*30)},${120+Math.round(pulse*40)},${(.6+pulse*.4)*d.s})`;ctx.beginPath();ctx.arc(x,d.y,r,0,Math.PI*2);ctx.fill();ctx.fillStyle=`rgba(255,245,230,${.6*pulse*d.s})`;ctx.beginPath();ctx.arc(x,d.y,r*.4,0,Math.PI*2);ctx.fill()});raf=requestAnimationFrame(draw)};draw();const onR=()=>{w=c.width=c.parentElement.offsetWidth;h=c.height=c.parentElement.offsetHeight;dots.forEach((d,i)=>{d.x=raw[i][0]*w;d.y=raw[i][1]*h})};window.addEventListener("resize",onR);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",onR)}},[]);return<canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>}
+
+// Map carousel for hero
+function MapCarousel(){const[a,setA]=useState(0);const maps=[o=><svg key="0" viewBox="0 0 110 95" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{position:"absolute",inset:0,opacity:o}}>{EU.map(c=><path key={c.id} d={c.d} fill="#48a8c4" fillOpacity={c.o*.5} stroke="rgba(0,0,0,0.15)" strokeWidth="0.3"/>)}</svg>,o=><svg key="1" viewBox="0 0 200 120" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{position:"absolute",inset:0,opacity:o}}>{[[45,35,20],[55,40,28],[50,50,15],[65,30,22],[70,45,18],[40,55,12],[80,35,16]].map(([x,y,r],i)=><circle key={i} cx={x} cy={y} r={r} fill="#e87040" fillOpacity=".12"/>)}{[[45,35],[55,40],[65,30],[70,45],[48,42],[62,38]].map(([x,y],i)=><circle key={"d"+i} cx={x} cy={y} r="1.5" fill="#ff9060" fillOpacity=".6"/>)}</svg>,o=><svg key="2" viewBox="0 0 200 120" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{position:"absolute",inset:0,opacity:o}}>{[[60,80,80,50],[70,75,90,40],[65,85,100,45],[75,70,95,35]].map(([x1,y1,x2,y2],i)=><path key={i} d={`M${x1},${y1}Q${(x1+x2)/2-10},${(y1+y2)/2} ${x2},${y2}`} fill="none" stroke="#5abcaa" strokeWidth="1.2" strokeOpacity=".35"/>)}</svg>];useEffect(()=>{const v=setInterval(()=>setA(x=>(x+1)%maps.length),4000);return()=>clearInterval(v)},[]);return<div style={{position:"absolute",inset:0,zIndex:1}}>{maps.map((m,i)=><div key={i} style={{position:"absolute",inset:0,transition:"opacity 1.5s ease",opacity:a===i?1:0}}>{m(1)}</div>)}</div>}
+
+// ==================== HERO EDITOR ====================
+function HeroEditor(){const[hov,setHov]=useState(null);const[theme,setTheme]=useState("clean");const[mode,setMode]=useState("interactive");const[lyrs,setLyrs]=useState([{id:1,name:"Total Sales by State",c:"#78d0e0",vis:true},{id:2,name:"City markers",c:gold,vis:true},{id:3,name:"State borders",c:tx3,vis:false}]);const th=themes[theme];const mapC=(v)=>{const i=Math.min(Math.floor(v*th.colors.length),th.colors.length-1);return th.colors[i]};const cW=36,cH=28,pX=80,pY=12;const hs=hov?US.find(([,,id])=>id===hov):null;return(<div style={{border:`1px solid ${bd2}`,borderRadius:12,overflow:"hidden",boxShadow:"0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",...glass}}><div style={{display:"flex",alignItems:"center",padding:"8px 14px",borderBottom:`1px solid ${bd}`,background:"rgba(8,12,15,0.5)"}}><div style={{display:"flex",alignItems:"center",gap:6,marginRight:14}}><div style={{width:6,height:6,borderRadius:"50%",background:sage}}/><span style={{fontSize:12,...srf,color:tx}}>Atlas</span></div><div style={{width:1,height:16,background:bd,marginRight:10}}/><span style={{...srf,fontSize:11,color:tx+"cc",marginRight:10}}>Sales by Region</span><div style={{display:"flex",background:"rgba(255,255,255,0.03)",borderRadius:5,padding:1,marginLeft:4}}>{["Interactive","Presentation"].map(m=><button key={m} onClick={()=>setMode(m.toLowerCase())} style={{padding:"3px 10px",fontSize:9,color:mode===m.toLowerCase()?tx:tx3,background:mode===m.toLowerCase()?"rgba(255,255,255,0.07)":"transparent",border:"none",borderRadius:4,cursor:"pointer"}}>{m}</button>)}</div><div style={{flex:1}}/><div style={{background:gold,padding:"3px 12px",borderRadius:4,cursor:"pointer"}}><span style={{fontSize:9,color:c1,fontWeight:700,...mono}}>Share</span></div></div><div style={{display:"grid",gridTemplateColumns:"140px 1fr 140px",height:360}}><div style={{borderRight:`1px solid ${bd}`,padding:"12px 10px",display:"flex",flexDirection:"column",background:"rgba(8,12,15,0.3)"}}><span style={{fontSize:10,fontWeight:600,color:tx,marginBottom:10}}>Layers</span>{lyrs.map(l=><div key={l.id} onClick={()=>setLyrs(ls=>ls.map(x=>x.id===l.id?{...x,vis:!x.vis}:x))} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 6px",marginBottom:2,background:l.vis?"rgba(255,255,255,0.02)":"transparent",borderRadius:6,cursor:"pointer"}}><div style={{width:7,height:7,borderRadius:"50%",background:l.vis?l.c:tx3+"33"}}/><span style={{fontSize:10,color:l.vis?tx:tx3,flex:1}}>{l.name}</span>{l.vis&&<svg width="10" height="10" viewBox="0 0 12 12"><path d="M2,6L5,9L10,3" fill="none" stroke={sage+"88"} strokeWidth="1.3" strokeLinecap="round"/></svg>}</div>)}<div style={{flex:1}}/><div style={{background:`${sage}0a`,border:`1px solid ${sage}1a`,padding:"7px",borderRadius:6,textAlign:"center",cursor:"pointer"}}><span style={{fontSize:9,color:sage}}>✦ Generate</span></div></div><div style={{position:"relative",background:mapBg,overflow:"hidden"}}><div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 48% 40%, #121820 0%, ${mapBg} 55%)`}}/><svg width="100%" height="100%" viewBox={`${pX-16} ${pY-10} ${cW*11+32} ${cH*7+20}`} preserveAspectRatio="xMidYMid meet" style={{position:"absolute",inset:0}}>{US.map(([row,col,id,val])=>{const x=pX+col*cW,y=pY+row*cH,isH=hov===id;return<g key={id} onMouseEnter={()=>setHov(id)} onMouseLeave={()=>setHov(null)} style={{cursor:"pointer"}}><rect x={x+.5} y={y+.5} width={cW-1} height={cH-1} rx={2} fill={mapC(val)} fillOpacity={isH?.95:.78} stroke={isH?"rgba(255,255,255,0.4)":"rgba(0,0,0,0.2)"} strokeWidth={isH?1:.3} style={{transition:"all .1s"}}/><text x={x+cW/2} y={y+cH/2} textAnchor="middle" dominantBaseline="middle" fill={val>.45?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.4)"} fontSize={isH?8:7} fontFamily="'Segoe UI',sans-serif" fontWeight={isH?600:400}>{id}</text></g>})}</svg>{hs&&<div style={{position:"absolute",bottom:10,left:"50%",transform:"translateX(-50%)",zIndex:5,background:"rgba(12,16,20,0.9)",backdropFilter:"blur(12px)",border:`1px solid ${bd2}`,padding:"6px 14px",borderRadius:7,display:"flex",alignItems:"center",gap:10}}><span style={{...mono,fontSize:9,color:tx}}>{hs[2]}</span><span style={{fontSize:16,...srf,fontWeight:600,color:tx}}>{Math.round(hs[3]*100)}%</span></div>}<div style={{position:"absolute",bottom:10,left:10,display:"flex",borderRadius:2,overflow:"hidden"}}>{th.colors.map((c,i)=><div key={i} style={{width:14,height:5,background:c}}/>)}</div></div><div style={{borderLeft:`1px solid ${bd}`,padding:"12px 10px",overflowY:"auto",background:"rgba(8,12,15,0.3)"}}><span style={{fontSize:10,fontWeight:600,color:tx,display:"block",marginBottom:10}}>Style</span><span style={{fontSize:8,color:tx3,marginBottom:6,display:"block"}}>Theme</span><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginBottom:10}}>{Object.entries(themes).map(([k,v])=><button key={k} onClick={()=>setTheme(k)} style={{padding:"5px 6px",borderRadius:5,cursor:"pointer",textAlign:"left",border:theme===k?`1.5px solid ${sage}55`:"1.5px solid transparent",background:theme===k?"rgba(255,255,255,0.04)":"transparent"}}><div style={{display:"flex",gap:1,marginBottom:3,borderRadius:2,overflow:"hidden"}}>{v.colors.map((c,i)=><div key={i} style={{flex:1,height:6,background:c}}/>)}</div><span style={{fontSize:8,color:theme===k?tx:tx3}}>{v.name}</span></button>)}</div><span style={{fontSize:8,color:tx3,marginBottom:4,display:"block"}}>Output</span><div style={{display:"flex",gap:3}}>{["Interactive","PDF"].map((t,i)=><button key={t} style={{flex:1,background:i===0?"rgba(255,255,255,0.05)":"transparent",border:`1px solid ${i===0?bd2:bd}`,padding:"4px",fontSize:9,color:i===0?tx:tx3,borderRadius:4,cursor:"pointer"}}>{t}</button>)}</div></div></div></div>)}
+
+// ==================== LANDING ====================
+function Landing({onEnter,onNav}){
+  const[pi,setPi]=useState(0);const[ph,setPh]=useState("");const[val,setVal]=useState("");
+  useEffect(()=>{const t=PROMPTS[pi];let i=0;setPh("");const v=setInterval(()=>{if(i<t.length)setPh(t.slice(0,++i));else{clearInterval(v);setTimeout(()=>setPi(x=>(x+1)%PROMPTS.length),2800)}},36);return()=>clearInterval(v)},[pi]);
+  const dRef=useRef(null);const dStarted=useRef(false);const[dp,setDp]=useState("idle");const[dt,setDt]=useState(0);const[dg,setDg]=useState(-1);const[dc,setDc]=useState(0);const[df,setDf]=useState(false);const[d2,setD2]=useState(0);const[d3,setD3]=useState(0);const[dr,setDr]=useState(0);const[dmh,setDmh]=useState(null);
+  useEffect(()=>{const o=new IntersectionObserver(([e])=>{if(e.isIntersecting&&!dStarted.current){dStarted.current=true;setTimeout(()=>setDp("typing"),400)}},{threshold:.2});if(dRef.current)o.observe(dRef.current);return()=>o.disconnect()},[]);
+  useEffect(()=>{if(dp==="typing"){let i=0;setDt(0);const v=setInterval(()=>{if(i<P1.length)setDt(++i);else{clearInterval(v);setTimeout(()=>setDp("gen"),500)}},30);return()=>clearInterval(v)}if(dp==="gen"){setDg(0);[0,600,1100,1600].forEach((d,i)=>setTimeout(()=>setDg(i),d));setTimeout(()=>setDp("map"),2200)}if(dp==="map"){let i=0;const v=setInterval(()=>{if(i<=DC.length)setDc(i++);else{clearInterval(v);setTimeout(()=>setDp("t2"),1000)}},50);return()=>clearInterval(v)}if(dp==="t2"){let i=0;setD2(0);const v=setInterval(()=>{if(i<P2.length)setD2(++i);else{clearInterval(v);setDf(true);setTimeout(()=>setDp("t3"),1200)}},35);return()=>clearInterval(v)}if(dp==="t3"){let i=0;setD3(0);const v=setInterval(()=>{if(i<P3.length)setD3(++i);else{clearInterval(v);setTimeout(()=>setDp("r3"),400)}},35);return()=>clearInterval(v)}if(dp==="r3"){let i=0;setDr(0);const v=setInterval(()=>{if(i<R3.length)setDr(++i);else{clearInterval(v);setTimeout(()=>setDp("done"),400)}},22);return()=>clearInterval(v)}if(dp==="done")setTimeout(()=>{setDt(0);setDg(-1);setDc(0);setDf(false);setD2(0);setD3(0);setDr(0);setTimeout(()=>setDp("typing"),500)},3500)},[dp]);
+  const dShow=["map","t2","t3","r3","done"].includes(dp);const ddc=DC.map(c=>({...c,o:df&&!BIG.includes(c.id)?c.o*.08:c.o}));const bkc={borderRight:`1.5px solid ${sage}66`,marginLeft:1,animation:"bk .7s step-end infinite",display:"inline-block",width:0,height:"1em"};
+  const[ucH,setUcH]=useState(null);
+  return(
+    <div style={{minHeight:"100vh",color:tx,...srf,background:`linear-gradient(180deg,${c1} 0%,${c2} 35%,${c3} 55%,${c2} 75%,${c1} 100%)`}}>
+      <Nav onNav={onNav} onEnter={onEnter} current=""/>
+
+      {/* HERO */}
+      <div style={{position:"relative",minHeight:"calc(100vh - 50px)",overflow:"hidden"}}>
+        <CityLights/><MapCarousel/>
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 30% 50%, rgba(13,18,23,0.82) 0%, rgba(13,18,23,0.45) 40%, rgba(13,18,23,0.2) 65%, rgba(13,18,23,0.5) 100%)",pointerEvents:"none",zIndex:2}}/>
+        <section style={{position:"relative",zIndex:5,display:"flex",alignItems:"center",minHeight:"calc(100vh - 50px)",padding:"0 36px",maxWidth:1060,margin:"0 auto"}}>
+          <div style={{maxWidth:480}}>
+            <div className="s1" style={{...mono,fontSize:10,color:sage,letterSpacing:"0.22em",marginBottom:24}}>AI-DRIVEN CARTOGRAPHY</div>
+            <h1 className="s2" style={{fontSize:"clamp(2.6rem,4vw,3.8rem)",fontWeight:400,lineHeight:1.06,letterSpacing:"-0.02em",marginBottom:24}}>Maps that <span style={{color:sage,fontStyle:"italic"}}>think</span> for themselves.</h1>
+            <p className="s3" style={{fontSize:16,lineHeight:1.7,color:tx2,marginBottom:34,maxWidth:400}}>Describe a map, upload data, or start from a prompt. Atlas finds the data, picks the projection, and renders it.</p>
+            <div className="s4" style={{maxWidth:420}}><div style={{display:"flex",alignItems:"center",border:`1px solid ${bd2}`,borderRadius:8,padding:"4px 4px 4px 14px",background:"rgba(255,255,255,0.04)"}}><input value={val} onChange={e=>setVal(e.target.value)} placeholder={ph} style={{flex:1,background:"transparent",border:"none",fontSize:14,color:tx,...srf,fontStyle:"italic",padding:"10px 0"}}/><button onClick={onEnter} style={{background:gold,color:c1,border:"none",padding:"10px 20px",...mono,fontSize:10,fontWeight:700,borderRadius:6,cursor:"pointer",flexShrink:0}}>Generate Map</button></div></div>
+          </div>
+        </section>
+      </div>
+
+      {/* DEMO */}
+      <section ref={dRef} style={{padding:"60px 36px 70px"}}><div style={{maxWidth:940,margin:"0 auto"}}><div style={{textAlign:"center",marginBottom:36}}><h2 style={{fontSize:26,fontWeight:400,marginBottom:8}}>Describe, refine, share.</h2><p style={{...mono,fontSize:11,color:tx3}}>From prompt to published map in seconds.</p></div><div style={{border:`1px solid ${bd2}`,borderRadius:12,overflow:"hidden",boxShadow:"0 24px 60px rgba(0,0,0,0.35)",...glass}}>{!dShow?(<div style={{minHeight:380,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:40}}>{dp!=="gen"&&<div style={{textAlign:"center",maxWidth:440}}><p style={{...mono,fontSize:9,color:sage+"55",letterSpacing:"0.2em",marginBottom:18}}>DESCRIBE YOUR MAP</p><div style={{borderBottom:`1px solid ${sage}15`,paddingBottom:10}}><p style={{...srf,fontSize:20,fontStyle:"italic",color:tx,minHeight:28}}>{P1.slice(0,dt)}{dp==="typing"&&dt<P1.length&&<span style={bkc}/>}</p></div></div>}{dp==="gen"&&<div style={{textAlign:"left",maxWidth:300}}><p style={{...mono,fontSize:9,color:sage+"44",letterSpacing:"0.18em",marginBottom:10}}>GENERATING</p>{GEN.map((s,i)=>{const d=i<dg,a=i===dg;return<div key={s} style={{display:"flex",alignItems:"center",gap:10,marginBottom:7,opacity:d||a?1:.08}}><div style={{width:6,height:6,borderRadius:"50%",background:d?sage:a?tx:sage+"22"}}/><span style={{...mono,fontSize:10,color:d?sage+"88":a?tx:sage+"22"}}>{s}{d&&<span style={{color:sage,marginLeft:6}}>✓</span>}</span></div>})}</div>}</div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 260px",minHeight:380}}><div style={{position:"relative",borderRight:`1px solid ${bd}`}}><svg width="100%" height="100%" viewBox="295 32 210 160" preserveAspectRatio="xMidYMid meet" style={{position:"absolute",inset:0}}>{ddc.slice(0,dc).map(c=><path key={c.id} d={c.d} fill={sage} fillOpacity={dmh===c.id?Math.min(c.o*.6+.3,1):c.o*.55} stroke={dmh===c.id?sage+"44":"rgba(12,17,14,0.6)"} strokeWidth={dmh===c.id?"1":"0.5"} style={{cursor:"pointer",transition:"all .12s"}} onMouseEnter={()=>setDmh(c.id)} onMouseLeave={()=>setDmh(null)}/>)}</svg>{df&&<div style={{position:"absolute",top:10,right:10,...mono,fontSize:8,color:sage,background:`${sage}0c`,border:`1px solid ${sage}18`,padding:"3px 8px",borderRadius:4}}>&gt;10 GW filter</div>}</div><div style={{display:"flex",flexDirection:"column",background:"rgba(8,12,15,0.5)"}}><div style={{flex:1,overflowY:"auto",padding:"10px 0"}}><div style={{padding:"7px 14px"}}><p style={{...mono,fontSize:7,color:tx3,marginBottom:2}}>you</p><p style={{...srf,fontSize:12,fontStyle:"italic",color:tx+"bb"}}>{P1}</p></div><div style={{padding:"7px 14px",background:"rgba(255,255,255,0.015)",borderTop:`1px solid ${bd}`,borderBottom:`1px solid ${bd}`,margin:"2px 0"}}><p style={{...mono,fontSize:7,color:sage+"55",marginBottom:2}}>atlas</p><p style={{...mono,fontSize:10,color:sage+"88"}}>Choropleth ready · 12 countries</p></div>{d2>0&&<div style={{padding:"7px 14px"}}><p style={{...mono,fontSize:7,color:tx3,marginBottom:2}}>you</p><p style={{...srf,fontSize:12,fontStyle:"italic",color:tx+"bb"}}>{P2.slice(0,d2)}{dp==="t2"&&d2<P2.length&&<span style={bkc}/>}</p></div>}{["t3","r3","done"].includes(dp)&&<div style={{padding:"7px 14px",background:"rgba(255,255,255,0.015)",borderTop:`1px solid ${bd}`,borderBottom:`1px solid ${bd}`}}><p style={{...mono,fontSize:7,color:sage+"55",marginBottom:2}}>atlas</p><p style={{...mono,fontSize:10,color:sage+"88"}}>Updated · 7 countries</p></div>}{d3>0&&<div style={{padding:"7px 14px"}}><p style={{...mono,fontSize:7,color:tx3,marginBottom:2}}>you</p><p style={{...srf,fontSize:12,fontStyle:"italic",color:tx+"bb"}}>{P3.slice(0,d3)}{dp==="t3"&&d3<P3.length&&<span style={bkc}/>}</p></div>}{dr>0&&<div style={{padding:"7px 14px",background:"rgba(255,255,255,0.015)",borderTop:`1px solid ${bd}`}}><p style={{...mono,fontSize:7,color:sage+"55",marginBottom:2}}>atlas</p><p style={{...mono,fontSize:10,color:tx+"88"}}>{R3.slice(0,dr)}</p></div>}</div></div></div>)}</div></div></section>
+
+      {/* SEGMENTS */}
+      <section style={{padding:"40px 36px 60px",maxWidth:940,margin:"0 auto"}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>{[{t:"For creators",d:"Publish interactive maps people can explore.",cta:"Get share link",color:sage},{t:"For teams",d:"Create clean maps for decks, reports, and analysis.",cta:"Download PDF",color:bl}].map(seg=>{const[h,sH]=useState(false);return<div key={seg.t} onMouseEnter={()=>sH(true)} onMouseLeave={()=>sH(false)} style={{border:`1px solid ${h?bd2:bd}`,borderRadius:10,padding:"24px 22px",background:h?"rgba(255,255,255,0.02)":"rgba(255,255,255,0.01)",transition:"all .2s",cursor:"pointer"}}><h3 style={{fontSize:18,fontWeight:400,color:tx,marginBottom:6}}>{seg.t}</h3><p style={{fontSize:12,color:tx2,lineHeight:1.6,marginBottom:14}}>{seg.d}</p><button style={{background:seg.color+"15",border:`1px solid ${seg.color}28`,color:seg.color,padding:"8px 16px",...mono,fontSize:10,borderRadius:6,cursor:"pointer"}}>{seg.cta}</button></div>})}</div></section>
+
+      {/* USE CASES MINI */}
+      <section style={{padding:"40px 36px 60px",maxWidth:940,margin:"0 auto"}}><h2 style={{textAlign:"center",fontSize:22,fontWeight:400,marginBottom:28}}>Real use cases</h2><div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>{gallery.map(m=>{const h=ucH===m.id;return<div key={m.id} onMouseEnter={()=>setUcH(m.id)} onMouseLeave={()=>setUcH(null)} style={{textAlign:"center",cursor:"pointer",transform:h?"translateY(-3px)":"none",transition:"transform .2s"}}><div style={{height:80,borderRadius:6,overflow:"hidden",border:`1px solid ${h?bd2:bd}`,marginBottom:6}}><svg viewBox="0 0 50 50" width="100%" height="100%" style={{background:c1}}>{m.paths&&m.paths.map((p,i)=><path key={i} d={p.d} fill={m.color} fillOpacity={h?p.o*.7:p.o*.45} stroke="none"/>)}{m.dots&&m.dots.map(([x,y],i)=><circle key={i} cx={x} cy={y} r={h?1.3:1} fill={m.color} fillOpacity={h?".6":".4"}/>)}{m.blobs&&m.blobs.map(([x,y,r],i)=><circle key={i} cx={x} cy={y} r={r} fill={m.color} fillOpacity={h?".18":".1"}/>)}</svg></div><p style={{...mono,fontSize:9,color:h?tx:tx2}}>{m.title}</p></div>})}</div></section>
+
+      {/* INTERACTIVE EDITOR */}
+      <section style={{padding:"50px 36px 70px",maxWidth:1000,margin:"0 auto"}}><div style={{textAlign:"center",marginBottom:32}}><h2 style={{fontSize:24,fontWeight:400,marginBottom:8}}>Powerful, not complicated.</h2><p style={{...mono,fontSize:11,color:tx3}}>Layers, themes, and AI — all in one canvas. Try it.</p></div><div style={{animation:"float 8s ease-in-out infinite"}}><HeroEditor/></div></section>
+
+      {/* CTA */}
+      <section style={{padding:"50px 36px 60px",textAlign:"center"}}><h2 style={{fontSize:26,fontWeight:400,marginBottom:10}}>Start building maps today.</h2><p style={{...mono,fontSize:10,color:tx3,marginBottom:26}}>FREE TO START · NO CREDIT CARD</p><button onClick={onEnter} style={{background:gold,color:c1,border:"none",padding:"14px 36px",...mono,fontSize:12,cursor:"pointer",fontWeight:700,borderRadius:6}}>Get Started Free</button></section>
+      <Footer onNav={onNav}/>
+    </div>
+  );
+}
+
+// ==================== USE CASES ====================
+function UseCases({onEnter,onNav}){
+  const cases=[
+    {title:"Research & Academia",desc:"Visualize study data, population distributions, and environmental datasets with publication-ready maps.",icon:"research",color:bl,examples:["Species migration patterns","Climate change indicators","Census data visualization"]},
+    {title:"Business Intelligence",desc:"Turn sales data, market analysis, and regional KPIs into interactive dashboards your team can explore.",icon:"chart",color:gold,examples:["Regional sales performance","Market penetration by city","Supply chain optimization"]},
+    {title:"Journalism & Media",desc:"Create compelling visual stories with data-driven maps that engage readers and clarify complex events.",icon:"pen",color:cr,examples:["Election results by district","Conflict zone timelines","Migration flow reporting"]},
+    {title:"Urban Planning",desc:"Analyze zoning, traffic patterns, infrastructure, and demographic data to make better planning decisions.",icon:"grid",color:sage,examples:["Zoning density analysis","Public transit coverage","Green space accessibility"]},
+    {title:"Non-profits & NGOs",desc:"Communicate impact, track field operations, and present findings with clear, accessible visualizations.",icon:"globe",color:cy,examples:["Aid distribution mapping","Water access coverage","Deforestation tracking"]},
+    {title:"Real Estate & Finance",desc:"Map property values, market trends, risk assessments, and investment opportunities across regions.",icon:"building",color:rd,examples:["Property price heatmaps","Investment risk by region","Rental yield analysis"]},
+  ];
+  return(
+    <div style={{minHeight:"100vh",color:tx,...srf,background:`linear-gradient(180deg,${c1} 0%,${c2} 50%,${c1} 100%)`}}>
+      <Nav onNav={onNav} onEnter={onEnter} current="usecases"/>
+      <section className="s1" style={{padding:"80px 36px 40px",textAlign:"center",maxWidth:700,margin:"0 auto"}}>
+        <div style={{...mono,fontSize:10,color:sage,letterSpacing:"0.2em",marginBottom:20}}>USE CASES</div>
+        <h1 style={{fontSize:"clamp(2rem,3.2vw,2.8rem)",fontWeight:400,lineHeight:1.1,marginBottom:16}}>Built for every kind of <span style={{color:sage,fontStyle:"italic"}}>map maker</span>.</h1>
+        <p style={{fontSize:15,color:tx2,lineHeight:1.7}}>From academic research to enterprise dashboards, Atlas adapts to how you work.</p>
+      </section>
+      <section style={{padding:"40px 36px 80px",maxWidth:1060,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+          {cases.map((c,idx)=>{const[h,sH]=useState(false);return(
+            <div key={c.title} className={`s${Math.min(idx,4)}`} onMouseEnter={()=>sH(true)} onMouseLeave={()=>sH(false)}
+              style={{border:`1px solid ${h?bd2:bd}`,borderRadius:12,padding:"28px 24px",background:h?"rgba(255,255,255,0.02)":"rgba(255,255,255,0.008)",transition:"all .25s",cursor:"pointer",transform:h?"translateY(-3px)":"none"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                <CaseIcon name={c.icon} color={c.color} hover={h}/>
+                <h3 style={{fontSize:16,fontWeight:400,color:tx}}>{c.title}</h3>
+              </div>
+              <p style={{fontSize:13,color:tx2,lineHeight:1.65,marginBottom:18}}>{c.desc}</p>
+              <div style={{borderTop:`1px solid ${bd}`,paddingTop:14}}>
+                {c.examples.map(ex=>(
+                  <div key={ex} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <div style={{width:5,height:5,borderRadius:"50%",background:c.color,opacity:h?.7:.35,transition:"opacity .2s"}}/>
+                    <span style={{...mono,fontSize:10,color:h?tx2:tx3,transition:"color .2s"}}>{ex}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )})}
+        </div>
+      </section>
+      <section style={{padding:"40px 36px 70px",textAlign:"center"}}><h2 style={{fontSize:22,fontWeight:400,marginBottom:10}}>Don't see your use case?</h2><p style={{...mono,fontSize:11,color:tx3,marginBottom:24}}>Atlas is flexible enough for any data that has a geographic dimension.</p><button onClick={onEnter} style={{background:gold,color:c1,border:"none",padding:"12px 32px",...mono,fontSize:11,fontWeight:700,borderRadius:6,cursor:"pointer"}}>Try it Free</button></section>
+      <Footer onNav={onNav}/>
+    </div>
+  );
+}
+
+// ==================== PRICING ====================
+function Pricing({onEnter,onNav}){
+  const plans=[
+    {name:"Free",price:"$0",period:"forever",desc:"For exploring and personal projects.",color:tx3,features:["5 maps","3 data sources","Community support","Basic export (PNG)","Public maps only"],cta:"Get Started",primary:false},
+    {name:"Pro",price:"$29",period:"/month",desc:"For professionals and small teams.",color:sage,features:["Unlimited maps","All data sources","Priority support","Export PDF, SVG, GeoJSON","Private maps","Custom themes","API access","Embed maps"],cta:"Start Free Trial",primary:true},
+    {name:"Enterprise",price:"Custom",period:"",desc:"For organizations that need scale and control.",color:gold,features:["Everything in Pro","SSO / SAML","Dedicated support","Custom data connectors","SLA guarantee","Team management","Audit logs","On-premise option"],cta:"Contact Sales",primary:false},
+  ];
+  const faqs=[
+    {q:"Can I try Pro before paying?",a:"Yes. Every account starts with a 14-day free trial of Pro. No credit card required."},
+    {q:"What happens when my trial ends?",a:"You'll be moved to the Free plan. All your maps are preserved — you just can't create new private ones until you upgrade."},
+    {q:"Can I change plans later?",a:"Absolutely. Upgrade, downgrade, or cancel anytime from your account settings."},
+    {q:"Do you offer discounts for education?",a:"Yes. We offer 50% off Pro for students and educators. Contact us with your .edu email."},
+  ];
+  const[openFaq,setOpenFaq]=useState(null);
+  return(
+    <div style={{minHeight:"100vh",color:tx,...srf,background:`linear-gradient(180deg,${c1} 0%,${c2} 50%,${c1} 100%)`}}>
+      <Nav onNav={onNav} onEnter={onEnter} current="pricing"/>
+      <section className="s1" style={{padding:"80px 36px 50px",textAlign:"center",maxWidth:600,margin:"0 auto"}}>
+        <div style={{...mono,fontSize:10,color:sage,letterSpacing:"0.2em",marginBottom:20}}>PRICING</div>
+        <h1 style={{fontSize:"clamp(2rem,3vw,2.6rem)",fontWeight:400,lineHeight:1.1,marginBottom:16}}>Simple, transparent pricing.</h1>
+        <p style={{fontSize:15,color:tx2,lineHeight:1.7}}>Start free. Upgrade when you need more.</p>
+      </section>
+      <section style={{padding:"20px 36px 60px",maxWidth:1060,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,alignItems:"start"}}>
+          {plans.map(p=>{const[h,sH]=useState(false);return(
+            <div key={p.name} onMouseEnter={()=>sH(true)} onMouseLeave={()=>sH(false)}
+              style={{border:`1px solid ${p.primary?sage+"33":h?bd2:bd}`,borderRadius:14,padding:"32px 28px",background:p.primary?"rgba(142,203,160,0.03)":"rgba(255,255,255,0.008)",transition:"all .25s",transform:h?"translateY(-4px)":"none",position:"relative",overflow:"hidden"}}>
+              {p.primary&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${sage},transparent)`}}/>}
+              <div style={{marginBottom:24}}>
+                <h3 style={{fontSize:18,fontWeight:400,color:tx,marginBottom:4}}>{p.name}</h3>
+                <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:8}}>
+                  <span style={{fontSize:36,fontWeight:400,color:p.color==="Custom"?tx:tx,...srf}}>{p.price}</span>
+                  {p.period&&<span style={{...mono,fontSize:11,color:tx3}}>{p.period}</span>}
+                </div>
+                <p style={{fontSize:13,color:tx2,lineHeight:1.5}}>{p.desc}</p>
+              </div>
+              <button onClick={p.name==="Enterprise"?()=>onNav("enterprise"):onEnter}
+                style={{width:"100%",background:p.primary?sage:p.name==="Enterprise"?gold:"rgba(255,255,255,0.05)",color:p.primary||p.name==="Enterprise"?c1:tx,border:`1px solid ${p.primary?sage:p.name==="Enterprise"?gold:bd2}`,padding:"11px",...mono,fontSize:11,fontWeight:600,borderRadius:7,cursor:"pointer",marginBottom:24}}>{p.cta}</button>
+              <div>
+                {p.features.map(f=>(
+                  <div key={f} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                    <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3,7L6,10L11,4" fill="none" stroke={p.color===tx3?tx3:p.color} strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <span style={{fontSize:12,color:tx2}}>{f}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )})}
+        </div>
+      </section>
+      {/* FAQ */}
+      <section style={{padding:"40px 36px 70px",maxWidth:640,margin:"0 auto"}}>
+        <h2 style={{fontSize:20,fontWeight:400,textAlign:"center",marginBottom:28}}>Questions?</h2>
+        {faqs.map((f,i)=>(
+          <div key={i} onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{borderTop:`1px solid ${bd}`,padding:"16px 0",cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:14,color:openFaq===i?tx:tx2}}>{f.q}</span>
+              <span style={{...mono,fontSize:14,color:tx3,transform:openFaq===i?"rotate(45deg)":"none",transition:"transform .2s"}}>+</span>
+            </div>
+            {openFaq===i&&<p style={{fontSize:13,color:tx2,lineHeight:1.65,marginTop:10,...mono,fontSize:12}}>{f.a}</p>}
+          </div>
+        ))}
+      </section>
+      <Footer onNav={onNav}/>
+    </div>
+  );
+}
+
+// ==================== ENTERPRISE ====================
+function Enterprise({onEnter,onNav}){
+  const features=[
+    {icon:"lock",title:"SSO & SAML",desc:"Connect to your identity provider. Okta, Azure AD, Google Workspace supported out of the box."},
+    {icon:"database",title:"Custom data connectors",desc:"Bring your own databases — Snowflake, BigQuery, PostgreSQL. Maps update in real-time."},
+    {icon:"users",title:"Team management",desc:"Workspaces, roles, and permissions. Control who can view, edit, and publish."},
+    {icon:"bolt",title:"Dedicated infrastructure",desc:"Isolated compute, priority rendering, and guaranteed uptime with 99.9% SLA."},
+    {icon:"shield",title:"Audit & compliance",desc:"Full audit logs, data residency controls, SOC 2 Type II compliance."},
+    {icon:"target",title:"Dedicated success manager",desc:"A named point of contact who understands your workflow and helps you succeed."},
+  ];
+  return(
+    <div style={{minHeight:"100vh",color:tx,...srf,background:`linear-gradient(180deg,${c1} 0%,${c2} 50%,${c1} 100%)`}}>
+      <Nav onNav={onNav} onEnter={onEnter} current="enterprise"/>
+      <section style={{padding:"80px 36px 50px",textAlign:"center",maxWidth:700,margin:"0 auto"}}>
+        <div className="s1" style={{...mono,fontSize:10,color:gold,letterSpacing:"0.2em",marginBottom:20}}>ENTERPRISE</div>
+        <h1 className="s2" style={{fontSize:"clamp(2rem,3.4vw,3rem)",fontWeight:400,lineHeight:1.08,marginBottom:20}}>Atlas for your whole <span style={{color:gold,fontStyle:"italic"}}>organization</span>.</h1>
+        <p className="s3" style={{fontSize:16,color:tx2,lineHeight:1.7,marginBottom:32}}>The same powerful cartography engine, built for teams that need security, scale, and support.</p>
+        <button className="s4" onClick={()=>{}} style={{background:gold,color:c1,border:"none",padding:"14px 36px",...mono,fontSize:12,fontWeight:700,borderRadius:6,cursor:"pointer"}}>Contact Sales</button>
+      </section>
+
+      {/* Logos placeholder */}
+      <section style={{padding:"30px 36px 50px",maxWidth:800,margin:"0 auto",textAlign:"center"}}>
+        <p style={{...mono,fontSize:9,color:tx3,letterSpacing:"0.15em",marginBottom:20}}>TRUSTED BY TEAMS AT</p>
+        <div style={{display:"flex",justifyContent:"center",gap:40,flexWrap:"wrap"}}>
+          {["Volvo","Ericsson","Klarna","Spotify","H&M"].map(name=>(
+            <span key={name} style={{...mono,fontSize:14,color:tx3+"66",letterSpacing:"0.05em"}}>{name}</span>
+          ))}
+        </div>
+      </section>
+
+      {/* Features grid */}
+      <section style={{padding:"40px 36px 60px",maxWidth:1060,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+          {features.map((f,idx)=>{const[h,sH]=useState(false);return(
+            <div key={f.title} className={`s${Math.min(idx,4)}`} onMouseEnter={()=>sH(true)} onMouseLeave={()=>sH(false)}
+              style={{border:`1px solid ${h?gold+"22":bd}`,borderRadius:12,padding:"28px 24px",background:h?"rgba(212,165,116,0.02)":"rgba(255,255,255,0.005)",transition:"all .25s",transform:h?"translateY(-2px)":"none"}}>
+              <div style={{marginBottom:12}}><CaseIcon name={f.icon} color={gold} hover={h}/></div>
+              <h3 style={{fontSize:15,fontWeight:400,color:tx,marginBottom:8}}>{f.title}</h3>
+              <p style={{fontSize:12,color:tx2,lineHeight:1.6,...mono}}>{f.desc}</p>
+            </div>
+          )})}
+        </div>
+      </section>
+
+      {/* Comparison */}
+      <section style={{padding:"40px 36px 60px",maxWidth:800,margin:"0 auto"}}>
+        <h2 style={{fontSize:22,fontWeight:400,textAlign:"center",marginBottom:28}}>Enterprise vs Pro</h2>
+        <div style={{border:`1px solid ${bd}`,borderRadius:12,overflow:"hidden"}}>
+          {[["Feature","Pro","Enterprise"],["Maps","Unlimited","Unlimited"],["SSO / SAML","—","✓"],["Custom data connectors","—","✓"],["SLA","—","99.9%"],["Audit logs","—","✓"],["Dedicated support","—","✓"],["On-premise","—","Available"],["Team workspaces","Basic","Advanced"]].map((row,i)=>(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",borderBottom:i<8?`1px solid ${bd}`:"none",background:i===0?"rgba(255,255,255,0.02)":"transparent"}}>
+              {row.map((cell,j)=>(
+                <div key={j} style={{padding:"12px 16px",...(i===0?{...mono,fontSize:9,color:tx3,letterSpacing:"0.08em"}:{fontSize:12,color:j===0?tx2:cell==="✓"?sage:cell==="—"?tx3+"55":tx2}),textAlign:j>0?"center":"left"}}>{cell}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{padding:"50px 36px 70px",textAlign:"center"}}>
+        <h2 style={{fontSize:24,fontWeight:400,marginBottom:8}}>Ready to bring Atlas to your team?</h2>
+        <p style={{...mono,fontSize:11,color:tx3,marginBottom:24}}>We'll set up a personalized demo for your use case.</p>
+        <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+          <button style={{background:gold,color:c1,border:"none",padding:"14px 32px",...mono,fontSize:12,fontWeight:700,borderRadius:6,cursor:"pointer"}}>Contact Sales</button>
+          <button onClick={()=>onNav("pricing")} style={{background:"transparent",border:`1px solid ${bd2}`,color:tx2,padding:"14px 32px",...mono,fontSize:12,borderRadius:6,cursor:"pointer"}}>See Pricing</button>
+        </div>
+      </section>
+      <Footer onNav={onNav}/>
+    </div>
+  );
+}
+
+// ==================== HOME ====================
+function Home({onLogout,onOpenEditor}){const[view,setView]=useState("home");const[pv,setPv]=useState("");const[mh,setMh]=useState(null);const suggestions=["Earthquake risk Pacific","Coffee shops Stockholm","EU renewable energy"];const landBase=["M20,28L35,20L50,22L70,18L90,20L95,35L88,50L75,58L60,65L45,70L30,72L15,65L8,50L12,38Z"];return(<div style={{height:"100vh",display:"flex",color:tx,...sans,overflow:"hidden",position:"relative",background:mapBg}}><div style={{position:"absolute",inset:0,zIndex:0}}><div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 55% 40%, #121820 0%, ${mapBg} 55%)`}}/><svg width="100%" height="100%" viewBox="0 0 110 95" preserveAspectRatio="xMidYMid meet" style={{position:"absolute",inset:0}}><defs><filter id="gf2"><feGaussianBlur stdDeviation="0.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>{landBase.map((d,i)=><path key={i} d={d} fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.01)" strokeWidth="0.3"/>)}{EU.map(c=><path key={c.id} d={c.d} fill={sage} fillOpacity={mh===c.id?Math.min(c.o+.25,1):c.o*.3} stroke={mh===c.id?sage+"44":"rgba(255,255,255,0.02)"} strokeWidth={mh===c.id?"0.5":"0.2"} filter={mh===c.id?"url(#gf2)":"none"} style={{cursor:"pointer",transition:"all .15s"}} onMouseEnter={()=>setMh(c.id)} onMouseLeave={()=>setMh(null)}/>)}</svg></div><aside style={{width:230,flexShrink:0,display:"flex",flexDirection:"column",zIndex:10,...glass,borderRight:`1px solid ${bd}`}}><div style={{padding:"16px 16px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:`1px solid ${bd}`}}><div style={{width:7,height:7,borderRadius:"50%",background:sage,boxShadow:`0 0 8px ${sage}44`}}/><span style={{fontSize:15,...srf}}>Atlas</span></div><div style={{padding:"10px 8px"}}>{[{k:"home",l:"Home",i:"◎"},{k:"gallery",l:"Gallery",i:"▦"}].map(x=><button key={x.k} onClick={()=>setView(x.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:view===x.k?"rgba(255,255,255,0.03)":"transparent",border:"none",borderRadius:7,cursor:"pointer",color:tx,marginBottom:2}}><span style={{fontSize:12,color:view===x.k?sage:tx3}}>{x.i}</span><span style={{fontSize:12,color:view===x.k?tx:tx3}}>{x.l}</span></button>)}</div><div style={{padding:"4px 8px",borderTop:`1px solid ${bd}`,flex:1,overflowY:"auto"}}><p style={{...mono,fontSize:9,color:tx3,letterSpacing:"0.12em",padding:"10px 8px 8px"}}>RECENTS</p>{gallery.map(m=><button key={m.id} onClick={onOpenEditor} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px",background:"transparent",border:"none",borderRadius:6,cursor:"pointer",textAlign:"left",color:tx,marginBottom:2}}><MiniThumb map={m}/><div style={{minWidth:0,flex:1}}><p style={{fontSize:12,color:tx2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:2}}>{m.title}</p><p style={{...mono,fontSize:8,color:m.color+"77"}}>{m.type}</p></div></button>)}</div><div style={{padding:"10px",borderTop:`1px solid ${bd}`}}><button onClick={()=>setView("home")} style={{width:"100%",background:`${sage}08`,border:`1px solid ${sage}18`,color:sage,padding:"9px",...mono,fontSize:10,cursor:"pointer",borderRadius:6,marginBottom:10}}>+ New map</button><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 4px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:22,height:22,borderRadius:"50%",background:"rgba(255,255,255,0.04)",border:`1px solid ${bd}`,display:"flex",alignItems:"center",justifyContent:"center",...mono,fontSize:10,color:tx3}}>A</div><span style={{fontSize:11,color:tx3}}>Arvid</span></div><button onClick={onLogout} style={{...mono,fontSize:8,color:tx3+"88",background:"none",border:"none",cursor:"pointer"}}>log out</button></div></div></aside><main style={{flex:1,position:"relative",zIndex:5}}>{view==="home"&&<React.Fragment>{mh&&(()=>{const c=EU.find(x=>x.id===mh);if(!c)return null;const ns=c.d.match(/-?\d+\.?\d*/g).map(Number);const xs=ns.filter((_,i)=>i%2===0),ys=ns.filter((_,i)=>i%2===1);const cx=(xs.reduce((a,b)=>a+b,0)/xs.length/110)*100;const cy=(ys.reduce((a,b)=>a+b,0)/ys.length/95)*100;return<div style={{position:"absolute",left:`calc(${cx}% - 115px)`,top:`calc(${cy}% - 40px)`,background:"rgba(12,16,20,0.88)",backdropFilter:"blur(14px)",border:`1px solid ${bd2}`,padding:"8px 14px",pointerEvents:"none",zIndex:20,borderRadius:8,display:"flex",alignItems:"center",gap:12}}><span style={{...mono,fontSize:10,color:sage}}>{c.id}</span><div style={{width:1,height:18,background:bd}}/><span style={{fontSize:18,...srf,color:tx}}>{c.v}GW</span></div>})()}<div style={{position:"absolute",bottom:28,left:"50%",transform:"translateX(-50%)",zIndex:15,width:"100%",maxWidth:500,padding:"0 20px"}}><div style={{background:"rgba(12,16,20,0.82)",backdropFilter:"blur(20px)",border:`1px solid ${bd2}`,padding:"14px 18px",borderRadius:10}}><div style={{display:"flex",alignItems:"center",gap:10}}><input value={pv} onChange={e=>setPv(e.target.value)} placeholder="Describe your next map…" style={{flex:1,background:"transparent",border:"none",...srf,fontSize:14,fontStyle:"italic",color:tx}}/><button onClick={onOpenEditor} style={{background:pv?gold:"rgba(255,255,255,0.06)",color:pv?c1:tx3,border:"none",...mono,fontSize:10,padding:"9px 16px",cursor:pv?"pointer":"default",borderRadius:6,fontWeight:pv?700:400,flexShrink:0}}>GENERATE</button></div><div style={{display:"flex",gap:5,marginTop:10}}>{suggestions.map(s=><button key={s} onClick={()=>setPv(s)} style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${bd}`,...mono,fontSize:9,color:tx3,padding:"4px 10px",borderRadius:99,cursor:"pointer",whiteSpace:"nowrap"}}>{s}</button>)}</div></div></div></React.Fragment>}{view==="gallery"&&<div style={{height:"100%",overflowY:"auto",padding:"28px",background:"rgba(11,15,18,0.6)",backdropFilter:"blur(8px)"}}><span style={{...mono,fontSize:10,color:tx3,letterSpacing:"0.12em",display:"block",marginBottom:18}}>YOUR MAPS</span><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:12}}>{gallery.map(m=><MapCard key={m.id} map={m} onClick={onOpenEditor}/>)}<div onClick={()=>setView("home")} style={{border:`1px dashed ${bd2}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:155,gap:6,borderRadius:8}}><span style={{fontSize:16,color:tx3+"44"}}>+</span><span style={{...mono,fontSize:8,color:tx3+"44"}}>NEW MAP</span></div></div></div>}</main></div>)}
+
+// ==================== EDITOR ====================
+function EditorView({onBack}){const[hov,setHov]=useState(null);const[theme,setTheme]=useState("clean");const[mode,setMode]=useState("interactive");const[layers,setLayers]=useState([{id:1,name:"Total Sales by State",vis:true},{id:2,name:"City markers",vis:true},{id:3,name:"State borders",vis:false}]);const[promptOpen,setPromptOpen]=useState(false);const[promptVal,setPromptVal]=useState("");const[labels,setLabels]=useState(true);const[clustering,setClustering]=useState(true);const[showLeg,setShowLeg]=useState(true);const th=themes[theme];const lColors=[th.colors[3],gold,tx3];const mapC=(v)=>{const i=Math.min(Math.floor(v*th.colors.length),th.colors.length-1);return th.colors[i]};const cW=48,cH=38,pX=110,pY=36;const hs=hov?US.find(([,,id])=>id===hov):null;return(<div style={{height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",...sans,color:tx}}><div style={{display:"flex",alignItems:"center",padding:"0 16px",height:46,background:"rgba(12,16,20,0.9)",backdropFilter:"blur(12px)",borderBottom:`1px solid ${bd}`,flexShrink:0,zIndex:20}}><div onClick={onBack} style={{display:"flex",alignItems:"center",gap:8,marginRight:24,cursor:"pointer"}}><div style={{width:7,height:7,borderRadius:"50%",background:sage,boxShadow:`0 0 8px ${sage}44`}}/><span style={{fontSize:14,...srf}}>Atlas</span></div><div style={{width:1,height:22,background:bd}}/><span style={{fontSize:13,color:tx,padding:"0 14px",fontWeight:500,...srf}}>Sales by Region</span><div style={{width:1,height:22,background:bd}}/><div style={{display:"flex",background:"rgba(255,255,255,0.03)",borderRadius:7,padding:2,marginLeft:8}}>{["Interactive","Presentation"].map(m=><button key={m} onClick={()=>setMode(m.toLowerCase())} style={{padding:"5px 14px",fontSize:11,color:mode===m.toLowerCase()?tx:tx3,background:mode===m.toLowerCase()?"rgba(255,255,255,0.07)":"transparent",border:"none",borderRadius:6,cursor:"pointer"}}>{m}</button>)}</div><div style={{flex:1}}/><button style={{fontSize:11,color:tx2,background:"none",border:"none",cursor:"pointer",padding:"6px 12px"}}>Export ↓</button><button style={{background:gold,color:"#1a1610",border:"none",padding:"7px 18px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer"}}>Share</button></div><div style={{flex:1,display:"flex",overflow:"hidden"}}><div style={{width:230,flexShrink:0,...glass,borderRight:`1px solid ${bd}`,display:"flex",flexDirection:"column",zIndex:10}}><div style={{padding:"16px 14px 10px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}><span style={{fontSize:12,fontWeight:600,color:tx}}>Layers</span><button style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${bd}`,padding:"4px 10px",fontSize:10,color:tx3,borderRadius:5,cursor:"pointer"}}>+ Add</button></div>{layers.map((l,i)=><div key={l.id} onClick={()=>setLayers(ls=>ls.map(x=>x.id===l.id?{...x,vis:!x.vis}:x))} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",marginBottom:3,background:l.vis?"rgba(255,255,255,0.02)":"transparent",borderRadius:8,cursor:"pointer"}}><div style={{width:8,height:8,borderRadius:"50%",background:l.vis?lColors[i]:tx3+"33"}}/><span style={{fontSize:12,color:l.vis?tx:tx3,flex:1}}>{l.name}</span>{l.vis&&<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2,6L5,9L10,3" fill="none" stroke={sage+"88"} strokeWidth="1.3" strokeLinecap="round"/></svg>}</div>)}</div><div style={{flex:1}}/><div style={{padding:"14px",borderTop:`1px solid ${bd}`}}>{!promptOpen?<button onClick={()=>setPromptOpen(true)} style={{width:"100%",background:`${sage}0a`,border:`1px solid ${sage}1a`,color:sage,padding:"10px",fontSize:11,cursor:"pointer",borderRadius:7}}>✦ Generate from prompt</button>:<div><textarea value={promptVal} onChange={e=>setPromptVal(e.target.value)} rows={2} placeholder="Add migration flow arrows…" style={{width:"100%",background:"rgba(255,255,255,0.03)",border:`1px solid ${bd2}`,padding:"9px 10px",fontSize:11,color:tx,borderRadius:6,resize:"none",lineHeight:1.4,fontFamily:"inherit",marginBottom:6}}/><div style={{display:"flex",gap:4}}><button style={{flex:1,background:gold,color:"#1a1610",border:"none",padding:"8px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer"}}>Generate →</button><button onClick={()=>{setPromptOpen(false);setPromptVal("")}} style={{background:"rgba(255,255,255,0.04)",border:"none",color:tx3,padding:"8px 12px",fontSize:11,borderRadius:6,cursor:"pointer"}}>✕</button></div></div>}</div></div><div style={{flex:1,position:"relative",background:mapBg,overflow:"hidden"}}><div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 48% 40%, #121820 0%, ${mapBg} 55%)`}}/><svg width="100%" height="100%" viewBox={`${pX-30} ${pY-28} ${cW*11+60} ${cH*7+56}`} preserveAspectRatio="xMidYMid meet" style={{position:"absolute",inset:0}}>{US.map(([row,col,id,val])=>{const x=pX+col*cW,y=pY+row*cH,isH=hov===id;return<g key={id} onMouseEnter={()=>setHov(id)} onMouseLeave={()=>setHov(null)} style={{cursor:"pointer"}}><rect x={x+1} y={y+1} width={cW-2} height={cH-2} rx={3} fill={mapC(val)} fillOpacity={isH?.95:.78} stroke={isH?"rgba(255,255,255,0.35)":"rgba(0,0,0,0.2)"} strokeWidth={isH?1.5:.4} style={{transition:"all .1s"}}/><text x={x+cW/2} y={y+cH/2} textAnchor="middle" dominantBaseline="middle" fill={val>.45?"rgba(255,255,255,0.8)":"rgba(255,255,255,0.4)"} fontSize={isH?10:8.5} fontFamily="'Segoe UI',sans-serif" fontWeight={isH?600:400}>{id}</text></g>})}</svg><div style={{position:"absolute",top:14,left:"50%",transform:"translateX(-50%)",zIndex:5,pointerEvents:"none"}}><p style={{fontSize:17,...srf,color:tx+"88"}}>Sales by Region <span style={{fontSize:12,color:tx3,...mono}}>2023</span></p></div>{hs&&<div style={{position:"absolute",bottom:52,left:"50%",transform:"translateX(-50%)",zIndex:15,background:"rgba(12,16,20,0.88)",backdropFilter:"blur(16px)",border:`1px solid ${bd2}`,padding:"10px 20px",borderRadius:10,display:"flex",alignItems:"center",gap:16}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:12,height:12,borderRadius:4,background:mapC(hs[3])}}/><span style={{fontSize:14,fontWeight:600,...srf,color:tx}}>{hs[2]}</span></div><div style={{width:1,height:22,background:bd}}/><span style={{fontSize:22,fontWeight:600,...srf,color:tx}}>{Math.round(hs[3]*100)}%</span></div>}<div style={{position:"absolute",bottom:14,left:14,zIndex:10,background:"rgba(12,16,20,0.8)",backdropFilter:"blur(12px)",border:`1px solid ${bd}`,padding:"9px 13px",borderRadius:8}}><p style={{...mono,fontSize:8,color:tx3,marginBottom:5}}>COUNT / STATE</p><div style={{display:"flex",borderRadius:3,overflow:"hidden"}}>{th.colors.map((c,i)=><div key={i} style={{width:22,height:9,background:c}}/>)}</div></div><div style={{position:"absolute",bottom:14,right:14,zIndex:10,background:"rgba(12,16,20,0.8)",backdropFilter:"blur(12px)",border:`1px solid ${bd}`,borderRadius:8,padding:3,display:"flex",flexDirection:"column",gap:1}}><button style={{width:30,height:30,background:"none",border:"none",color:tx2,fontSize:15,cursor:"pointer",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button><div style={{width:18,height:1,background:bd,margin:"0 auto"}}/><button style={{width:30,height:30,background:"none",border:"none",color:tx2,fontSize:15,cursor:"pointer",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button></div></div><div style={{width:230,flexShrink:0,...glass,borderLeft:`1px solid ${bd}`,zIndex:10,overflowY:"auto",padding:"16px 14px"}}><span style={{fontSize:12,fontWeight:600,color:tx,display:"block",marginBottom:16}}>Style</span><span style={{fontSize:10,color:tx3,display:"block",marginBottom:8}}>Theme</span><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:18}}>{Object.entries(themes).map(([k,v])=><button key={k} onClick={()=>setTheme(k)} style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",textAlign:"left",border:theme===k?`1.5px solid ${sage}66`:"1.5px solid transparent",background:theme===k?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.015)"}}><div style={{display:"flex",gap:2,marginBottom:5,borderRadius:3,overflow:"hidden"}}>{v.colors.map((c,i)=><div key={i} style={{flex:1,height:10,background:c}}/>)}</div><span style={{fontSize:10,color:theme===k?tx:tx2}}>{v.name}</span></button>)}</div><span style={{fontSize:10,color:tx3,display:"block",marginBottom:8}}>Data source</span><div style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${bd}`,borderRadius:7,padding:"9px 12px",marginBottom:18,fontSize:11,color:tx2,cursor:"pointer"}}>Pop. Density / State ▾</div><span style={{fontSize:10,color:tx3,display:"block",marginBottom:6}}>Opacity</span><div style={{height:5,background:"rgba(255,255,255,0.04)",borderRadius:3,marginBottom:16}}><div style={{width:"100%",height:"100%",background:`${th.colors[3]}44`,borderRadius:3}}/></div><span style={{fontSize:10,color:tx3,display:"block",marginBottom:8}}>Output</span><div style={{display:"flex",gap:5,marginBottom:18}}>{["Interactive","PDF"].map((t,i)=><button key={t} style={{flex:1,background:i===0?"rgba(255,255,255,0.05)":"transparent",border:`1px solid ${i===0?bd2:bd}`,padding:"7px",fontSize:11,color:i===0?tx:tx3,borderRadius:6,cursor:"pointer"}}>{t}</button>)}</div><span style={{fontSize:10,color:tx3,display:"block",marginBottom:10}}>Options</span>{[{l:"Auto-labels",s:labels,f:setLabels},{l:"Clustering",s:clustering,f:setClustering},{l:"Show legend",s:showLeg,f:setShowLeg}].map(t=><div key={t.l} style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}><span style={{fontSize:11,color:tx2}}>{t.l}</span><Toggle on={t.s} onChange={()=>t.f(!t.s)}/></div>)}</div></div></div>)}
+
+// ==================== ROOT ====================
+function Atlas(){
+  const[page,setPage]=useState("landing");
+  const nav=(p)=>{setPage(p);window.scrollTo(0,0)};
+  return<div>
+    {page==="landing"&&<Landing onEnter={()=>nav("home")} onNav={nav}/>}
+    {page==="usecases"&&<UseCases onEnter={()=>nav("home")} onNav={nav}/>}
+    {page==="pricing"&&<Pricing onEnter={()=>nav("home")} onNav={nav}/>}
+    {page==="enterprise"&&<Enterprise onEnter={()=>nav("home")} onNav={nav}/>}
+    {page==="home"&&<Home onLogout={()=>nav("landing")} onOpenEditor={()=>nav("editor")}/>}
+    {page==="editor"&&<EditorView onBack={()=>nav("home")}/>}
+  </div>;
+}
+ReactDOM.render(<Atlas/>,document.getElementById("root"));
+</script>
+</body>
+</html>
