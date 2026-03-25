@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase/server";
 import type { MapRow, MapUpdate } from "../../../../lib/supabase/types";
+import { slugify } from "../../../../lib/utils/slugify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -43,7 +44,13 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { title?: string; description?: string; is_public?: boolean };
+  let body: {
+    title?: string;
+    description?: string;
+    is_public?: boolean;
+    manifest?: Record<string, unknown>;
+    geojson_url?: string | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -54,9 +61,25 @@ export async function PATCH(request: Request, { params }: Params) {
   if (body.title !== undefined) patch.title = body.title;
   if (body.description !== undefined) patch.description = body.description;
   if (body.is_public !== undefined) patch.is_public = body.is_public;
+  if (body.manifest !== undefined) patch.manifest = body.manifest as MapUpdate["manifest"];
+  if (body.geojson_url !== undefined) patch.geojson_url = body.geojson_url;
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  // Auto-generate slug when making a map public for the first time
+  if (body.is_public === true) {
+    const { data: current } = await supabase
+      .from("maps")
+      .select("slug, title")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (current && !current.slug) {
+      patch.slug = slugify(current.title ?? "map");
+    }
   }
 
   // RLS policy ensures only the owner can update
@@ -65,7 +88,7 @@ export async function PATCH(request: Request, { params }: Params) {
     .update(patch)
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id, title, is_public, updated_at")
+    .select("id, title, is_public, slug, updated_at")
     .single();
 
   if (error || !data) {

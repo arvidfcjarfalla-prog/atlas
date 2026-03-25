@@ -16,6 +16,8 @@ import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
 import { MapTooltip } from "@/components/MapTooltip";
 import { ZoomControls } from "@/components/ZoomControls";
+import { ShareModal } from "@/components/ShareModal";
+import { exportPNG, exportGeoJSON } from "@/lib/utils/export";
 
 // ─── Saved views ─────────────────────────────────────────────
 
@@ -117,11 +119,11 @@ function HeatmapControls({ manifest }: { manifest: MapManifest }) {
 
 // ─── Embed panel ─────────────────────────────────────────────
 
-function EmbedPanel({ mapId }: { mapId: string }) {
+function EmbedPanel({ slug }: { slug: string }) {
   const [embedCopied, setEmbedCopied] = useState(false);
   const [open, setOpen] = useState(false);
   const host = typeof window !== "undefined" ? window.location.host : "atlas.app";
-  const embedCode = `<iframe src="https://${host}/maps/${mapId}?embed=true" width="100%" height="500" frameborder="0" style="border-radius:8px;border:none"></iframe>`;
+  const embedCode = `<iframe src="${window.location.protocol}//${host}/m/${slug}/embed" width="100%" height="500" frameborder="0" style="border-radius:8px;border:none"></iframe>`;
 
   async function handleCopyEmbed() {
     await navigator.clipboard.writeText(embedCode).catch(() => {});
@@ -166,6 +168,7 @@ export default function MapPage() {
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const handleSaveView = useCallback((view: SavedView) => setSavedViews((prev) => [...prev, view]), []);
   const [mode, setMode] = useState<"interactive" | "presentation">("interactive");
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Chat state (only for owner)
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
@@ -414,6 +417,34 @@ export default function MapPage() {
     [manifest, autoSave],
   );
 
+  const handleTogglePublic = useCallback(
+    async (nextPublic: boolean): Promise<{ slug: string | null }> => {
+      const res = await fetch(`/api/maps/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public: nextPublic }),
+      });
+      if (!res.ok) return { slug: mapRow?.slug ?? null };
+      const data = await res.json();
+      setMapRow((prev) =>
+        prev
+          ? { ...prev, is_public: nextPublic, slug: data.map?.slug ?? prev.slug }
+          : prev,
+      );
+      return { slug: data.map?.slug ?? mapRow?.slug ?? null };
+    },
+    [id, mapRow],
+  );
+
+  const handleExportPNG = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas");
+    if (canvas) exportPNG(canvas, manifest?.title ?? "map");
+  }, [manifest]);
+
+  const handleExportGeoJSON = useCallback(() => {
+    if (geojsonData) exportGeoJSON(geojsonData, manifest?.title ?? "map");
+  }, [geojsonData, manifest]);
+
   // ── Loading / not found ──────────────────────────────────────
   if (loading || authLoading) {
     return (
@@ -492,8 +523,19 @@ export default function MapPage() {
           onTitleChange={handleTitleChange}
           mode={mode}
           onModeChange={setMode}
-          onShare={handleCopyLink}
+          onShare={() => setShareModalOpen(true)}
           onBack={() => router.push("/app")}
+          onExportPNG={handleExportPNG}
+          onExportGeoJSON={handleExportGeoJSON}
+        />
+        <ShareModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          mapId={id}
+          mapTitle={manifest.title ?? "Namnlös karta"}
+          isPublic={mapRow?.is_public ?? false}
+          slug={mapRow?.slug ?? null}
+          onTogglePublic={handleTogglePublic}
         />
         {draftRestore && (
           <div style={{
@@ -571,7 +613,7 @@ export default function MapPage() {
         <button onClick={handleCopyLink} style={{ width: "100%", padding: "8px 12px", fontSize: 13, fontFamily: "'Geist',sans-serif", color: copied ? "#8ecba0" : "#908c85", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, cursor: "pointer" }}>
           {copied ? "\u2713 Länk kopierad!" : "Kopiera länk"}
         </button>
-        {mapRow?.is_public && <EmbedPanel mapId={id} />}
+        {mapRow?.is_public && mapRow.slug && <EmbedPanel slug={mapRow.slug} />}
         <a href="/app" style={{ display: "block", width: "100%", padding: "8px 12px", fontSize: 13, fontFamily: "'Geist',sans-serif", color: "#908c85", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, textDecoration: "none", textAlign: "center" }}>
           Skapa en liknande karta →
         </a>

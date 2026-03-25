@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { ExportMenu } from "./ExportMenu";
 
 interface EditorToolbarProps {
   title: string;
@@ -9,6 +10,8 @@ interface EditorToolbarProps {
   onModeChange: (mode: "interactive" | "presentation") => void;
   onShare: () => void;
   onBack: () => void;
+  onExportPNG?: () => void;
+  onExportGeoJSON?: () => void;
 }
 
 // Design tokens from docs/prototype/atlas.html EditorView
@@ -21,6 +24,8 @@ export function EditorToolbar({
   onModeChange,
   onShare,
   onBack,
+  onExportPNG,
+  onExportGeoJSON,
 }: EditorToolbarProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -171,19 +176,22 @@ export function EditorToolbar({
       <div style={{ flex: 1 }} />
 
       {/* Export */}
-      <button
-        style={{
-          fontSize: 11,
-          fontFamily: "'Segoe UI',-apple-system,sans-serif",
-          color: "#908c85",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "6px 12px",
-        }}
-      >
-        Export ↓
-      </button>
+      {onExportPNG && onExportGeoJSON ? (
+        <ExportMenu onExportPNG={onExportPNG} onExportGeoJSON={onExportGeoJSON} />
+      ) : (
+        <button
+          style={{
+            fontSize: 11,
+            fontFamily: "'Segoe UI',-apple-system,sans-serif",
+            color: "#5a5752",
+            background: "none",
+            border: "none",
+            padding: "6px 12px",
+          }}
+        >
+          Export ↓
+        </button>
+      )}
 
       {/* Share — gold button */}
       <button
