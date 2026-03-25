@@ -14,6 +14,7 @@ const items = [
 
 export function ExportMenu({ onExportPNG, onExportGeoJSON }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -30,25 +31,34 @@ export function ExportMenu({ onExportPNG, onExportGeoJSON }: ExportMenuProps) {
 
   function handleSelect(key: string) {
     setOpen(false);
-    if (key === "png") onExportPNG();
-    else if (key === "geojson") onExportGeoJSON();
+    if (key === "png") {
+      setExporting(true);
+      // Brief delay to let the browser process canvas.toBlob
+      setTimeout(() => {
+        onExportPNG();
+        setTimeout(() => setExporting(false), 600);
+      }, 50);
+    } else if (key === "geojson") {
+      onExportGeoJSON();
+    }
   }
 
   return (
     <div ref={menuRef} style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !exporting && setOpen((v) => !v)}
         style={{
           fontSize: 11,
           fontFamily: "'Segoe UI',-apple-system,sans-serif",
-          color: "#908c85",
+          color: exporting ? "#8ecba0" : "#908c85",
           background: "none",
           border: "none",
-          cursor: "pointer",
+          cursor: exporting ? "wait" : "pointer",
           padding: "6px 12px",
+          transition: "color 0.15s ease",
         }}
       >
-        Export ↓
+        {exporting ? "Exporterar…" : "Export ↓"}
       </button>
 
       {open && (

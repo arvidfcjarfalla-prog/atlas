@@ -82,20 +82,35 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
-  // RLS policy ensures only the owner can update
-  const { data, error } = await supabase
-    .from("maps")
-    .update(patch)
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select("id, title, is_public, slug, updated_at")
-    .single();
+  // RLS policy ensures only the owner can update.
+  // Retry with a new slug suffix on unique constraint violation (max 3 attempts).
+  let attempts = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    attempts++;
+    const { data, error } = await supabase
+      .from("maps")
+      .update(patch)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select("id, title, is_public, slug, updated_at")
+      .single();
 
-  if (error || !data) {
-    return NextResponse.json({ error: "Not found or unauthorized" }, { status: 404 });
+    if (!error && data) {
+      return NextResponse.json({ map: data });
+    }
+
+    // Retry slug collision (Postgres unique violation = code 23505)
+    if (patch.slug && error?.code === "23505" && attempts < 3) {
+      patch.slug = slugify(body.title ?? "map");
+      continue;
+    }
+
+    return NextResponse.json(
+      { error: error?.message ?? "Not found or unauthorized" },
+      { status: error?.code === "23505" ? 409 : 404 },
+    );
   }
-
-  return NextResponse.json({ map: data });
 }
 
 // DELETE /api/maps/:id — delete a map (owner only)
