@@ -10,6 +10,10 @@ interface SidebarLayoutProps {
   panelOpen?: boolean;
   children: React.ReactNode;
   className?: string;
+  /** Override sidebar width in px (default 320). */
+  sidebarWidth?: number;
+  /** Override panel width in px (default 384). */
+  panelWidth?: number;
 }
 
 /**
@@ -23,12 +27,20 @@ export function SidebarLayout({
   panelOpen = false,
   children,
   className,
+  sidebarWidth,
+  panelWidth,
 }: SidebarLayoutProps) {
   return (
     <div className={cn("flex h-full w-full overflow-hidden", className)}>
       {/* Left sidebar — desktop only */}
       {sidebar && sidebarOpen && (
-        <aside className="hidden md:flex w-80 flex-shrink-0 flex-col border-r bg-sidebar overflow-hidden">
+        <aside
+          className="hidden md:flex flex-shrink-0 flex-col overflow-hidden"
+          style={{
+            width: sidebarWidth ?? 320,
+            borderRight: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
           {sidebar}
         </aside>
       )}
@@ -38,7 +50,13 @@ export function SidebarLayout({
 
       {/* Right panel — desktop only, slides in */}
       {panel && panelOpen && (
-        <aside className="hidden lg:flex w-96 flex-shrink-0 flex-col border-l bg-sidebar overflow-hidden animate-slide-in-right">
+        <aside
+          className="hidden lg:flex flex-shrink-0 flex-col overflow-hidden animate-slide-in-right"
+          style={{
+            width: panelWidth ?? 384,
+            borderLeft: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
           {panel}
         </aside>
       )}

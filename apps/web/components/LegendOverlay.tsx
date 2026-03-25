@@ -41,7 +41,7 @@ export function LegendOverlay({
           position: "absolute",
           bottom: 8,
           left: 8,
-          fontFamily: "'Geist Mono', monospace",
+          fontFamily: "'Courier New', monospace",
           fontSize: 10,
           color: "rgba(248,249,251,0.30)",
         }}>

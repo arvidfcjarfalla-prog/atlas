@@ -11,6 +11,11 @@ import { MapContent } from "@/components/MapContent";
 import { LegendOverlay } from "@/components/LegendOverlay";
 import { ChatPanel } from "@/components/ChatPanel";
 import type { ChatMsg } from "@/components/ChatPanel";
+import { EditorToolbar } from "@/components/EditorToolbar";
+import { LayerList } from "@/components/LayerList";
+import { StylePanel } from "@/components/StylePanel";
+import { MapTooltip } from "@/components/MapTooltip";
+import { ZoomControls } from "@/components/ZoomControls";
 
 // ─── Saved views ─────────────────────────────────────────────
 
@@ -160,6 +165,7 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const handleSaveView = useCallback((view: SavedView) => setSavedViews((prev) => [...prev, view]), []);
+  const [mode, setMode] = useState<"interactive" | "presentation">("interactive");
 
   // Chat state (only for owner)
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
@@ -277,6 +283,26 @@ export default function MapPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const handleStyleChange = useCallback(
+    (updated: MapManifest) => {
+      setManifestHistory((h) => [...h, manifest!]);
+      setManifest(updated);
+      autoSave(updated);
+    },
+    [manifest, autoSave],
+  );
+
+  const handleTitleChange = useCallback(
+    (newTitle: string) => {
+      if (!manifest) return;
+      const updated = { ...manifest, title: newTitle };
+      setManifest(updated);
+      setMapRow((prev) => (prev ? { ...prev, title: newTitle } : prev));
+      autoSave(updated);
+    },
+    [manifest, autoSave],
+  );
+
   // ── Loading / not found ──────────────────────────────────────
   if (loading || authLoading) {
     return (
@@ -309,12 +335,34 @@ export default function MapPage() {
 
   // ── Owner: show edit sidebar with chat ──────────────────────
   if (isOwner) {
-    const sidebar = (
+    const isInteractive = mode === "interactive";
+
+    const handlePromptGenerate = useCallback(async (prompt: string) => {
+      if (!manifest || chatLoading) return;
+      setChatMessages((prev) => [...prev, { role: "user", content: prompt }]);
+      setChatLoading(true);
+      try {
+        const res = await fetch("/api/ai/edit-map", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ manifest, message: prompt, chatHistory: chatMessages.map((m) => ({ role: m.role, content: m.content })) }),
+        });
+        const data = await res.json();
+        if (data.manifest) {
+          setManifestHistory((h) => [...h, manifest]);
+          setManifest(data.manifest);
+          autoSave(data.manifest);
+        }
+        setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "Klart." }]);
+      } catch {
+        setChatMessages((prev) => [...prev, { role: "assistant", content: "Något gick fel. Försök igen." }]);
+      }
+      setChatLoading(false);
+    }, [manifest, chatLoading, chatMessages, autoSave]);
+
+    const ownerSidebar = (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "'Geist',sans-serif" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: "#e4e0d8", margin: 0 }}>{manifest.title ?? "Redigera karta"}</h2>
-          <button onClick={() => router.push("/app/gallery")} style={{ fontSize: 12, color: "#5a5752", background: "none", border: "none", cursor: "pointer" }}>Galleri</button>
-        </div>
+        <LayerList layers={manifest.layers} onGenerate={handlePromptGenerate} />
         <div style={{ padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, color: "#5a5752", flexShrink: 0 }}>&#x1F50D;</span>
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Sök features…" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "#e4e0d8", width: "100%", outline: "none", fontFamily: "'Geist',sans-serif" }} />
@@ -323,13 +371,38 @@ export default function MapPage() {
       </div>
     );
 
+    const stylePanel = <StylePanel manifest={manifest} onManifestChange={handleStyleChange} />;
+
     return (
-      <MapShell manifest={manifest} sidebar={sidebar} sidebarOpen overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
-        <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
-        <CoordinateWidget />
-        <ViewsBar savedViews={savedViews} onSaveView={handleSaveView} />
-        <HeatmapControls manifest={manifest} />
-      </MapShell>
+      <>
+        <EditorToolbar
+          title={manifest.title ?? "Namnlös karta"}
+          onTitleChange={handleTitleChange}
+          mode={mode}
+          onModeChange={setMode}
+          onShare={handleCopyLink}
+          onBack={() => router.push("/app")}
+        />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <MapShell
+            manifest={manifest}
+            sidebar={isInteractive ? ownerSidebar : undefined}
+            sidebarOpen={isInteractive}
+            detailPanel={isInteractive ? stylePanel : undefined}
+            panelOpen={isInteractive}
+            sidebarWidth={230}
+            panelWidth={230}
+            overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}
+          >
+            <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
+            <MapTooltip layerId={layer?.id} />
+            <ZoomControls />
+            <CoordinateWidget />
+            <ViewsBar savedViews={savedViews} onSaveView={handleSaveView} />
+            <HeatmapControls manifest={manifest} />
+          </MapShell>
+        </div>
+      </>
     );
   }
 
@@ -357,9 +430,23 @@ export default function MapPage() {
   );
 
   return (
-    <MapShell manifest={manifest} sidebar={sidebar} sidebarOpen overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
-      <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
-      <CoordinateWidget />
-    </MapShell>
+    <>
+      <EditorToolbar
+        title={manifest.title ?? "Karta"}
+        onTitleChange={() => {}}
+        mode="interactive"
+        onModeChange={() => {}}
+        onShare={handleCopyLink}
+        onBack={() => router.push("/app")}
+      />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <MapShell manifest={manifest} sidebar={sidebar} sidebarOpen overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
+          <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
+          <MapTooltip layerId={layer?.id} />
+          <ZoomControls />
+          <CoordinateWidget />
+        </MapShell>
+      </div>
+    </>
   );
 }

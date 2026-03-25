@@ -16,23 +16,37 @@ interface LegendProps {
   onToggle?: (label: string) => void;
 }
 
+const glass = {
+  background: "rgba(12,16,20,0.8)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  border: "1px solid rgba(255,255,255,0.05)",
+  borderRadius: 8,
+} as const;
+
 /** Map legend overlay with optional filter toggling. */
 export function Legend({ items, title, className, activeItems, onToggle }: LegendProps) {
   if (items.length === 0) return null;
 
   return (
     <div
-      className={cn(
-        "absolute top-4 left-4 z-overlay bg-card border border-border rounded-lg px-3 py-2.5 shadow-sm",
-        className,
-      )}
+      className={cn("absolute top-4 left-4 z-overlay", className)}
+      style={{ ...glass, padding: "10px 12px" }}
     >
       {title && (
-        <h3 className="text-label font-mono uppercase text-muted-foreground mb-2">
+        <h3 style={{
+          fontFamily: "'Courier New', monospace",
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#5a5752",
+          margin: "0 0 8px",
+        }}>
           {title}
         </h3>
       )}
-      <div className="flex flex-col gap-1.5">
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {items.map((item) => {
           const isActive = !activeItems || activeItems.includes(item.label);
           return (
@@ -41,23 +55,32 @@ export function Legend({ items, title, className, activeItems, onToggle }: Legen
               type="button"
               onClick={() => onToggle?.(item.label)}
               disabled={!onToggle}
-              className={cn(
-                "flex items-center gap-2 transition-opacity duration-fast",
-                !isActive && "opacity-35",
-                onToggle && "cursor-pointer hover:opacity-100",
-                !onToggle && "cursor-default",
-              )}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                opacity: isActive ? 1 : 0.35,
+                cursor: onToggle ? "pointer" : "default",
+                background: "none",
+                border: "none",
+                padding: 0,
+                transition: "opacity 150ms",
+              }}
             >
               <span
-                className={cn(
-                  "flex-shrink-0",
-                  item.shape === "line"
-                    ? "h-0.5 w-4 rounded-full"
-                    : "w-2.5 h-2.5 rounded-full",
-                )}
-                style={{ backgroundColor: item.color }}
+                style={{
+                  flexShrink: 0,
+                  backgroundColor: item.color,
+                  borderRadius: item.shape === "line" ? 2 : "50%",
+                  width: item.shape === "line" ? 16 : 8,
+                  height: item.shape === "line" ? 2 : 8,
+                }}
               />
-              <span className="text-caption text-foreground/70">{item.label}</span>
+              <span style={{
+                fontFamily: "'Courier New', monospace",
+                fontSize: 11,
+                color: "rgba(228,224,216,0.7)",
+              }}>{item.label}</span>
             </button>
           );
         })}

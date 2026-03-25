@@ -7,6 +7,11 @@ import type { CompiledLegendItem } from "@atlas/map-core";
 import type { MapManifest } from "@atlas/data-models";
 import { MapContent } from "@/components/MapContent";
 import { LegendOverlay } from "@/components/LegendOverlay";
+import { EditorToolbar } from "@/components/EditorToolbar";
+import { LayerList } from "@/components/LayerList";
+import { StylePanel } from "@/components/StylePanel";
+import { MapTooltip } from "@/components/MapTooltip";
+import { ZoomControls } from "@/components/ZoomControls";
 import { useAuth } from "@/lib/auth/use-auth";
 import { decideClarifyAction } from "@/lib/ai/clarify-action";
 import type { ClarifyResponse, ClarificationQuestion } from "@/lib/ai/types";
@@ -302,10 +307,34 @@ export default function NewMapPage() {
 
   // ── Loading ──────────────────────────────────────────────
   if (!manifest || stage === "clarifying" || stage === "generating" || stage === "fetching" || stage === "saving") {
+    const PIPELINE_STEPS: { key: Stage; label: string }[] = [
+      { key: "clarifying", label: "Söker data" },
+      { key: "generating", label: "Genererar karta" },
+      { key: "fetching", label: "Hämtar geodata" },
+      { key: "saving", label: "Renderar" },
+    ];
+    const activeIdx = PIPELINE_STEPS.findIndex((s) => s.key === stage);
+
     return (
-      <div style={{ minHeight: "100vh", background: "#0d1217", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <div style={{ width: 32, height: 32, border: "2px solid rgba(142,203,160,0.3)", borderTop: "2px solid rgba(142,203,160,0.9)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "#908c85" }}>{STAGE_LABELS[stage]}</p>
+      <div style={{ minHeight: "100vh", background: "#0d1217", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {PIPELINE_STEPS.map((step, i) => {
+            const isDone = i < activeIdx;
+            const isActive = i === activeIdx;
+            const isPending = i > activeIdx;
+            return (
+              <div key={step.key} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", opacity: isPending ? 0.35 : 1, transition: "opacity 0.4s ease" }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...(isDone ? { background: "rgba(142,203,160,0.15)" } : isActive ? { border: "2px solid rgba(142,203,160,0.4)" } : { border: "2px solid rgba(255,255,255,0.08)" }) }}>
+                  {isDone && <span style={{ color: "#8ecba0", fontSize: 13, lineHeight: 1 }}>{"\u2713"}</span>}
+                  {isActive && <div style={{ width: 10, height: 10, border: "2px solid transparent", borderTop: "2px solid #8ecba0", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />}
+                </div>
+                <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: isDone ? "#8ecba0" : isActive ? "#e4e0d8" : "#5a5752", transition: "color 0.4s ease" }}>
+                  {step.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
         {prompt && (
           <p style={{ fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "#5a5752", maxWidth: 400, textAlign: "center" }}>
             {prompt.slice(0, 80)}{prompt.length > 80 ? "\u2026" : ""}
@@ -337,16 +366,51 @@ export default function NewMapPage() {
     );
   }
 
-  // ── Map rendered ─────────────────────────────────────────
+  // ── Map rendered (fallback when save/redirect didn't happen) ──
   const mapData: GeoJSON.FeatureCollection | string =
     geojsonData ?? manifest.layers[0]?.sourceUrl ?? { type: "FeatureCollection" as const, features: [] };
   const layer = manifest.layers[0];
 
+  const newSidebar = <LayerList layers={manifest.layers} />;
+
+  const newStylePanel = (
+    <StylePanel
+      manifest={manifest}
+      onManifestChange={(updated) => setManifest(updated)}
+    />
+  );
+
   return (
-    <MapShell manifest={manifest} sidebarOpen={false} overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
-      <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
-      <CoordinateWidget />
-    </MapShell>
+    <>
+      <EditorToolbar
+        title={manifest.title ?? "Ny karta"}
+        onTitleChange={() => {}}
+        mode="interactive"
+        onModeChange={() => {}}
+        onShare={() => {
+          const url = window.location.href;
+          navigator.clipboard.writeText(url).catch(() => {});
+        }}
+        onBack={() => router.push("/app")}
+      />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <MapShell
+          manifest={manifest}
+          sidebar={newSidebar}
+          sidebarOpen
+          sidebarWidth={230}
+          panelWidth={230}
+          detailPanel={newStylePanel}
+          panelOpen
+          overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}
+        >
+          <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
+          <MapTooltip layerId={layer?.id} />
+          <ZoomControls />
+          <CoordinateWidget />
+        </MapShell>
+      </div>
+    </>
   );
 }
 
