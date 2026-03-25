@@ -12,8 +12,6 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    overflow: hidden;
-    overscroll-behavior: none;
   }
 }
 

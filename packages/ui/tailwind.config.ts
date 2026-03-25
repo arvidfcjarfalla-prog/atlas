@@ -19,6 +19,9 @@ const config: Config = {
       fontFamily: {
         sans: ["Inter", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
+        geist: ["Geist", "sans-serif"],
+        "geist-mono": ["Geist Mono", "monospace"],
+        display: ["'Instrument Serif'", "Georgia", "serif"],
       },
       fontSize: {
         heading: ["15px", { lineHeight: "1.33", fontWeight: "600", letterSpacing: "-0.01em" }],
