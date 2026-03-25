@@ -105,6 +105,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      map_versions: {
+        Row: {
+          id: string;
+          map_id: string;
+          version: number;
+          prompt: string | null;
+          manifest: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          map_id: string;
+          version: number;
+          prompt?: string | null;
+          manifest: Json;
+          created_at?: string;
+        };
+        Update: {
+          manifest?: Json;
+          prompt?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "map_versions_map_id_fkey";
+            columns: ["map_id"];
+            referencedRelation: "maps";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       maps: {
         Row: {
           id: string;
@@ -181,6 +211,10 @@ export interface Database {
         Args: { p_prompt_key: string };
         Returns: undefined;
       };
+      insert_map_version: {
+        Args: { p_map_id: string; p_manifest: Json; p_prompt?: string };
+        Returns: { id: string; version: number; created_at: string }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -191,6 +225,8 @@ export interface Database {
 export type MapRow = Database["public"]["Tables"]["maps"]["Row"];
 export type MapInsert = Database["public"]["Tables"]["maps"]["Insert"];
 export type MapUpdate = Database["public"]["Tables"]["maps"]["Update"];
+export type MapVersionRow = Database["public"]["Tables"]["map_versions"]["Row"];
+export type MapVersionInsert = Database["public"]["Tables"]["map_versions"]["Insert"];
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
 export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];

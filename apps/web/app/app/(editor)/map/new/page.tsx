@@ -12,6 +12,7 @@ import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
 import { MapTooltip } from "@/components/MapTooltip";
 import { ZoomControls } from "@/components/ZoomControls";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/use-auth";
 import { decideClarifyAction } from "@/lib/ai/clarify-action";
 import type { ClarifyResponse, ClarificationQuestion } from "@/lib/ai/types";
@@ -44,6 +45,7 @@ const MAX_AUTO_ANSWER_ROUNDS = 3;
 export default function NewMapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const prompt = searchParams.get("prompt") ?? "";
   const { user } = useAuth();
 
@@ -210,6 +212,7 @@ export default function NewMapPage() {
               const saveData = await saveRes.json();
               const mapId = saveData.map?.id;
               if (mapId) {
+                queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
                 router.replace(`/app/map/${mapId}`);
                 return;
               }

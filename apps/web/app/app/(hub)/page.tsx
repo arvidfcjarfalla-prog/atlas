@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth/use-auth";
 
 const SUGGESTIONS = [
   "Befolkningstäthet i Europa",
@@ -12,8 +14,50 @@ const SUGGESTIONS = [
 
 export default function AppHomePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user, loading: authLoading } = useAuth();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const pendingHandled = useRef(false);
+
+  // Recover pending map after OAuth redirect
+  useEffect(() => {
+    if (authLoading || !user || pendingHandled.current) return;
+    pendingHandled.current = true;
+
+    try {
+      const pendingSave = sessionStorage.getItem("atlas_pending_save");
+      const pendingMapRaw = sessionStorage.getItem("atlas_pending_map");
+      if (!pendingSave || !pendingMapRaw) return;
+
+      // Clear immediately to prevent double-save on re-render
+      sessionStorage.removeItem("atlas_pending_save");
+      sessionStorage.removeItem("atlas_pending_map");
+
+      const pendingMap = JSON.parse(pendingMapRaw);
+      if (!pendingMap?.manifest) return;
+
+      fetch("/api/maps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: pendingMap.manifest.title ?? pendingMap.prompt?.slice(0, 60) ?? "Namnlös karta",
+          prompt: pendingMap.prompt ?? "",
+          manifest: pendingMap.manifest,
+          is_public: false,
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const mapId = data?.map?.id;
+          if (mapId) {
+            queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
+            router.replace(`/app/map/${mapId}`);
+          }
+        })
+        .catch(() => {});
+    } catch { /* ignore parse errors */ }
+  }, [authLoading, user, router]);
 
   function handleSubmit() {
     const q = value.trim();

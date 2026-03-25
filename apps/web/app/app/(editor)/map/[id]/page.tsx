@@ -175,6 +175,14 @@ export default function MapPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<MapManifest[]>([]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDirtyRef = useRef(false);
+  const manifestRef = useRef<MapManifest | null>(null);
+  manifestRef.current = manifest;
+  const [draftRestore, setDraftRestore] = useState<{
+    manifest: MapManifest;
+    geojsonUrl: string | null;
+    timestamp: number;
+  } | null>(null);
 
   const isOwner = user && mapRow && mapRow.user_id === user.id;
 
@@ -189,6 +197,20 @@ export default function MapPage() {
       setMapRow(row);
       const m = row.manifest as unknown as MapManifest;
       setManifest(m);
+
+      // Check for localStorage draft newer than DB
+      try {
+        const draftRaw = localStorage.getItem(`atlas:draft:${id}`);
+        if (draftRaw) {
+          const draft = JSON.parse(draftRaw);
+          const dbUpdated = new Date(row.updated_at).getTime();
+          if (draft.timestamp > dbUpdated && draft.manifest) {
+            setDraftRestore(draft);
+          } else {
+            localStorage.removeItem(`atlas:draft:${id}`);
+          }
+        }
+      } catch { /* ignore parse errors */ }
 
       const dataUrl = row.geojson_url ?? m.layers[0]?.sourceUrl;
       if (dataUrl) {
@@ -205,9 +227,71 @@ export default function MapPage() {
     load();
   }, [id, authLoading]);
 
+  // ── Warn on navigation if dirty ────────────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // ── Reconnect: sync localStorage draft to Supabase ────────
+  useEffect(() => {
+    if (!id) return;
+    const handleOnline = () => {
+      if (isDirtyRef.current && manifestRef.current) {
+        const m = manifestRef.current;
+        fetch(`/api/maps/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            manifest: m as unknown as Record<string, unknown>,
+            title: m.title,
+          }),
+        })
+          .then(() => {
+            isDirtyRef.current = false;
+            try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [id]);
+
+  // ── Save version (fire-and-forget) ─────────────────────────
+  const saveVersion = useCallback(
+    (m: MapManifest, prompt?: string) => {
+      if (!id) return;
+      fetch(`/api/maps/${id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          manifest: m as unknown as Record<string, unknown>,
+          ...(prompt ? { prompt } : {}),
+        }),
+      }).catch(() => {});
+    },
+    [id],
+  );
+
   // ── Auto-save ───────────────────────────────────────────────
   const autoSave = useCallback((m: MapManifest, dataUrl?: string) => {
     if (!id) return;
+    isDirtyRef.current = true;
+
+    // Write draft to localStorage immediately (offline-safe)
+    try {
+      localStorage.setItem(
+        `atlas:draft:${id}`,
+        JSON.stringify({ manifest: m, geojsonUrl: dataUrl ?? null, timestamp: Date.now() }),
+      );
+    } catch { /* localStorage might be full or unavailable */ }
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
@@ -216,8 +300,34 @@ export default function MapPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ manifest: m as unknown as Record<string, unknown>, title: m.title, ...(dataUrl ? { geojson_url: dataUrl } : {}) }),
         });
-      } catch { /* non-critical */ }
+        isDirtyRef.current = false;
+        try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+      } catch { /* non-critical — draft remains in localStorage */ }
     }, 1000);
+  }, [id]);
+
+  // ── Periodic auto-save (30s) ────────────────────────────────
+  useEffect(() => {
+    if (!id) return;
+    const interval = setInterval(() => {
+      if (isDirtyRef.current && manifestRef.current) {
+        const m = manifestRef.current;
+        fetch(`/api/maps/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            manifest: m as unknown as Record<string, unknown>,
+            title: m.title,
+          }),
+        })
+          .then(() => {
+            isDirtyRef.current = false;
+            try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          })
+          .catch(() => {});
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
   }, [id]);
 
   // ── Chat ────────────────────────────────────────────────────
@@ -242,6 +352,7 @@ export default function MapPage() {
         setManifestHistory((h) => h.slice(0, -1));
         autoSave(prev);
       } else if (data.manifest) {
+        saveVersion(manifest, msg);
         setManifestHistory((h) => [...h, manifest]);
         setManifest(data.manifest);
         const newDataUrl = data.dataUrl ?? data.manifest?.layers?.[0]?.sourceUrl;
@@ -264,7 +375,7 @@ export default function MapPage() {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Något gick fel. Försök igen." }]);
     }
     setChatLoading(false);
-  }, [chatInput, manifest, chatLoading, chatMessages, manifestHistory, mapRow, autoSave]);
+  }, [chatInput, manifest, chatLoading, chatMessages, manifestHistory, mapRow, autoSave, saveVersion]);
 
   const handleUndo = useCallback(() => {
     if (manifestHistory.length === 0 || !manifest) return;
@@ -349,6 +460,7 @@ export default function MapPage() {
         });
         const data = await res.json();
         if (data.manifest) {
+          saveVersion(manifest, prompt);
           setManifestHistory((h) => [...h, manifest]);
           setManifest(data.manifest);
           autoSave(data.manifest);
@@ -358,7 +470,7 @@ export default function MapPage() {
         setChatMessages((prev) => [...prev, { role: "assistant", content: "Något gick fel. Försök igen." }]);
       }
       setChatLoading(false);
-    }, [manifest, chatLoading, chatMessages, autoSave]);
+    }, [manifest, chatLoading, chatMessages, autoSave, saveVersion]);
 
     const ownerSidebar = (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "'Geist',sans-serif" }}>
@@ -383,6 +495,44 @@ export default function MapPage() {
           onShare={handleCopyLink}
           onBack={() => router.push("/app")}
         />
+        {draftRestore && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+            padding: "8px 16px",
+            background: "rgba(234,179,8,0.10)",
+            borderBottom: "1px solid rgba(234,179,8,0.20)",
+            fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(234,179,8,0.9)",
+          }}>
+            <span>Osparade ändringar hittades ({new Date(draftRestore.timestamp).toLocaleTimeString("sv-SE")})</span>
+            <button
+              onClick={() => {
+                setManifestHistory((h) => [...h, manifest]);
+                setManifest(draftRestore.manifest);
+                autoSave(draftRestore.manifest, draftRestore.geojsonUrl ?? undefined);
+                setDraftRestore(null);
+              }}
+              style={{
+                background: "rgba(234,179,8,0.18)", border: "1px solid rgba(234,179,8,0.35)",
+                borderRadius: 6, padding: "4px 12px", fontSize: 12, fontWeight: 600,
+                color: "rgba(234,179,8,0.95)", cursor: "pointer",
+              }}
+            >
+              Återställ
+            </button>
+            <button
+              onClick={() => {
+                setDraftRestore(null);
+                try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+              }}
+              style={{
+                background: "none", border: "none", padding: "4px 8px",
+                fontSize: 12, color: "#908c85", cursor: "pointer",
+              }}
+            >
+              Ignorera
+            </button>
+          </div>
+        )}
         <div style={{ flex: 1, minHeight: 0 }}>
           <MapShell
             manifest={manifest}
