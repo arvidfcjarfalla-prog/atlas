@@ -124,7 +124,7 @@ function SignupPageInner() {
       <AuthCard>
         {/* Logo */}
         <div style={{ marginBottom: 32, textAlign: "center" }}>
-          <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 22, fontWeight: 500, color: "#F8F9FB", letterSpacing: "-0.01em" }}>atlas</span>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 500, color: "#F8F9FB", letterSpacing: "-0.01em" }}><span style={{ color: "#8ecba0" }}>●</span> atlas</span>
         </div>
 
         <h1 style={{ fontFamily: "'Geist',sans-serif", fontSize: 20, fontWeight: 500, color: "#F8F9FB", marginBottom: 8, textAlign: "center" }}>
@@ -145,7 +145,7 @@ function SignupPageInner() {
           type="button"
           onClick={handleGoogle}
           disabled={oauthLoading || loading}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 10, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 10, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
         >
@@ -163,7 +163,7 @@ function SignupPageInner() {
           type="button"
           onClick={handleGithub}
           disabled={oauthLoading || loading}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 20, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 20, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
         >
@@ -192,7 +192,7 @@ function SignupPageInner() {
               required
               autoComplete="email"
               style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
-              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(142,203,160,0.40)"; }}
               onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
             />
           </div>
@@ -206,7 +206,7 @@ function SignupPageInner() {
               required
               autoComplete="new-password"
               style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
-              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(142,203,160,0.40)"; }}
               onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
             />
           </div>
@@ -214,9 +214,9 @@ function SignupPageInner() {
           <button
             type="submit"
             disabled={loading || oauthLoading}
-            style={{ marginTop: 4, width: "100%", background: "rgba(142,203,160,0.15)", border: "1px solid rgba(142,203,160,0.25)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#8ecba0", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "all 150ms ease" }}
-            onMouseEnter={(e) => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.22)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.40)"; } }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.15)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.25)"; }}
+            style={{ marginTop: 4, width: "100%", background: "#d4a574", border: "1px solid #d4a574", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#0d1217", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "all 150ms ease" }}
+            onMouseEnter={(e) => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.background = "#dbb28a"; } }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#d4a574"; }}
           >
             {loading ? "Skapar konto\u2026" : "Skapa konto"}
           </button>
@@ -232,7 +232,7 @@ function SignupPageInner() {
         </p>
         <p style={{ marginTop: 12, textAlign: "center" }}>
           <a href="/" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.25)", textDecoration: "none" }}>
-            &larr; Tillbaka till kartan
+            &larr; Tillbaka till Atlas
           </a>
         </p>
       </AuthCard>

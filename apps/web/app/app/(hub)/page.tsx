@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth/use-auth";
 
 const SUGGESTIONS = [
   "Befolkningstäthet i Europa",
@@ -13,7 +12,6 @@ const SUGGESTIONS = [
 
 export default function AppHomePage() {
   const router = useRouter();
-  const { user, profile } = useAuth();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
 
@@ -23,31 +21,13 @@ export default function AppHomePage() {
     router.push(`/app/map/new?prompt=${encodeURIComponent(q)}`);
   }
 
-  const displayName = profile?.display_name ?? user?.email?.split("@")[0];
-
   return (
     <div
-      className="relative flex h-full flex-col items-center justify-center"
+      className="relative h-full"
       style={{ backgroundColor: "#0d1217" }}
     >
-      {/* Welcome */}
-      <div className="mb-8 text-center">
-        <h1
-          className="mb-2 text-2xl font-semibold tracking-tight"
-          style={{
-            fontFamily: "Georgia, serif",
-            color: "#e4e0d8",
-          }}
-        >
-          {displayName ? `Hej, ${displayName}` : "Välkommen till Atlas"}
-        </h1>
-        <p className="text-sm" style={{ color: "#908c85" }}>
-          Beskriv en karta du vill skapa
-        </p>
-      </div>
-
-      {/* Prompt bar */}
-      <div className="w-full max-w-xl px-6">
+      {/* Prompt bar — fixed at bottom center */}
+      <div className="absolute bottom-7 left-1/2 w-full max-w-xl -translate-x-1/2 px-6">
         <div
           className="flex items-center overflow-hidden rounded-2xl transition-all"
           style={{
@@ -55,10 +35,10 @@ export default function AppHomePage() {
             backdropFilter: "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
             border: focused
-              ? "1px solid rgba(142,203,160,0.35)"
+              ? "1px solid rgba(255,255,255,0.15)"
               : "1px solid rgba(255,255,255,0.06)",
             boxShadow: focused
-              ? "0 0 0 3px rgba(142,203,160,0.08), 0 8px 32px rgba(0,0,0,0.30)"
+              ? "0 0 0 3px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.30)"
               : "0 8px 32px rgba(0,0,0,0.20)",
           }}
         >
@@ -114,10 +94,10 @@ export default function AppHomePage() {
               }}
               className="rounded-full px-3.5 py-1.5 text-xs transition-colors hover:border-white/10 hover:bg-white/[0.06]"
               style={{
-                fontFamily: "'Geist', sans-serif",
+                fontFamily: "'Courier New', monospace",
                 color: "#908c85",
-                backgroundColor: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
+                backgroundColor: "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
               {s}
