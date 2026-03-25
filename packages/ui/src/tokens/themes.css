@@ -5,7 +5,173 @@
  * Editorial  — light, "news blue", for disasters/news maps
  * Explore    — dark, "product green", for conflict/space/consumer maps
  * Decision   — dark, "action blue", for infrastructure/tools
+ *
+ * UI modes (dashboard/explore pages) — context-driven, not user-toggled:
+ * data-mode="discover" → cold mineral stone, public gallery
+ * data-mode="own"      → warm stone, personal library
+ * data-mode="create"   → cooler, active accent, map builder
+ * data-mode="refine"   → dark precision, editing/refine flows
+ * Set on <html> by the FOUC-prevention script in layout.tsx.
+ * Teal (197°) is the single accent across all modes.
  */
+
+/* ─── Mode: discover — dark cartographic, public gallery ── */
+/* Dark because maps are the hero — neutral dark, not blue.  */
+/* Interaction rule: accent never on text. Only on lines/surfaces. */
+[data-mode="discover"] {
+  color-scheme: dark;
+  --ui-bg: 220 12% 8%;
+  --ui-surface: 220 10% 11%;
+  --ui-border: 220 8% 17%;
+  --ui-border-strong: 220 7% 24%;
+  --ui-text: 210 10% 88%;          /* near-white, no blue cast */
+  --ui-text-muted: 215 5% 48%;     /* mid-gray, not teal */
+  --ui-text-faint: 215 4% 30%;
+  /* accent = teal, used only on surfaces/borders/lines — never text */
+  --ui-accent: 197 45% 42%;
+  --ui-accent-fg: 220 12% 8%;
+  --ui-accent-subtle: 197 30% 12%;
+  --ui-accent-ring: 197 28% 20%;
+  --ui-accent-line: 197 40% 36%;   /* for active tab underline, separators */
+  /* interactive states — white-based, not teal-based */
+  --ui-interactive-active: 0 0% 92%;     /* active tab text */
+  --ui-interactive-hover: 0 0% 72%;     /* hover text */
+  --ui-interactive-rest: 215 5% 48%;    /* rest text = muted */
+  --ui-surface-hover: 220 8% 14%;       /* subtle surface lift on hover */
+  --ui-surface-active: 220 8% 16%;
+  /* CTA: dark surface, restrained */
+  --ui-cta-bg: 220 8% 16%;
+  --ui-cta-text: 210 10% 88%;
+  --ui-cta-border: 220 7% 26%;
+  --ui-cta-primary-bg: 220 8% 20%;
+  --ui-cta-primary-border: 220 6% 32%;
+  --ui-danger: 0 55% 52%;
+  --ui-danger-fg: 0 0% 100%;
+  --ui-success: 160 45% 40%;
+  --ui-skeleton-base: 220 9% 14%;
+  --ui-skeleton-shine: 220 8% 18%;
+  --ui-thumb-bg: 220 10% 12%;
+  --ui-dashed: 220 7% 25%;
+  --ui-dashed-hover: 220 6% 32%;
+  --ui-header-bg: 220 14% 6% / 0.95;
+  --ui-texture-dot: rgba(255, 255, 255, 0.016);
+}
+
+/* ─── Mode: own — warm stone, personal library ──────────── */
+[data-mode="own"] {
+  --ui-bg: 35 12% 97%;
+  --ui-surface: 0 0% 100%;
+  --ui-border: 30 10% 87%;
+  --ui-border-strong: 30 8% 75%;
+  --ui-text: 25 20% 11%;
+  --ui-text-muted: 25 8% 43%;
+  --ui-text-faint: 25 6% 60%;
+  --ui-accent: 197 52% 33%;
+  --ui-accent-fg: 0 0% 100%;
+  --ui-accent-subtle: 197 55% 94%;
+  --ui-accent-ring: 197 42% 78%;
+  --ui-danger: 0 68% 50%;
+  --ui-danger-fg: 0 0% 100%;
+  --ui-success: 160 55% 36%;
+  --ui-skeleton-base: 30 10% 91%;
+  --ui-skeleton-shine: 30 10% 86%;
+  --ui-thumb-bg: 30 12% 92%;
+  --ui-dashed: 30 8% 76%;
+  --ui-dashed-hover: 197 38% 68%;
+  --ui-header-bg: 35 18% 99% / 0.93;
+  --ui-texture-dot: rgba(50, 38, 25, 0.018);
+}
+
+/* ─── Mode: create — cooler, active accent ──────────────── */
+[data-mode="create"] {
+  --ui-bg: 210 16% 97%;
+  --ui-surface: 0 0% 100%;
+  --ui-border: 210 14% 87%;
+  --ui-border-strong: 210 12% 74%;
+  --ui-text: 215 26% 11%;
+  --ui-text-muted: 212 10% 42%;
+  --ui-text-faint: 212 8% 60%;
+  --ui-accent: 197 62% 38%;
+  --ui-accent-fg: 0 0% 100%;
+  --ui-accent-subtle: 197 65% 93%;
+  --ui-accent-ring: 197 50% 78%;
+  --ui-danger: 0 68% 50%;
+  --ui-danger-fg: 0 0% 100%;
+  --ui-success: 160 55% 36%;
+  --ui-skeleton-base: 210 14% 91%;
+  --ui-skeleton-shine: 210 14% 86%;
+  --ui-thumb-bg: 210 16% 92%;
+  --ui-dashed: 210 12% 76%;
+  --ui-dashed-hover: 197 48% 70%;
+  --ui-header-bg: 210 22% 99% / 0.93;
+  --ui-texture-dot: rgba(20, 40, 55, 0.018);
+}
+
+/* ─── Mode: refine — dark precision ─────────────────────── */
+[data-mode="refine"] {
+  --ui-bg: 218 22% 8%;
+  --ui-surface: 218 20% 12%;
+  --ui-border: 218 16% 20%;
+  --ui-border-strong: 218 14% 28%;
+  --ui-text: 205 25% 90%;
+  --ui-text-muted: 210 10% 52%;
+  --ui-text-faint: 210 8% 36%;
+  --ui-accent: 197 65% 52%;
+  --ui-accent-fg: 218 22% 8%;
+  --ui-accent-subtle: 197 50% 14%;
+  --ui-accent-ring: 197 40% 26%;
+  --ui-danger: 0 68% 58%;
+  --ui-danger-fg: 0 0% 100%;
+  --ui-success: 160 52% 44%;
+  --ui-skeleton-base: 218 18% 16%;
+  --ui-skeleton-shine: 218 16% 21%;
+  --ui-thumb-bg: 218 20% 15%;
+  --ui-dashed: 218 14% 30%;
+  --ui-dashed-hover: 197 42% 38%;
+  --ui-header-bg: 218 26% 7% / 0.94;
+  --ui-texture-dot: rgba(255, 255, 255, 0.025);
+}
+
+/* ─── Mode: app — glassmorphism dark shell ────────────── */
+/* Dark chrome with sage/gold accents. Maps are the hero. */
+[data-mode="app"] {
+  color-scheme: dark;
+  --ui-bg: 216 20% 7%;              /* #0d1217 */
+  --ui-surface: 216 18% 9%;         /* #111820 */
+  --ui-border: 0 0% 100% / 0.05;
+  --ui-border-strong: 0 0% 100% / 0.08;
+  --ui-text: 36 11% 89%;            /* #e4e0d8 */
+  --ui-text-muted: 36 4% 55%;       /* #908c85 */
+  --ui-text-faint: 33 4% 33%;       /* #5a5752 */
+  --ui-accent: 142 32% 65%;         /* sage #8ecba0 */
+  --ui-accent-fg: 216 20% 7%;
+  --ui-accent-subtle: 142 25% 12%;
+  --ui-accent-ring: 142 24% 24%;
+  --ui-accent-line: 142 30% 50%;
+  --ui-accent-gold: 27 45% 64%;     /* gold #d4a574 */
+  --ui-interactive-active: 0 0% 92%;
+  --ui-interactive-hover: 0 0% 72%;
+  --ui-interactive-rest: 36 4% 55%;
+  --ui-surface-hover: 213 16% 12%;  /* #182028 */
+  --ui-surface-active: 213 14% 14%;
+  --ui-cta-bg: 27 45% 64%;          /* gold CTA */
+  --ui-cta-text: 216 20% 7%;
+  --ui-cta-border: 27 40% 52%;
+  --ui-cta-primary-bg: 27 45% 64%;
+  --ui-cta-primary-border: 27 38% 50%;
+  --ui-danger: 0 55% 52%;
+  --ui-danger-fg: 0 0% 100%;
+  --ui-success: 142 32% 65%;
+  --ui-skeleton-base: 216 16% 12%;
+  --ui-skeleton-shine: 216 14% 16%;
+  --ui-thumb-bg: 216 18% 11%;
+  --ui-dashed: 0 0% 100% / 0.08;
+  --ui-dashed-hover: 0 0% 100% / 0.12;
+  --ui-header-bg: 216 22% 6% / 0.95;
+  --ui-texture-dot: rgba(255, 255, 255, 0.012);
+  --ui-sidebar-bg: 216 20% 9% / 0.72;
+  --ui-sidebar-blur: 24px;
+}
 
 /* ─── Editorial (light) ────────────────────────────────── */
 [data-theme="editorial"] {

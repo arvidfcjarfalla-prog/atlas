@@ -36,7 +36,7 @@ function SignupPageInner() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/app`,
       },
     });
 
@@ -57,7 +57,7 @@ function SignupPageInner() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirect=/dashboard`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=/app`,
       },
     });
     if (error) {
@@ -78,7 +78,7 @@ function SignupPageInner() {
             Vi skickade en bekräftelselänk till <strong style={{ color: "rgba(248,249,251,0.80)" }}>{email}</strong>.
             Klicka på länken för att aktivera ditt konto.
           </p>
-          <a href="/login" style={{ display: "inline-block", marginTop: 28, fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.40)", textDecoration: "none" }}>
+          <a href="/auth/login" style={{ display: "inline-block", marginTop: 28, fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.40)", textDecoration: "none" }}>
             Tillbaka till inloggning
           </a>
         </div>
@@ -180,7 +180,7 @@ function SignupPageInner() {
 
         <p style={{ marginTop: 28, textAlign: "center", fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.35)" }}>
           Har du redan konto?{" "}
-          <a href="/login" style={{ color: "rgba(248,249,251,0.70)", textDecoration: "none" }}
+          <a href="/auth/login" style={{ color: "rgba(248,249,251,0.70)", textDecoration: "none" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#F8F9FB"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.70)"; }}>
             Logga in

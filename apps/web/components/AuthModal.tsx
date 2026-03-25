@@ -75,7 +75,7 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/dashboard` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?redirect=/app` },
       });
       if (error) {
         setError(error.message);
@@ -92,11 +92,22 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
     if (!supabase) return;
     setOauthLoading(true);
     setError(null);
-    // Google OAuth will redirect away — save pending action to sessionStorage
     sessionStorage.setItem("atlas_pending_save", "1");
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/app` },
+    });
+  }, []);
+
+  const handleGithub = useCallback(async () => {
+    const supabase = createClient();
+    if (!supabase) return;
+    setOauthLoading(true);
+    setError(null);
+    sessionStorage.setItem("atlas_pending_save", "1");
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=/app` },
     });
   }, []);
 
@@ -180,6 +191,21 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
               </svg>
               {oauthLoading ? "Öppnar Google…" : "Fortsätt med Google"}
+            </button>
+
+            {/* GitHub */}
+            <button
+              type="button"
+              onClick={handleGithub}
+              disabled={oauthLoading || loading}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.11)", borderRadius: 10, padding: "10px 0", fontFamily: "'Geist', sans-serif", fontSize: 14, color: "rgba(248,249,251,0.75)", cursor: "pointer", marginBottom: 16, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(248,249,251,0.75)">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              {oauthLoading ? "Öppnar GitHub…" : "Fortsätt med GitHub"}
             </button>
 
             {/* Divider */}

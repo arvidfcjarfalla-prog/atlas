@@ -12,11 +12,7 @@
     "noEmit": true,
     "incremental": true,
     "paths": {
-      "@/*": [
-        "./app/*",
-        "./components/*",
-        "./lib/*"
-      ]
+      "@/*": ["./*"]
     },
     "jsx": "preserve"
   },
@@ -27,6 +23,7 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts"
   ]
 }

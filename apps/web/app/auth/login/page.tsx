@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "../../../lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { Suspense } from "react";
+import { AuthBackground, AuthCard } from "@/components/auth-background";
 
 export default function LoginPage() {
   return (
@@ -16,7 +17,10 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/app";
+  const rawRedirect = searchParams.get("redirect") ?? "/app";
+  const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+    ? rawRedirect
+    : "/app";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -89,18 +93,27 @@ function LoginPageInner() {
     <div className="min-h-screen flex items-center justify-center bg-[#0a0d14]">
       <style>{`
         input::placeholder { color: rgba(248,249,251,0.30) }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 40px rgba(12,14,18,0.95) inset !important;
+          -webkit-text-fill-color: #F8F9FB !important;
+          caret-color: #F8F9FB;
+          transition: background-color 5000s ease-in-out 0s;
+        }
       `}</style>
+      <AuthBackground />
 
-      <div style={{ width: "100%", maxWidth: 380, padding: "0 24px" }}>
+      <AuthCard>
         {/* Logo */}
-        <div style={{ marginBottom: 40, textAlign: "center" }}>
+        <div style={{ marginBottom: 32, textAlign: "center" }}>
           <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 22, fontWeight: 500, color: "#F8F9FB", letterSpacing: "-0.01em" }}>atlas</span>
         </div>
 
         <h1 style={{ fontFamily: "'Geist',sans-serif", fontSize: 20, fontWeight: 500, color: "#F8F9FB", marginBottom: 8, textAlign: "center" }}>
           Logga in
         </h1>
-        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.45)", textAlign: "center", marginBottom: 32 }}>
+        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.45)", textAlign: "center", marginBottom: 28 }}>
           Fortsätt till dina sparade kartor
         </p>
 
@@ -116,7 +129,7 @@ function LoginPageInner() {
           type="button"
           onClick={handleGoogle}
           disabled={oauthLoading || loading}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 10, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 10, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
         >
@@ -126,7 +139,7 @@ function LoginPageInner() {
             <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
           </svg>
-          {oauthLoading ? "Öppnar Google…" : "Fortsätt med Google"}
+          {oauthLoading ? "Öppnar Google\u2026" : "Fortsätt med Google"}
         </button>
 
         {/* GitHub OAuth */}
@@ -134,14 +147,14 @@ function LoginPageInner() {
           type="button"
           onClick={handleGithub}
           disabled={oauthLoading || loading}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 20, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(248,249,251,0.80)", cursor: "pointer", marginBottom: 20, transition: "background 150ms ease", opacity: (oauthLoading || loading) ? 0.5 : 1 }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(248,249,251,0.80)">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
           </svg>
-          {oauthLoading ? "Öppnar GitHub…" : "Fortsätt med GitHub"}
+          {oauthLoading ? "Öppnar GitHub\u2026" : "Fortsätt med GitHub"}
         </button>
 
         {/* Divider */}
@@ -162,9 +175,9 @@ function LoginPageInner() {
               placeholder="du@exempel.se"
               required
               autoComplete="email"
-              style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
-              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.30)"; }}
-              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
             />
           </div>
           <div>
@@ -176,25 +189,25 @@ function LoginPageInner() {
               placeholder="••••••••"
               required
               autoComplete="current-password"
-              style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
-              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.30)"; }}
-              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 14px", fontFamily: "'Geist',sans-serif", fontSize: 15, color: "#F8F9FB", outline: "none" }}
+              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || oauthLoading}
-            style={{ marginTop: 4, width: "100%", background: "#1D4ED8", border: "none", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#fff", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "background 150ms ease" }}
-            onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; }}
+            style={{ marginTop: 4, width: "100%", background: "rgba(142,203,160,0.15)", border: "1px solid rgba(142,203,160,0.25)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "#8ecba0", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "all 150ms ease" }}
+            onMouseEnter={(e) => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.22)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.40)"; } }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.15)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.25)"; }}
           >
-            {loading ? "Loggar in…" : "Logga in"}
+            {loading ? "Loggar in\u2026" : "Logga in"}
           </button>
         </form>
 
         {/* Footer */}
-        <p style={{ marginTop: 28, textAlign: "center", fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.35)" }}>
+        <p style={{ marginTop: 24, textAlign: "center", fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.35)" }}>
           Inget konto?{" "}
           <a href="/auth/signup" style={{ color: "rgba(248,249,251,0.70)", textDecoration: "none" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#F8F9FB"; }}
@@ -202,14 +215,14 @@ function LoginPageInner() {
             Skapa konto
           </a>
         </p>
-        <p style={{ marginTop: 16, textAlign: "center" }}>
+        <p style={{ marginTop: 12, textAlign: "center" }}>
           <a href="/" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(248,249,251,0.25)", textDecoration: "none" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.55)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(248,249,251,0.25)"; }}>
-            ← Tillbaka till kartan
+            &larr; Tillbaka till kartan
           </a>
         </p>
-      </div>
+      </AuthCard>
     </div>
   );
 }
