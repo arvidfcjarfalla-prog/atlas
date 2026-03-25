@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "../lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 // ─── AuthModal ────────────────────────────────────────────────
@@ -129,15 +129,17 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
       {/* Modal */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201,
-        background: "#0e1118",
-        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(16,22,30,0.85)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: "1px solid rgba(255,255,255,0.06)",
         borderBottom: "none",
         borderRadius: "16px 16px 0 0",
         padding: "28px 24px 36px",
         maxWidth: 420,
         margin: "0 auto",
         animation: "slideUp 220ms cubic-bezier(0.32,0.72,0,1)",
-        boxShadow: "0 -24px 80px rgba(0,0,0,0.60)",
+        boxShadow: "0 -24px 80px rgba(0,0,0,0.60), 0 0 0 1px rgba(255,255,255,0.03) inset",
       }}>
         {/* Handle */}
         <div style={{ width: 32, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 24px" }} />
@@ -224,7 +226,7 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
                 placeholder="E-post"
                 required
                 autoComplete="email"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 9, padding: "10px 13px", fontFamily: "'Geist', sans-serif", fontSize: 14, color: "#F8F9FB", outline: "none", width: "100%", boxSizing: "border-box" }}
+                style={{ background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 13px", fontFamily: "'Geist', sans-serif", fontSize: 14, color: "#F8F9FB", outline: "none", width: "100%", boxSizing: "border-box" }}
                 onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
                 onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
               />
@@ -235,16 +237,16 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
                 placeholder={mode === "signup" ? "Lösenord (minst 8 tecken)" : "Lösenord"}
                 required
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 9, padding: "10px 13px", fontFamily: "'Geist', sans-serif", fontSize: 14, color: "#F8F9FB", outline: "none", width: "100%", boxSizing: "border-box" }}
+                style={{ background: "rgba(12,14,18,0.60)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: "10px 13px", fontFamily: "'Geist', sans-serif", fontSize: 14, color: "#F8F9FB", outline: "none", width: "100%", boxSizing: "border-box" }}
                 onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.25)"; }}
                 onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.10)"; }}
               />
               <button
                 type="submit"
                 disabled={loading || oauthLoading}
-                style={{ marginTop: 2, width: "100%", background: "#1D4ED8", border: "none", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist', sans-serif", fontSize: 14, fontWeight: 500, color: "#fff", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "background 150ms ease" }}
-                onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; }}
+                style={{ marginTop: 2, width: "100%", background: "rgba(142,203,160,0.15)", border: "1px solid rgba(142,203,160,0.25)", borderRadius: 10, padding: "11px 0", fontFamily: "'Geist', sans-serif", fontSize: 14, fontWeight: 500, color: "#8ecba0", cursor: "pointer", opacity: (loading || oauthLoading) ? 0.6 : 1, transition: "all 150ms ease" }}
+                onMouseEnter={(e) => { if (!loading) { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.22)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.40)"; } }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.15)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(142,203,160,0.25)"; }}
               >
                 {loading ? (mode === "login" ? "Loggar in…" : "Skapar konto…") : (mode === "login" ? "Logga in" : "Skapa konto")}
               </button>

@@ -164,7 +164,7 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
   const { user, profile, signOut } = useAuth();
 
   // Fetch recent maps (only when logged in)
-  const { data: recentMaps } = useQuery<MapRow[]>({
+  const { data: recentMaps, isLoading: recentsLoading } = useQuery<MapRow[]>({
     queryKey: ["recent-maps"],
     queryFn: async () => {
       const res = await fetch("/api/maps?limit=5");
@@ -227,7 +227,7 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
       </nav>
 
       {/* Recents */}
-      {user && recentMaps && recentMaps.length > 0 && (
+      {user && (
         <div className="mt-6 px-2">
           <div
             className="mb-2 px-3 text-xs uppercase tracking-widest"
@@ -235,11 +235,38 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
           >
             Senaste
           </div>
-          <div className="space-y-0.5">
-            {recentMaps.map((m) => (
-              <RecentItem key={m.id} map={m} />
-            ))}
-          </div>
+          {recentsLoading ? (
+            <div className="space-y-1 px-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-1.5">
+                  <div
+                    className="h-8 w-8 flex-shrink-0 rounded animate-pulse"
+                    style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
+                  />
+                  <div
+                    className="h-3 rounded animate-pulse"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.04)",
+                      width: `${50 + i * 15}%`,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : recentMaps && recentMaps.length > 0 ? (
+            <div className="space-y-0.5">
+              {recentMaps.map((m) => (
+                <RecentItem key={m.id} map={m} />
+              ))}
+            </div>
+          ) : (
+            <p
+              className="px-3 text-xs"
+              style={{ color: "#5a5752" }}
+            >
+              Inga kartor ännu
+            </p>
+          )}
         </div>
       )}
 

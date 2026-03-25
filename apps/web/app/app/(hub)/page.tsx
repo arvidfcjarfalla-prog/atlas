@@ -49,15 +49,17 @@ export default function AppHomePage() {
       {/* Prompt bar */}
       <div className="w-full max-w-xl px-6">
         <div
-          className="flex items-center overflow-hidden rounded-xl transition-all"
+          className="flex items-center overflow-hidden rounded-2xl transition-all"
           style={{
-            backgroundColor: "rgba(24,32,40,0.8)",
+            background: "rgba(16,22,30,0.72)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
             border: focused
-              ? "1.5px solid rgba(142,203,160,0.4)"
-              : "1.5px solid rgba(255,255,255,0.08)",
+              ? "1px solid rgba(142,203,160,0.35)"
+              : "1px solid rgba(255,255,255,0.06)",
             boxShadow: focused
-              ? "0 0 0 3px rgba(142,203,160,0.08)"
-              : "none",
+              ? "0 0 0 3px rgba(142,203,160,0.08), 0 8px 32px rgba(0,0,0,0.30)"
+              : "0 8px 32px rgba(0,0,0,0.20)",
           }}
         >
           <input
@@ -69,8 +71,8 @@ export default function AppHomePage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}
-            placeholder="Describe your next map..."
-            className="h-14 flex-1 bg-transparent px-5 text-[15px] outline-none"
+            placeholder="Beskriv din nästa karta..."
+            className="h-14 flex-1 bg-transparent px-5 text-[15px] outline-none placeholder:text-[#5a5752]"
             style={{
               fontFamily: "'Geist', sans-serif",
               color: "#e4e0d8",
@@ -79,10 +81,9 @@ export default function AppHomePage() {
           />
           <button
             onClick={handleSubmit}
-            className="mr-2.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition-opacity"
+            className="mr-2.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition-all"
             style={{
-              backgroundColor: "#d4a574",
-              opacity: value.trim() ? 1 : 0.3,
+              backgroundColor: value.trim() ? "#d4a574" : "rgba(212,165,116,0.15)",
               cursor: value.trim() ? "pointer" : "default",
             }}
           >
@@ -91,7 +92,7 @@ export default function AppHomePage() {
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#0d1217"
+              stroke={value.trim() ? "#0d1217" : "rgba(212,165,116,0.4)"}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -111,11 +112,11 @@ export default function AppHomePage() {
                 setValue(s);
                 router.push(`/app/map/new?prompt=${encodeURIComponent(s)}`);
               }}
-              className="rounded-full px-3.5 py-1.5 text-xs transition-colors"
+              className="rounded-full px-3.5 py-1.5 text-xs transition-colors hover:border-white/10 hover:bg-white/[0.06]"
               style={{
                 fontFamily: "'Geist', sans-serif",
                 color: "#908c85",
-                backgroundColor: "rgba(255,255,255,0.04)",
+                backgroundColor: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
