@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   MapShell,
   useBasemapLayers,
@@ -19,6 +19,8 @@ import type {
 import { decideClarifyAction } from "../../../lib/ai/clarify-action";
 import { createClient } from "../../../lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { AuthModal } from "../../../components/AuthModal";
+import BackToAtlas from "../../../components/back-to-atlas";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -30,7 +32,15 @@ type FlowState =
   | "generating"
   | "fetching-data"
   | "rendered"
+  | "editing"
   | "error";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  changes?: string[];
+  timestamp: number;
+}
 
 interface UploadResult {
   geojson: GeoJSON.FeatureCollection;
@@ -84,9 +94,26 @@ function MapContent({
 export default function CreateMapPage() {
   return (
     <Suspense>
-      <CreateMapPageInner />
+      <CreateRedirect />
     </Suspense>
   );
+}
+
+// /create is no longer a primary destination.
+// Redirect logged-in users to /dashboard, everyone else to /.
+function CreateRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) { router.replace("/"); return; }
+    supabase.auth.getUser().then(({ data }) => {
+      router.replace(data.user ? "/dashboard" : "/");
+    });
+  }, [router]);
+
+  // Blank screen while redirecting — no flash
+  return null;
 }
 
 function CreateMapPageInner() {
@@ -137,8 +164,17 @@ function CreateMapPageInner() {
   // Coverage ratio from join pipeline (0-1)
   const [coverageRatio, setCoverageRatio] = useState<number | null>(null);
 
+  // Chat editing state
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [editManifest, setEditManifest] = useState<MapManifest | null>(null);
+  const [manifestHistory, setManifestHistory] = useState<MapManifest[]>([]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   // Auth + save state
   const [user, setUser] = useState<User | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedMapId, setSavedMapId] = useState<string | null>(null);
 
@@ -146,6 +182,10 @@ function CreateMapPageInner() {
     const supabase = createClient();
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // Track whether we've auto-submitted the URL prompt
@@ -203,6 +243,8 @@ function CreateMapPageInner() {
             action.resolvedPrompt,
             action.dataUrl,
             action.dataProfile,
+            undefined,
+            action.scopeHint,
           );
         } else if (action.kind === "tabular_warning") {
           setClarifyWarning(action.message);
@@ -309,6 +351,7 @@ function CreateMapPageInner() {
       dataUrl: string | null,
       profile: DatasetProfile | null,
       parentCaseId?: string,
+      scopeHint?: { region: string; filterField: string } | null,
     ) => {
       setState("generating");
       setError(null);
@@ -322,6 +365,7 @@ function CreateMapPageInner() {
             ...(dataUrl ? { sourceUrl: dataUrl, dataUrl } : {}),
             ...(profile ? { dataProfile: profile } : {}),
             ...(parentCaseId ? { parentCaseId } : {}),
+            ...(scopeHint ? { scopeHint } : {}),
           }),
         });
 
@@ -409,10 +453,8 @@ function CreateMapPageInner() {
 
   // ── Save map to DB ───────────────────────────────────────
 
-  const handleSaveMap = useCallback(async () => {
+  const doSave = useCallback(async () => {
     if (!generateResult?.manifest) return;
-    if (!user) { window.location.href = "/login?redirect=/dashboard"; return; }
-
     setSaveState("saving");
     try {
       const manifest = generateResult.manifest;
@@ -436,7 +478,33 @@ function CreateMapPageInner() {
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 3000);
     }
-  }, [generateResult, prompt, user, resolvedDataUrl]);
+  }, [generateResult, prompt, resolvedDataUrl]);
+
+  const handleSaveMap = useCallback(async () => {
+    if (!generateResult?.manifest) return;
+
+    // Check session live — don't rely on cached user state (race condition)
+    const supabase = createClient();
+    const currentUser = supabase
+      ? (await supabase.auth.getUser()).data.user
+      : null;
+
+    if (!currentUser) {
+      // Persist map so it survives email confirmation redirect or page reload
+      if (generateResult?.manifest) {
+        sessionStorage.setItem("atlas_pending_map", JSON.stringify({
+          manifest: generateResult.manifest,
+          prompt: prompt.trim(),
+          source: "create",
+        }));
+      }
+      setAuthModalOpen(true);
+      return;
+    }
+
+    if (!user) setUser(currentUser);
+    await doSave();
+  }, [generateResult, prompt, user, doSave]);
 
   // ── Case outcome tracking ────────────────────────────────
 
@@ -512,6 +580,119 @@ function CreateMapPageInner() {
     if (fileRef.current) fileRef.current.value = "";
   }, []);
 
+  // ── Browser history management ─────────────────────────────
+  // Push history entries when advancing through steps so browser back
+  // navigates between steps instead of leaving the page.
+
+  useEffect(() => {
+    if (state === "profiled") {
+      window.history.pushState({ step: "profiled" }, "");
+    } else if (state === "rendered") {
+      window.history.pushState({ step: "rendered" }, "");
+    }
+  }, [state]);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (state === "rendered") {
+        // Go back — keep uploadResult and prompt, clear generation results
+        setGenerateResult(null);
+        setLegendItems([]);
+        if (uploadResult) {
+          setState("profiled");
+        } else {
+          setState("idle");
+        }
+      } else if (state === "profiled") {
+        handleReset();
+      }
+      // If state is idle, let the browser navigate away naturally
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [state, uploadResult, handleReset]);
+
+  // ── Chat editing ─────────────────────────────────────
+
+  const handleChatSend = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || !editManifest) return;
+
+    setChatInput("");
+    setChatHistory((prev) => [
+      ...prev,
+      { role: "user", content: msg, timestamp: Date.now() },
+    ]);
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch("/api/ai/edit-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          manifest: editManifest,
+          message: msg,
+          chatHistory,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.undo) {
+        // Undo: revert to previous manifest
+        if (manifestHistory.length > 0) {
+          const prev = manifestHistory[manifestHistory.length - 1];
+          setEditManifest(prev);
+          setManifestHistory((h) => h.slice(0, -1));
+        }
+      } else if (data.manifest) {
+        // Save current before applying new
+        setManifestHistory((h) => [...h, editManifest]);
+        setEditManifest(data.manifest);
+      }
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.reply ?? "Klart.",
+          changes: data.changes,
+          timestamp: Date.now(),
+        },
+      ]);
+    } catch {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Något gick fel. Försök igen.",
+          timestamp: Date.now(),
+        },
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [chatInput, editManifest, chatHistory, manifestHistory]);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  // Enter editing mode: copy manifest for live editing
+  const enterEditMode = useCallback(() => {
+    if (generateResult) {
+      setEditManifest(generateResult.manifest);
+      setManifestHistory([]);
+      setChatHistory([{
+        role: "assistant",
+        content: "Kartan är redo! Beskriv vad du vill ändra — färger, zoom, stil, lägga till lager, etc.",
+        timestamp: Date.now(),
+      }]);
+      setState("editing");
+    }
+  }, [generateResult]);
+
   // ── Enhance prompt ────────────────────────────────────
 
   const handleEnhance = useCallback(async () => {
@@ -570,6 +751,9 @@ function CreateMapPageInner() {
 
     const sidebar = (
       <div className="flex flex-col h-full overflow-auto">
+        <div className="px-4 py-3 border-b border-border">
+          <BackToAtlas />
+        </div>
         <div className="p-4 border-b border-border">
           <h1 className="text-heading mb-1">{manifest.title}</h1>
           <p className="text-caption text-muted-foreground">
@@ -696,12 +880,16 @@ function CreateMapPageInner() {
                 ? "Sparar…"
                 : saveState === "error"
                   ? "Misslyckades — försök igen"
-                  : user
-                    ? "Spara karta"
-                    : "Logga in för att spara"}
+                  : "Spara karta"}
             </button>
           )}
 
+          <button
+            onClick={enterEditMode}
+            className="w-full rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-body text-primary hover:bg-primary/20 transition-colors duration-fast"
+          >
+            Redigera med AI
+          </button>
           <button
             onClick={() => {
               sendOutcome("edited");
@@ -709,7 +897,7 @@ function CreateMapPageInner() {
               setGenerateResult(null);
               setLegendItems([]);
             }}
-            className="w-full rounded-md border border-primary/40 bg-card px-3 py-2 text-body text-primary hover:bg-primary/10 transition-colors duration-fast"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-body text-muted-foreground hover:bg-background/80 transition-colors duration-fast"
           >
             Ändra prompt
           </button>
@@ -729,6 +917,16 @@ function CreateMapPageInner() {
     return (
       <>
         {entryVeilEl}
+        <AuthModal
+          open={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          reason="för att spara din karta"
+          onSuccess={(loggedInUser) => {
+            setUser(loggedInUser);
+            setAuthModalOpen(false);
+            doSave();
+          }}
+        />
         <MapShell
           manifest={manifest}
           sidebar={sidebar}
@@ -762,6 +960,143 @@ function CreateMapPageInner() {
     );
   }
 
+  // ── Editing state: chat + live map ──────────────────────
+
+  if (state === "editing" && editManifest) {
+    const mapData: GeoJSON.FeatureCollection =
+      uploadResult?.geojson ??
+      fetchedGeoJSON ??
+      { type: "FeatureCollection" as const, features: [] };
+
+    const chatSidebar = (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <h1 className="text-heading truncate">{editManifest.title}</h1>
+          <button
+            onClick={() => {
+              // Exit editing, keep the edited manifest
+              if (generateResult) {
+                setGenerateResult({ ...generateResult, manifest: editManifest });
+              }
+              setState("rendered");
+            }}
+            className="text-caption text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Klar
+          </button>
+        </div>
+
+        {/* Chat messages */}
+        <div className="flex-1 overflow-auto p-4 space-y-3">
+          {chatHistory.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-caption ${
+                  msg.role === "user"
+                    ? "bg-primary/20 text-primary"
+                    : "bg-card border border-border text-foreground"
+                }`}
+              >
+                <p>{msg.content}</p>
+                {msg.changes && msg.changes.length > 0 && (
+                  <ul className="mt-1 text-muted-foreground space-y-0.5">
+                    {msg.changes.map((c, j) => (
+                      <li key={j} className="text-[11px]">{c}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ))}
+          {isChatLoading && (
+            <div className="flex justify-start">
+              <div className="bg-card border border-border rounded-lg px-3 py-2 text-caption text-muted-foreground">
+                Tänker…
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Undo button */}
+        {manifestHistory.length > 0 && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={() => {
+                const prev = manifestHistory[manifestHistory.length - 1];
+                setEditManifest(prev);
+                setManifestHistory((h) => h.slice(0, -1));
+                setChatHistory((prev) => [
+                  ...prev,
+                  { role: "assistant", content: "Ångrade senaste ändringen.", timestamp: Date.now() },
+                ]);
+              }}
+              className="text-caption text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Ångra
+            </button>
+          </div>
+        )}
+
+        {/* Chat input */}
+        <div className="p-3 border-t border-border">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleChatSend();
+                }
+              }}
+              placeholder="Beskriv vad du vill ändra…"
+              disabled={isChatLoading}
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
+            />
+            <button
+              onClick={handleChatSend}
+              disabled={isChatLoading || !chatInput.trim()}
+              className="rounded-md bg-primary/20 px-3 py-2 text-body text-primary hover:bg-primary/30 transition-colors disabled:opacity-50"
+            >
+              Skicka
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
+    const layer = editManifest.layers[0];
+
+    return (
+      <>
+        {entryVeilEl}
+        <MapShell
+          manifest={editManifest}
+          sidebar={chatSidebar}
+          sidebarOpen
+          overlay={
+            <Legend
+              items={legendItems}
+              title={layer?.legend?.title ?? layer?.label}
+            />
+          }
+        >
+          <MapContent
+            manifest={editManifest}
+            data={mapData}
+            onLegendItems={handleLegendItems}
+          />
+        </MapShell>
+      </>
+    );
+  }
+
   // ── Pre-render states ─────────────────────────────────────
 
   const isLoading = state === "clarifying" || state === "generating" || state === "uploading" || state === "fetching-data";
@@ -769,23 +1104,24 @@ function CreateMapPageInner() {
   return (
     <>
       {entryVeilEl}
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        reason="för att spara din karta"
+        onSuccess={(loggedInUser) => {
+          setUser(loggedInUser);
+          setAuthModalOpen(false);
+          doSave();
+        }}
+      />
     <div
       data-theme="explore"
       className="h-full overflow-auto bg-background text-foreground"
     >
       <div className="max-w-xl mx-auto px-6 py-16">
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <a
-              href="/"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Back to home"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </a>
-            <h1 className="text-2xl font-bold tracking-tight">Atlas</h1>
+          <div className="mb-2">
+            <BackToAtlas />
           </div>
           <p className="text-muted-foreground">
             Describe your map. We'll find the data and build it.

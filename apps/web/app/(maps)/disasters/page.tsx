@@ -8,6 +8,7 @@ import { SEVERITY_HEX } from "@atlas/data-models";
 import { ScrollArea } from "@atlas/ui";
 import { disastersManifest } from "../../../lib/disasters-manifest";
 import { useEarthquakes } from "../../../lib/use-earthquakes";
+import BackToAtlas from "../../../components/back-to-atlas";
 
 const LEGEND_ITEMS: LegendItem[] = [
   { label: "Critical (M7+)", color: SEVERITY_HEX.critical },
@@ -144,6 +145,9 @@ export default function DisastersPage() {
     <SidebarSkeleton />
   ) : (
     <div className="flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-border">
+        <BackToAtlas />
+      </div>
       <div className="px-4 py-3 border-b border-border flex-shrink-0">
         <div className="flex items-baseline justify-between">
           <h1 className="text-heading">Earthquakes</h1>

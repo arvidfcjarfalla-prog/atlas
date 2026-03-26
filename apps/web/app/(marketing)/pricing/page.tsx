@@ -1,263 +1,174 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
-import Link from "next/link";
+import BackToAtlas from "@/components/back-to-atlas";
 
-const TIERS = [
+const sage = "#8ecba0";
+const gold = "#d4a574";
+const c1 = "#0d1217";
+const c2 = "#111820";
+const tx = "#e4e0d8";
+const tx2 = "#908c85";
+const tx3 = "#5a5752";
+const bd = "rgba(255,255,255,0.05)";
+const bd2 = "rgba(255,255,255,0.08)";
+
+const mono: React.CSSProperties = { fontFamily: "'Courier New', monospace" };
+const srf: React.CSSProperties = { fontFamily: "Georgia, 'Times New Roman', serif" };
+
+const PLANS = [
   {
     name: "Free",
     price: "$0",
     period: "forever",
-    features: [
-      "5 maps",
-      "1 export per day",
-      "Public maps only",
-      "Community support",
-    ],
-    cta: "Get started",
-    href: "/app",
-    highlight: false,
-    borderColor: "rgba(255,255,255,0.06)",
+    desc: "For exploring and personal projects.",
+    color: tx3,
+    features: ["5 maps", "3 data sources", "Community support", "Basic export (PNG)", "Public maps only"],
+    cta: "Get Started",
+    primary: false,
   },
   {
     name: "Pro",
-    price: "$12",
+    price: "$29",
     period: "/month",
-    features: [
-      "Unlimited maps",
-      "Private maps",
-      "Unlimited exports",
-      "API access",
-      "Priority support",
-    ],
-    cta: "Start free trial",
-    href: "#",
-    highlight: true,
-    borderColor: "hsl(197,62%,38%)",
+    desc: "For professionals and small teams.",
+    color: sage,
+    features: ["Unlimited maps", "All data sources", "Priority support", "Export PDF, SVG, GeoJSON", "Private maps", "Custom themes", "API access", "Embed maps"],
+    cta: "Start Free Trial",
+    primary: true,
   },
   {
     name: "Enterprise",
     price: "Custom",
     period: "",
-    features: [
-      "SSO / SAML",
-      "Custom data connectors",
-      "SLA guarantee",
-      "Dedicated support",
-      "Audit logs",
-      "Custom basemaps",
-    ],
-    cta: "Contact us",
-    href: "/enterprise",
-    highlight: false,
-    borderColor: "#d4a574",
+    desc: "For organizations that need scale and control.",
+    color: gold,
+    features: ["Everything in Pro", "SSO / SAML", "Dedicated support", "Custom data connectors", "SLA guarantee", "Team management", "Audit logs", "On-premise option"],
+    cta: "Contact Sales",
+    primary: false,
   },
 ];
 
-const FAQ = [
-  {
-    q: "Can I use Atlas without an account?",
-    a: "Yes. You can generate and view maps anonymously. Creating an account lets you save, share, and export your maps.",
-  },
-  {
-    q: "What data sources does Atlas support?",
-    a: "Atlas connects to World Bank, Eurostat, OpenStreetMap, NASA, USGS, UNESCO, OpenSky Network, and more. New sources are added regularly.",
-  },
-  {
-    q: "Can I use maps I create commercially?",
-    a: "Yes. Maps you create are yours. Data source attributions are included automatically per their respective licenses.",
-  },
-  {
-    q: "What export formats are available?",
-    a: "PNG, SVG, and GeoJSON. Pro and Enterprise plans include high-resolution exports and embed codes.",
-  },
-  {
-    q: "Is there an API?",
-    a: "The Pro plan includes API access for programmatic map generation. Enterprise customers get dedicated API endpoints and higher rate limits.",
-  },
-  {
-    q: "How do I cancel my subscription?",
-    a: "You can cancel anytime from your account settings. Your maps remain accessible on the free tier.",
-  },
+const FAQS = [
+  { q: "Can I try Pro before paying?", a: "Yes. Every account starts with a 14-day free trial of Pro. No credit card required." },
+  { q: "What happens when my trial ends?", a: "You'll be moved to the Free plan. All your maps are preserved — you just can't create new private ones until you upgrade." },
+  { q: "Can I change plans later?", a: "Absolutely. Upgrade, downgrade, or cancel anytime from your account settings." },
+  { q: "Do you offer discounts for education?", a: "Yes. We offer 50% off Pro for students and educators. Contact us with your .edu email." },
 ];
 
 export default function PricingPage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   return (
-    <>
-      <MarketingNav variant="solid" />
+    <div style={{ minHeight: "100vh", color: tx, ...srf, background: `linear-gradient(180deg, ${c1} 0%, ${c2} 50%, ${c1} 100%)` }}>
+      <MarketingNav />
 
       {/* Hero */}
-      <section className="pt-24 pb-16 px-4 sm:px-8 text-center">
-        <span
-          className="font-geist-mono text-[10px] font-medium uppercase tracking-[0.14em] block mb-4"
-          style={{ color: "rgba(248,249,251,0.25)" }}
-        >
-          Pricing
-        </span>
-        <h1
-          className="font-display max-w-[600px] mx-auto"
-          style={{
-            fontSize: "clamp(32px, 5vw, 52px)",
-            fontWeight: 400,
-            lineHeight: 1.1,
-            letterSpacing: "-0.03em",
-            color: "rgba(248,249,251,0.90)",
-          }}
-        >
-          Simple, transparent pricing
-        </h1>
-        <p
-          className="font-geist text-[15px] mt-4 max-w-[440px] mx-auto"
-          style={{ color: "rgba(248,249,251,0.40)" }}
-        >
-          Start free. Upgrade when you need more.
-        </p>
+      <section className="s1" style={{ padding: "80px 36px 50px", textAlign: "center", maxWidth: 600, margin: "0 auto" }}>
+        <div style={{ marginBottom: 20 }}><BackToAtlas /></div>
+        <div style={{ ...mono, fontSize: 10, color: sage, letterSpacing: "0.2em", marginBottom: 20 }}>PRICING</div>
+        <h1 style={{ fontSize: "clamp(2rem, 3vw, 2.6rem)", fontWeight: 400, lineHeight: 1.1, marginBottom: 16 }}>Simple, transparent pricing.</h1>
+        <p style={{ fontSize: 15, color: tx2, lineHeight: 1.7 }}>Start free. Upgrade when you need more.</p>
       </section>
 
       {/* Tier cards */}
-      <section className="pb-24 px-4 sm:px-8">
-        <div className="max-w-[1000px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-          {TIERS.map((tier) => (
-            <div
-              key={tier.name}
-              className="rounded-xl p-6 flex flex-col"
-              style={{
-                border: `1px solid ${tier.borderColor}`,
-                background: tier.highlight ? "#111820" : "#14181f",
-              }}
-            >
-              <h3
-                className="font-geist text-[14px] font-medium uppercase tracking-[0.04em] mb-4"
-                style={{ color: "rgba(248,249,251,0.50)" }}
-              >
-                {tier.name}
-              </h3>
-              <div className="mb-6">
-                <span
-                  className="font-display text-[42px]"
-                  style={{
-                    color: "rgba(248,249,251,0.90)",
-                    letterSpacing: "-0.03em",
-                  }}
-                >
-                  {tier.price}
-                </span>
-                {tier.period && (
-                  <span
-                    className="font-geist text-[14px] ml-1"
-                    style={{ color: "rgba(248,249,251,0.30)" }}
-                  >
-                    {tier.period}
-                  </span>
-                )}
-              </div>
-              <ul className="flex-1 space-y-3 mb-8">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="hsl(197,62%,38%)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mt-0.5 flex-shrink-0"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span
-                      className="font-geist text-[14px]"
-                      style={{ color: "rgba(248,249,251,0.60)" }}
-                    >
-                      {f}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href={tier.href}
-                className="block text-center font-geist text-[14px] font-medium py-3 rounded-xl transition-colors duration-150"
-                style={{
-                  background: tier.highlight
-                    ? "hsl(197,62%,38%)"
-                    : "transparent",
-                  color: tier.highlight
-                    ? "white"
-                    : "rgba(248,249,251,0.60)",
-                  border: tier.highlight
-                    ? "none"
-                    : "1px solid rgba(255,255,255,0.10)",
-                }}
-              >
-                {tier.cta}
-              </Link>
-            </div>
+      <section style={{ padding: "20px 36px 60px", maxWidth: 1060, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, alignItems: "start" }}>
+          {PLANS.map((p) => (
+            <PricingCard key={p.name} plan={p} />
           ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section
-        className="py-20 px-4 sm:px-8"
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          background: "#0a0d14",
-        }}
-      >
-        <div className="max-w-[640px] mx-auto">
-          <h2
-            className="font-display text-center mb-12"
-            style={{
-              fontSize: "clamp(24px, 3vw, 36px)",
-              fontWeight: 400,
-              letterSpacing: "-0.02em",
-              color: "rgba(248,249,251,0.90)",
-            }}
-          >
-            Frequently asked questions
-          </h2>
-          <div className="space-y-0">
-            {FAQ.map((item) => (
-              <details
-                key={item.q}
-                className="group border-b"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
-              >
-                <summary
-                  className="flex items-center justify-between py-5 cursor-pointer list-none font-geist text-[15px] font-medium"
-                  style={{ color: "rgba(248,249,251,0.80)" }}
-                >
-                  {item.q}
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="rgba(248,249,251,0.25)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="flex-shrink-0 ml-4 transition-transform duration-200 group-open:rotate-180"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </summary>
-                <p
-                  className="pb-5 font-geist text-[14px] leading-relaxed"
-                  style={{ color: "rgba(248,249,251,0.40)" }}
-                >
-                  {item.a}
-                </p>
-              </details>
-            ))}
+      <section style={{ padding: "40px 36px 70px", maxWidth: 640, margin: "0 auto" }}>
+        <h2 style={{ fontSize: 20, fontWeight: 400, textAlign: "center", marginBottom: 28 }}>Questions?</h2>
+        {FAQS.map((f, i) => (
+          <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ borderTop: `1px solid ${bd}`, padding: "16px 0", cursor: "pointer" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 14, color: openFaq === i ? tx : tx2 }}>{f.q}</span>
+              <span style={{ ...mono, fontSize: 14, color: tx3, transform: openFaq === i ? "rotate(45deg)" : "none", transition: "transform .2s" }}>+</span>
+            </div>
+            {openFaq === i && (
+              <p style={{ fontSize: 12, color: tx2, lineHeight: 1.65, marginTop: 10, ...mono }}>{f.a}</p>
+            )}
           </div>
-        </div>
+        ))}
       </section>
 
       <MarketingFooter />
-    </>
+    </div>
+  );
+}
+
+function PricingCard({ plan }: { plan: typeof PLANS[number] }) {
+  const [hover, setHover] = useState(false);
+  const router = useRouter();
+  const p = plan;
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        border: `1px solid ${p.primary ? sage + "33" : hover ? bd2 : bd}`,
+        borderRadius: 14,
+        padding: "32px 28px",
+        background: p.primary ? "rgba(142,203,160,0.03)" : "rgba(255,255,255,0.008)",
+        transition: "all .25s",
+        transform: hover ? "translateY(-4px)" : "none",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {p.primary && (
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${sage}, transparent)` }} />
+      )}
+
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 400, color: tx, marginBottom: 4 }}>{p.name}</h3>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 8 }}>
+          <span style={{ fontSize: 36, fontWeight: 400, color: tx, fontFamily: "Georgia, 'Times New Roman', serif" }}>{p.price}</span>
+          {p.period && <span style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color: tx3 }}>{p.period}</span>}
+        </div>
+        <p style={{ fontSize: 13, color: tx2, lineHeight: 1.5 }}>{p.desc}</p>
+      </div>
+
+      <button
+        onClick={() => {
+          if (p.name === "Enterprise") router.push("/enterprise");
+          else if (p.name === "Free") router.push("/app");
+        }}
+        style={{
+          width: "100%",
+          background: p.primary ? sage : p.name === "Enterprise" ? gold : "rgba(255,255,255,0.05)",
+          color: p.primary || p.name === "Enterprise" ? c1 : tx,
+          border: `1px solid ${p.primary ? sage : p.name === "Enterprise" ? gold : bd2}`,
+          padding: 11,
+          fontFamily: "'Courier New', monospace",
+          fontSize: 11,
+          fontWeight: 600,
+          borderRadius: 7,
+          cursor: "pointer",
+          marginBottom: 24,
+        }}
+      >
+        {p.cta}
+      </button>
+
+      <div>
+        {p.features.map((f) => (
+          <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <path d="M3,7L6,10L11,4" fill="none" stroke={p.color === tx3 ? tx3 : p.color} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: 12, color: tx2 }}>{f}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
