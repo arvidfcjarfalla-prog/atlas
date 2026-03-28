@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas — Landing Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-base: #0a0d14;
+    --bg-raised: #0f1218;
+    --bg-surface: #14181f;
+    --bg-elevated: #1a1f28;
+    --text-primary: rgba(248, 249, 251, 0.90);
+    --text-secondary: rgba(248, 249, 251, 0.50);
+    --text-faint: rgba(248, 249, 251, 0.25);
+    --text-ghost: rgba(248, 249, 251, 0.12);
+    --accent: hsl(197, 62%, 38%);
+    --accent-glow: hsla(197, 62%, 45%, 0.25);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-hover: rgba(255, 255, 255, 0.12);
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'Geist', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Geist Mono', 'SF Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ═══ HERO ═══ */
+  .hero {
+    position: relative;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 40%, rgba(20, 80, 100, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 70% 60%, rgba(15, 30, 60, 0.15) 0%, transparent 60%),
+      var(--bg-base);
+    z-index: 0;
+  }
+
+  /* Subtle grid overlay — Figma-like */
+  .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask: radial-gradient(ellipse 70% 50% at 50% 50%, black 0%, transparent 80%);
+  }
+
+  .hero-vignette-bottom {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(10,13,20,0.95) 0%, rgba(10,13,20,0.40) 30%, transparent 60%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .hero-vignette-top {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 120px;
+    background: linear-gradient(to bottom, rgba(10,13,20,0.50) 0%, transparent 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ═══ NAV ═══ */
+  .nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 56px;
+  }
+
+  .nav-logo {
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .nav-link {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color 150ms;
+  }
+  .nav-link:hover { color: var(--text-secondary); }
+
+  /* ═══ HERO CONTENT ═══ */
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 640px;
+    padding: 0 24px;
+  }
+
+  .hero-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 20px;
+  }
+
+  .hero-h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  /* ═══ PROMPT INPUT ═══ */
+  .prompt-wrap {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .prompt-input-container {
+    position: relative;
+    height: 60px;
+    background: rgba(10, 13, 20, 0.60);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    transition: border-color 200ms, box-shadow 200ms;
+  }
+  .prompt-input-container:focus-within {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .prompt-input {
+    flex: 1;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-primary);
+    padding: 0 56px 0 22px;
+  }
+  .prompt-input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .prompt-submit {
+    position: absolute;
+    right: 10px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 150ms, transform 100ms;
+  }
+  .prompt-submit:hover { background: hsl(197, 62%, 44%); transform: scale(1.04); }
+
+  /* ═══ CHIPS ═══ */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--text-faint);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 150ms;
+  }
+  .chip:hover {
+    color: var(--text-secondary);
+    border-color: var(--border-hover);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* ═══ SCENE INDICATOR ═══ */
+  .scene-indicator {
+    position: absolute;
+    bottom: 40px;
+    left: 32px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .scene-line {
+    width: 24px;
+    height: 1px;
+    background: var(--text-faint);
+  }
+
+  .scene-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .scene-dots {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+  }
+
+  .scene-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: all 300ms;
+  }
+  .scene-dot.active {
+    width: 16px;
+    border-radius: 2px;
+    background: var(--text-secondary);
+  }
+
+  /* ═══ SHOWCASE SECTION ═══ */
+  .showcase {
+    padding: 100px 0 80px;
+    background: var(--bg-raised);
+    border-top: 1px solid var(--border);
+  }
+
+  .container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 3vw, 36px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 48px;
+  }
+
+  .showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .showcase-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    transition: border-color 200ms, transform 200ms;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+  }
+  .showcase-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-3px);
+  }
+
+  .showcase-thumb {
+    height: 200px;
+    background: linear-gradient(135deg, #0c1825 0%, #162030 50%, #0a1520 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Fake map preview patterns */
+  .showcase-thumb.choropleth::after {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    border-radius: 4px;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(29, 78, 216, 0.3) 0%, transparent 40%),
+      radial-gradient(ellipse at 70% 60%, rgba(99, 180, 255, 0.15) 0%, transparent 35%),
+      radial-gradient(ellipse at 50% 30%, rgba(147, 197, 253, 0.08) 0%, transparent 30%);
+  }
+
+  .showcase-thumb.cluster::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle 8px at 40% 35%, rgba(56, 189, 248, 0.6) 0%, transparent 100%),
+      radial-gradient(circle 5px at 55% 45%, rgba(56, 189, 248, 0.4) 0%, transparent 100%),
+      radial-gradient(circle 12px at 45% 55%, rgba(56, 189, 248, 0.5) 0%, transparent 100%),
+      radial-gradient(circle 4px at 60% 30%, rgba(56, 189, 248, 0.3) 0%, transparent 100%),
+      radial-gradient(circle 6px at 35% 60%, rgba(56, 189, 248, 0.35) 0%, transparent 100%),
+      radial-gradient(circle 3px at 50% 40%, rgba(56, 189, 248, 0.25) 0%, transparent 100%);
+  }
+
+  .showcase-thumb.diverging::after {
+    content: '';
+    position: absolute;
+    inset: 20px;
+    background:
+      radial-gradient(ellipse at 25% 50%, rgba(239, 68, 68, 0.25) 0%, transparent 35%),
+      radial-gradient(ellipse at 75% 50%, rgba(59, 130, 246, 0.25) 0%, transparent 35%),
+      radial-gradient(ellipse at 50% 50%, rgba(200, 200, 220, 0.05) 0%, transparent 30%);
+  }
+
+  .showcase-meta {
+    padding: 16px 18px;
+  }
+
+  .showcase-prompt {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .showcase-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ═══ STATS BAR ═══ */
+  .stats {
+    padding: 48px 0;
+    background: var(--bg-base);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+  .stat strong {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .stat-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-ghost);
+  }
+
+  .sources-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .source {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-ghost);
+  }
+
+  /* ═══ BOTTOM CTA ═══ */
+  .cta {
+    padding: 100px 0 120px;
+    background: var(--bg-raised);
+    text-align: center;
+  }
+
+  .cta-h2 {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .cta-sub {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-faint);
+    margin-bottom: 36px;
+  }
+
+  .cta-input-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .cta-fine {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-ghost);
+    margin-top: 16px;
+  }
+
+  /* ═══ FOOTER ═══ */
+  .footer {
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+    background: var(--bg-base);
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-logo {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-faint);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 20px;
+  }
+
+  .footer-link {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-ghost);
+    text-decoration: none;
+    transition: color 150ms;
+  }
+  .footer-link:hover { color: var(--text-faint); }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .showcase-grid { grid-template-columns: 1fr; }
+    .stats-row { gap: 16px; }
+    .stat-dot { display: none; }
+    .nav { padding: 0 16px; }
+    .hero-content { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-vignette-top"></div>
+  <div class="hero-vignette-bottom"></div>
+
+  <nav class="nav">
+    <span class="nav-logo">atlas</span>
+    <div class="nav-links">
+      <a href="#" class="nav-link">Explore</a>
+      <a href="#" class="nav-link">Log in</a>
+    </div>
+  </nav>
+
+  <div class="hero-content">
+    <span class="hero-label">AI-driven cartography</span>
+    <h1 class="hero-h1">The world's data,<br>mapped.</h1>
+
+    <div class="prompt-wrap">
+      <div class="prompt-input-container">
+        <input type="text" class="prompt-input" placeholder="GDP per capita in Europe...">
+        <button class="prompt-submit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+      <div class="chips">
+        <button class="chip">Unemployment in Europe</button>
+        <button class="chip">Hotels in Paris</button>
+        <button class="chip">CO₂ emissions</button>
+        <button class="chip">Live flights</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-indicator">
+    <div class="scene-line"></div>
+    <span class="scene-label">Wildfire incidents — Europe</span>
+  </div>
+
+  <div class="scene-dots">
+    <div class="scene-dot active"></div>
+    <div class="scene-dot"></div>
+    <div class="scene-dot"></div>
+    <div class="scene-dot"></div>
+  </div>
+</section>
+
+<!-- ═══ SHOWCASE ═══ -->
+<section class="showcase">
+  <div class="container">
+    <span class="section-label">Made with Atlas</span>
+    <h2 class="section-title">Three prompts, three maps.</h2>
+
+    <div class="showcase-grid">
+      <a href="#" class="showcase-card">
+        <div class="showcase-thumb choropleth"></div>
+        <div class="showcase-meta">
+          <p class="showcase-prompt">"GDP per capita by country"</p>
+          <span class="showcase-type">Choropleth · World Bank</span>
+        </div>
+      </a>
+
+      <a href="#" class="showcase-card">
+        <div class="showcase-thumb cluster"></div>
+        <div class="showcase-meta">
+          <p class="showcase-prompt">"Hotels in Paris"</p>
+          <span class="showcase-type">Cluster · OpenStreetMap</span>
+        </div>
+      </a>
+
+      <a href="#" class="showcase-card">
+        <div class="showcase-thumb diverging"></div>
+        <div class="showcase-meta">
+          <p class="showcase-prompt">"Gini coefficient worldwide"</p>
+          <span class="showcase-type">Diverging · World Bank</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS BAR ═══ -->
+<section class="stats">
+  <div class="container">
+    <div class="stats-row">
+      <span class="stat"><strong>170+</strong> indicators</span>
+      <div class="stat-dot"></div>
+      <span class="stat"><strong>250+</strong> POI types</span>
+      <div class="stat-dot"></div>
+      <span class="stat"><strong>7,800+</strong> live flights</span>
+      <div class="stat-dot"></div>
+      <span class="stat"><strong>1,248</strong> heritage sites</span>
+    </div>
+    <div class="sources-row">
+      <span class="source">World Bank</span>
+      <span class="source">Eurostat</span>
+      <span class="source">OpenStreetMap</span>
+      <span class="source">NASA</span>
+      <span class="source">SCB</span>
+      <span class="source">UNESCO</span>
+      <span class="source">OpenSky</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BOTTOM CTA ═══ -->
+<section class="cta">
+  <div class="container">
+    <h2 class="cta-h2">What would you map?</h2>
+    <p class="cta-sub">Describe any map. Atlas finds the data and renders it.</p>
+
+    <div class="cta-input-wrap">
+      <div class="prompt-input-container">
+        <input type="text" class="prompt-input" placeholder="Breweries in Belgium...">
+        <button class="prompt-submit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </div>
+    <p class="cta-fine">No account needed · Free</p>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="footer-logo">atlas</span>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Explore</a>
+      <a href="#" class="footer-link">Dashboard</a>
+      <a href="#" class="footer-link">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

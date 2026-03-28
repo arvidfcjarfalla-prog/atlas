@@ -1,0 +1,576 @@
+{
+  "timestamp": "2026-03-20T00:38:58.155Z",
+  "model": "anthropic",
+  "total": 94,
+  "pass": 89,
+  "partial": 0,
+  "fail": 4,
+  "error": 1,
+  "avgMs": 3755,
+  "results": [
+    {
+      "prompt": "befolkning per kommun i Sverige",
+      "status": "pass",
+      "detail": "Mixed × 2555 → /api/geo/cached/pxweb-se-scb-befolkning",
+      "ms": 1104
+    },
+    {
+      "prompt": "medelinkomst per län i Sverige",
+      "status": "pass",
+      "detail": "Mixed × 21 → /api/geo/cached/pxweb-se-scb-medelinkomst",
+      "ms": 73
+    },
+    {
+      "prompt": "arbetslöshet i norska kommuner",
+      "status": "fail",
+      "detail": "asked questions (not resolved)",
+      "ms": 17574
+    },
+    {
+      "prompt": "BNP per capita i Europa",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 112
+    },
+    {
+      "prompt": "minimilön i EU-länder",
+      "status": "pass",
+      "detail": "Mixed × 28 → /api/geo/cached/eurostat-earn_mw_cur",
+      "ms": 2574
+    },
+    {
+      "prompt": "förväntad livslängd per land",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.DYN.LE00.IN",
+      "ms": 1524
+    },
+    {
+      "prompt": "CO2-utsläpp per land",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 45
+    },
+    {
+      "prompt": "kaféer i Stockholm",
+      "status": "pass",
+      "detail": "Point × 500 → /api/geo/overpass?type=cafe&bbox=59.2,17.8,59.45,18.3",
+      "ms": 2850
+    },
+    {
+      "prompt": "restauranger i Göteborg",
+      "status": "pass",
+      "detail": "Point × 500 → /api/geo/overpass?type=restaurant&bbox=57.6,11.8,57.8,12.1",
+      "ms": 7115
+    },
+    {
+      "prompt": "parker i Malmö",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=park&bbox=55.5,12.85,55.65,13.15",
+      "ms": 11079
+    },
+    {
+      "prompt": "romarrikets utbredning",
+      "status": "pass",
+      "detail": "MultiPolygon × 227 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 239
+    },
+    {
+      "prompt": "mongoliska rikets gränser",
+      "status": "pass",
+      "detail": "MultiPolygon × 247 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 172
+    },
+    {
+      "prompt": "världen under andra världskriget",
+      "status": "pass",
+      "detail": "MultiPolygon × 254 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 531
+    },
+    {
+      "prompt": "brittiska imperiet 1920",
+      "status": "pass",
+      "detail": "MultiPolygon × 205 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 306
+    },
+    {
+      "prompt": "napoleonkrigen i Europa",
+      "status": "pass",
+      "detail": "MultiPolygon × 436 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 295
+    },
+    {
+      "prompt": "vikingatidens gränser",
+      "status": "fail",
+      "detail": "asked questions (not resolved)",
+      "ms": 15443
+    },
+    {
+      "prompt": "jordbävningar senaste veckan",
+      "status": "pass",
+      "detail": "? × ? → /api/earthquakes",
+      "ms": 6542
+    },
+    {
+      "prompt": "aktiva vulkaner i världen",
+      "status": "pass",
+      "detail": "Point × 44 → /api/geo/cached/eonet-volcanoes",
+      "ms": 2280
+    },
+    {
+      "prompt": "världens länder efter befolkning",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 35
+    },
+    {
+      "prompt": "fattigdom i europeiska länder",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-ilc_li02",
+      "ms": 5585
+    },
+    {
+      "prompt": "GDP per capita by country",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 38
+    },
+    {
+      "prompt": "unemployment rate in Europe",
+      "status": "pass",
+      "detail": "Mixed × 35 → /api/geo/cached/eurostat-une_rt_a",
+      "ms": 1139
+    },
+    {
+      "prompt": "life expectancy world map",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.DYN.LE00.IN",
+      "ms": 1530
+    },
+    {
+      "prompt": "population density by country",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 21
+    },
+    {
+      "prompt": "CO2 emissions per capita",
+      "status": "pass",
+      "detail": "Mixed × 165 → /api/geo/cached/worldbank-EN.GHG.CO2.MT.CE.AR5",
+      "ms": 1366
+    },
+    {
+      "prompt": "renewable energy share in EU",
+      "status": "pass",
+      "detail": "Mixed × 35 → /api/geo/cached/eurostat-nrg_ind_ren",
+      "ms": 1921
+    },
+    {
+      "prompt": "internet usage by country",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-IT.NET.USER.ZS",
+      "ms": 745
+    },
+    {
+      "prompt": "fertility rate by country",
+      "status": "pass",
+      "detail": "Mixed × 21 → /api/geo/cached/pxweb-se-scb-fertility-country",
+      "ms": 28
+    },
+    {
+      "prompt": "median income in European countries",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-ilc_di03",
+      "ms": 2649
+    },
+    {
+      "prompt": "Gini coefficient Europe",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-ilc_di12",
+      "ms": 2025
+    },
+    {
+      "prompt": "healthcare spending as % of GDP",
+      "status": "pass",
+      "detail": "Mixed × 168 → /api/geo/cached/worldbank-NY.GDP.MKTP.CD",
+      "ms": 1505
+    },
+    {
+      "prompt": "education spending by country in EU",
+      "status": "pass",
+      "detail": "Mixed × 33 → /api/geo/cached/eurostat-educ_uoe_fine09",
+      "ms": 1619
+    },
+    {
+      "prompt": "house price index Europe",
+      "status": "pass",
+      "detail": "Mixed × 30 → /api/geo/cached/eurostat-prc_hpi_a",
+      "ms": 1892
+    },
+    {
+      "prompt": "inflation rate EU countries",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-prc_hicp_aind",
+      "ms": 4821
+    },
+    {
+      "prompt": "greenhouse gas emissions Europe",
+      "status": "pass",
+      "detail": "Mixed × 29 → /api/geo/cached/eurostat-env_air_gge",
+      "ms": 9027
+    },
+    {
+      "prompt": "tourism nights spent EU",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-tour_occ_ninat",
+      "ms": 1698
+    },
+    {
+      "prompt": "poverty rate in EU",
+      "status": "pass",
+      "detail": "Mixed × 36 → /api/geo/cached/eurostat-ilc_li02",
+      "ms": 1335
+    },
+    {
+      "prompt": "world countries map",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 16
+    },
+    {
+      "prompt": "earthquakes last week",
+      "status": "pass",
+      "detail": "? × ? → /api/earthquakes",
+      "ms": 6622
+    },
+    {
+      "prompt": "active wildfires",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-AG.LND.FRST.ZS",
+      "ms": 3284
+    },
+    {
+      "prompt": "volcanoes worldwide",
+      "status": "pass",
+      "detail": "Point × 44 → /api/geo/cached/eonet-volcanoes",
+      "ms": 4644
+    },
+    {
+      "prompt": "restaurants in Paris",
+      "status": "pass",
+      "detail": "Point × 500 → /api/geo/overpass?type=restaurant&bbox=48.8,2.2,48.95,2.5",
+      "ms": 6369
+    },
+    {
+      "prompt": "cafes in Berlin",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=cafe&bbox=52.35,13.1,52.7,13.8",
+      "ms": 13153
+    },
+    {
+      "prompt": "parks in London",
+      "status": "pass",
+      "detail": "Point × 16 → /api/geo/overpass?type=park&bbox=51.3,-0.5,51.7,0.3",
+      "ms": 3008
+    },
+    {
+      "prompt": "museums in Rome",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=museum&bbox=41.8,12.3,42.05,12.7",
+      "ms": 12482
+    },
+    {
+      "prompt": "hospitals in Tokyo",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=hospital&bbox=35.5,139.4,35.85,140",
+      "ms": 12392
+    },
+    {
+      "prompt": "schools in Barcelona",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=school&bbox=41.3,2,41.5,2.3",
+      "ms": 12948
+    },
+    {
+      "prompt": "Roman Empire at its peak",
+      "status": "pass",
+      "detail": "MultiPolygon × 440 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 192
+    },
+    {
+      "prompt": "Ottoman Empire 1700",
+      "status": "pass",
+      "detail": "MultiPolygon × 782 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 224
+    },
+    {
+      "prompt": "Cold War era world map",
+      "status": "pass",
+      "detail": "MultiPolygon × 197 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 304
+    },
+    {
+      "prompt": "World War 2 borders",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 26
+    },
+    {
+      "prompt": "British Empire extent",
+      "status": "pass",
+      "detail": "MultiPolygon × 205 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 67
+    },
+    {
+      "prompt": "Mongol Empire 1279",
+      "status": "pass",
+      "detail": "MultiPolygon × 247 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 318
+    },
+    {
+      "prompt": "Medieval Europe borders",
+      "status": "pass",
+      "detail": "MultiPolygon × 286 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 170
+    },
+    {
+      "prompt": "arbeidsledighet per kommune i Norge",
+      "status": "pass",
+      "detail": "Mixed × 15 → /api/geo/cached/pxweb-no-ssb-arbeidsledighet-kommune",
+      "ms": 32
+    },
+    {
+      "prompt": "befolkning per fylke i Norge",
+      "status": "pass",
+      "detail": "Mixed × 15 → /api/geo/cached/pxweb-no-ssb-befolkning",
+      "ms": 42
+    },
+    {
+      "prompt": "inntekt per kommune i Norge",
+      "status": "pass",
+      "detail": "Mixed × 15 → /api/geo/cached/pxweb-no-ssb-08603",
+      "ms": 1097
+    },
+    {
+      "prompt": "Arbeitslosenquote in Europa",
+      "status": "pass",
+      "detail": "Mixed × 35 → /api/geo/cached/eurostat-une_rt_a",
+      "ms": 2461
+    },
+    {
+      "prompt": "BIP pro Kopf weltweit",
+      "status": "pass",
+      "detail": "Mixed × 168 → /api/geo/cached/worldbank-NY.GDP.PCAP.CD",
+      "ms": 2935
+    },
+    {
+      "prompt": "Lebenserwartung nach Land",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.DYN.LE00.IN",
+      "ms": 3045
+    },
+    {
+      "prompt": "taux de chômage en Europe",
+      "status": "pass",
+      "detail": "Mixed × 35 → /api/geo/cached/eurostat-une_rt_a",
+      "ms": 1516
+    },
+    {
+      "prompt": "PIB par habitant mondial",
+      "status": "pass",
+      "detail": "Mixed × 168 → /api/geo/cached/worldbank-NY.GDP.PCAP.CD",
+      "ms": 2204
+    },
+    {
+      "prompt": "espérance de vie par pays",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.DYN.LE00.IN",
+      "ms": 2501
+    },
+    {
+      "prompt": "tasa de desempleo en Europa",
+      "status": "pass",
+      "detail": "Mixed × 35 → /api/geo/cached/eurostat-une_rt_a",
+      "ms": 1563
+    },
+    {
+      "prompt": "PIB per cápita mundial",
+      "status": "pass",
+      "detail": "Mixed × 168 → /api/geo/cached/worldbank-NY.GDP.PCAP.CD",
+      "ms": 2138
+    },
+    {
+      "prompt": "esperanza de vida por país",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.DYN.LE00.IN",
+      "ms": 2185
+    },
+    {
+      "prompt": "show me a map of Sweden",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/world-countries",
+      "ms": 2354
+    },
+    {
+      "prompt": "countries by area",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 33
+    },
+    {
+      "prompt": "world population 2024",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 36
+    },
+    {
+      "prompt": "African countries GDP",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 38
+    },
+    {
+      "prompt": "Asian countries by population",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 31
+    },
+    {
+      "prompt": "Nordic countries comparison",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/world-countries",
+      "ms": 8020
+    },
+    {
+      "prompt": "capitals of the world",
+      "status": "pass",
+      "detail": "Mixed × 177 → /api/geo/world-countries",
+      "ms": 41
+    },
+    {
+      "prompt": "EU member states",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/world-countries",
+      "ms": 5217
+    },
+    {
+      "prompt": "bicycle parking in Copenhagen",
+      "status": "pass",
+      "detail": "Point × 6 → /api/geo/overpass?type=park&bbox=55.6,12.4,55.75,12.7",
+      "ms": 4274
+    },
+    {
+      "prompt": "pharmacies in Amsterdam",
+      "status": "pass",
+      "detail": "? × ? → /api/geo/overpass?type=pharmacy&bbox=52.3,4.75,52.45,5.05",
+      "ms": 5299
+    },
+    {
+      "prompt": "ancient world 200 AD",
+      "status": "fail",
+      "detail": "asked questions (not resolved)",
+      "ms": 17431
+    },
+    {
+      "prompt": "Persian Empire",
+      "status": "pass",
+      "detail": "MultiPolygon × 205 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 189
+    },
+    {
+      "prompt": "Aztec Empire territory",
+      "status": "pass",
+      "detail": "MultiPolygon × 1946 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 583
+    },
+    {
+      "prompt": "Byzantine Empire borders",
+      "status": "pass",
+      "detail": "MultiPolygon × 264 → https://raw.githubusercontent.com/aourednik/historical-basem",
+      "ms": 200
+    },
+    {
+      "prompt": "deforestation worldwide",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-AG.LND.FRST.ZS",
+      "ms": 3219
+    },
+    {
+      "prompt": "forest area by country",
+      "status": "pass",
+      "detail": "Mixed × 21 → /api/geo/cached/pxweb-se-scb-forest-area-country",
+      "ms": 25
+    },
+    {
+      "prompt": "urban population percentage",
+      "status": "pass",
+      "detail": "Mixed × 169 → /api/geo/cached/worldbank-SP.URB.TOTL.IN.ZS",
+      "ms": 2102
+    },
+    {
+      "prompt": "infant mortality rate by country",
+      "status": "pass",
+      "detail": "Mixed × 166 → /api/geo/cached/worldbank-SP.DYN.IMRT.IN",
+      "ms": 1453
+    },
+    {
+      "prompt": "literacy rate by country",
+      "status": "pass",
+      "detail": "Mixed × 144 → /api/geo/cached/worldbank-SE.ADT.LITR.ZS",
+      "ms": 7153
+    },
+    {
+      "prompt": "homicide rate in Europe",
+      "status": "pass",
+      "detail": "Mixed × 38 → /api/geo/cached/eurostat-crim_off_cat",
+      "ms": 1889
+    },
+    {
+      "prompt": "Swedish municipalities by income",
+      "status": "pass",
+      "detail": "Mixed × 290 → /api/geo/cached/web-60e9e7be7481",
+      "ms": 22410
+    },
+    {
+      "prompt": "Norwegian counties unemployment",
+      "status": "pass",
+      "detail": "Mixed × 15 → /api/geo/cached/pxweb-no-ssb-unemployment",
+      "ms": 39
+    },
+    {
+      "prompt": "befolkningstäthet per kommun",
+      "status": "error",
+      "detail": "The operation was aborted due to timeout",
+      "ms": 30002
+    },
+    {
+      "prompt": "svenska kommuner efter ålder",
+      "status": "fail",
+      "detail": "asked questions (not resolved)",
+      "ms": 23363
+    },
+    {
+      "prompt": "median income USA states",
+      "status": "pass",
+      "detail": "Mixed × 52 → /api/geo/cached/dc-US-Median_Income_Person",
+      "ms": 3152
+    },
+    {
+      "prompt": "crime rate by US state",
+      "status": "pass",
+      "detail": "Mixed × 52 → /api/geo/cached/dc-US-Count_CriminalActivities_CombinedCrime",
+      "ms": 1468
+    },
+    {
+      "prompt": "hospitals in New York",
+      "status": "pass",
+      "detail": "Point × 42 → /api/geo/overpass?type=hospital&bbox=40.5,-74.3,40.9,-73.7",
+      "ms": 2966
+    },
+    {
+      "prompt": "bars in San Francisco",
+      "status": "pass",
+      "detail": "Point × 335 → /api/geo/overpass?type=bar&bbox=37.7,-122.55,37.85,-122.35",
+      "ms": 3174
+    }
+  ]
+}

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas — Presentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0d1217;
+    --bg2: #111820;
+    --tx: #e4e0d8;
+    --tx2: #908c85;
+    --tx3: #5a5752;
+    --sage: #8ecba0;
+    --gold: #d4a574;
+    --bd: rgba(255,255,255,0.06);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--tx);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .deck { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  h1 {
+    font-family: Georgia, serif;
+    font-size: 56px;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-family: Georgia, serif;
+    font-size: 40px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 20px;
+  }
+  p { font-size: 20px; color: var(--tx2); line-height: 1.6; max-width: 600px; }
+  .mono { font-family: 'Courier New', monospace; }
+  .small { font-size: 14px; }
+  .sage { color: var(--sage); }
+  .gold { color: var(--gold); }
+
+  .img-frame {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--bd);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    max-width: 900px;
+    width: 100%;
+  }
+  .img-frame img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--bd);
+    border-radius: 10px;
+    padding: 28px 24px;
+  }
+  .card h4 {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .card p { font-size: 15px; max-width: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .badge-sage { background: rgba(142,203,160,0.12); color: var(--sage); border: 1px solid rgba(142,203,160,0.25); }
+  .badge-gold { background: rgba(212,165,116,0.12); color: var(--gold); border: 1px solid rgba(212,165,116,0.25); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); display: inline-block; margin-right: 8px; }
+
+  /* Nav */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    background: rgba(16,22,30,0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--bd);
+    border-radius: 10px;
+    padding: 8px 16px;
+  }
+  .nav button {
+    background: none;
+    border: none;
+    color: var(--tx2);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .nav button:hover { background: rgba(255,255,255,0.06); color: var(--tx); }
+  .nav span { font-size: 13px; color: var(--tx3); font-variant-numeric: tabular-nums; min-width: 50px; text-align: center; }
+
+  /* Progress bar */
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: var(--sage);
+    transition: width 0.4s ease;
+    z-index: 200;
+  }
+
+  /* Flow diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 32px;
+  }
+  .flow-step {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    padding: 14px 22px;
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--tx3);
+    font-size: 20px;
+    padding: 0 12px;
+  }
+
+  .text-left { text-align: left; align-items: flex-start; }
+  .gap-32 { gap: 32px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-32 { margin-bottom: 32px; }
+  .mt-24 { margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1: Title -->
+  <div class="slide active" data-slide="0">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
+      <span class="dot"></span>
+      <span style="font-family:Georgia,serif;font-size:24px">Atlas</span>
+    </div>
+    <h1>Maps that <em class="sage">think</em><br>for themselves.</h1>
+    <p>AI-driven kartplattform. Naturligt spr&aring;k &rarr; data &rarr; publicerad karta.</p>
+    <div style="margin-top:40px;display:flex;gap:12px">
+      <span class="badge badge-sage">Live demo</span>
+      <span class="badge badge-gold">Beta</span>
+    </div>
+  </div>
+
+  <!-- 2: Problem -->
+  <div class="slide" data-slide="1">
+    <h3>Problemet</h3>
+    <h2>Kartor &auml;r sv&aring;ra att g&ouml;ra.</h2>
+    <p>GIS-verktyg kr&auml;ver expertkunskap. Datajournalister, analytiker och kreat&ouml;rer beh&ouml;ver veckor f&ouml;r en karta som borde ta sekunder.</p>
+  </div>
+
+  <!-- 3: Solution -->
+  <div class="slide" data-slide="2">
+    <h3>L&ouml;sningen</h3>
+    <h2>Beskriv, f&ouml;rfina, dela.</h2>
+    <div class="flow">
+      <div class="flow-step sage">Prompt</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">AI hittar data</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">MapManifest</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step sage">Publicerad karta</div>
+    </div>
+  </div>
+
+  <!-- 4: Hero screenshot -->
+  <div class="slide" data-slide="3">
+    <h3>Landing page</h3>
+    <div class="img-frame">
+      <img src="/marketing/hero-1.jpg" alt="Forest area world map">
+    </div>
+  </div>
+
+  <!-- 5: Map examples -->
+  <div class="slide" data-slide="4">
+    <h3>Kartexempel</h3>
+    <div class="grid-2">
+      <div class="img-frame"><img src="/marketing/uc-2.jpg" alt="GDP Africa"></div>
+      <div class="img-frame"><img src="/marketing/uc-3.jpg" alt="Renewable EU"></div>
+      <div class="img-frame"><img src="/marketing/uc-4.jpg" alt="Coffee Tokyo"></div>
+      <div class="img-frame"><img src="/marketing/uc-5.jpg" alt="Trade Asia"></div>
+    </div>
+  </div>
+
+  <!-- 6: Map families -->
+  <div class="slide text-left" data-slide="5" style="padding-left:120px">
+    <h3>7 kartfamiljer</h3>
+    <h2 class="mb-32">Fr&aring;n choropleth till fl&ouml;deskartor.</h2>
+    <div class="grid-3" style="max-width:700px">
+      <div class="card"><h4 class="sage">Choropleth</h4><p class="small" style="color:var(--tx3)">F&auml;rglagda regioner baserat p&aring; data</p></div>
+      <div class="card"><h4 class="sage">Heatmap</h4><p class="small" style="color:var(--tx3)">T&auml;thet och intensitet</p></div>
+      <div class="card"><h4 class="sage">Cluster</h4><p class="small" style="color:var(--tx3)">Grupperade punkter</p></div>
+      <div class="card"><h4 class="sage">Point</h4><p class="small" style="color:var(--tx3)">Individuella platser</p></div>
+      <div class="card"><h4 class="sage">Flow</h4><p class="small" style="color:var(--tx3)">Riktning och r&ouml;relse</p></div>
+      <div class="card"><h4 class="sage">Proportional</h4><p class="small" style="color:var(--tx3)">Storlek = v&auml;rde</p></div>
+    </div>
+  </div>
+
+  <!-- 7: Tech stack -->
+  <div class="slide" data-slide="6">
+    <h3>Teknik</h3>
+    <h2 class="mb-32">Modern stack, snabb iteration.</h2>
+    <div class="grid-2" style="max-width:700px">
+      <div class="card">
+        <h4>Frontend</h4>
+        <p class="small" style="color:var(--tx3)">Next.js 14 &middot; React 18 &middot; MapLibre GL &middot; Tailwind</p>
+      </div>
+      <div class="card">
+        <h4>AI</h4>
+        <p class="small" style="color:var(--tx3)">Claude Sonnet 4 &middot; Structured output &middot; MapManifest</p>
+      </div>
+      <div class="card">
+        <h4>Data</h4>
+        <p class="small" style="color:var(--tx3)">Eurostat &middot; World Bank &middot; PxWeb &middot; GeoJSON</p>
+      </div>
+      <div class="card">
+        <h4>Infra</h4>
+        <p class="small" style="color:var(--tx3)">Supabase &middot; Vercel &middot; TypeScript strict</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8: Architecture -->
+  <div class="slide" data-slide="7">
+    <h3>Arkitektur</h3>
+    <h2 class="mb-24">AI genererar manifest, inte kod.</h2>
+    <p class="mb-32">Compilern &auml;r dum &mdash; all kartografisk intelligens lever i AI-lagret. Manifest valideras i tv&aring; pass: schema + kartografisk.</p>
+    <div class="flow">
+      <div class="flow-step">Prompt</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">profileDataset()</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step sage">MapManifest</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">compileLayer()</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step gold">MapLibre GL</div>
+    </div>
+  </div>
+
+  <!-- 9: Demo -->
+  <div class="slide" data-slide="8">
+    <h3>Demo</h3>
+    <h2 class="mb-32">Hur det ser ut i praktiken.</h2>
+    <div class="img-frame">
+      <img src="/marketing/demo-map.jpg" alt="Demo map">
+    </div>
+  </div>
+
+  <!-- 10: What's next -->
+  <div class="slide" data-slide="9">
+    <h3>N&auml;sta steg</h3>
+    <h2 class="mb-32">Roadmap.</h2>
+    <div style="display:flex;flex-direction:column;gap:16px;max-width:500px;width:100%">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--bd)">
+        <span class="badge badge-sage" style="min-width:60px;text-align:center">Q2</span>
+        <span style="font-size:16px">Fler datakällor &amp; kartfamiljer</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--bd)">
+        <span class="badge badge-sage" style="min-width:60px;text-align:center">Q2</span>
+        <span style="font-size:16px">Team-funktioner &amp; collaboration</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--bd)">
+        <span class="badge badge-gold" style="min-width:60px;text-align:center">Q3</span>
+        <span style="font-size:16px">PDF/SVG-export &amp; white-label embed</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0">
+        <span class="badge badge-gold" style="min-width:60px;text-align:center">Q3</span>
+        <span style="font-size:16px">Enterprise SSO &amp; API</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11: End -->
+  <div class="slide" data-slide="10">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
+      <span class="dot"></span>
+      <span style="font-family:Georgia,serif;font-size:24px">Atlas</span>
+    </div>
+    <h1>Tack.</h1>
+    <p class="mt-24 mono small" style="color:var(--tx3)">atlas.app &middot; github.com/atlas</p>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button id="prev">&larr;</button>
+  <span id="counter">1 / 11</span>
+  <button id="next">&rarr;</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  function go(n) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(total - 1, n));
+    slides[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+    document.getElementById('progress').style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.getElementById('prev').addEventListener('click', () => go(current - 1));
+  document.getElementById('next').addEventListener('click', () => go(current + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(current + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(total - 1);
+  });
+
+  go(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,5026 @@
+[
+  {
+    "id": 1,
+    "prompt": "World population by country",
+    "difficulty": "easy",
+    "category": "global-stats",
+    "expectedIntent": "Population choropleth, all countries",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank|restcountries",
+    "latencyMs": 1083,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "World population by country",
+    "dataUrl": "/api/geo/world-countries",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-countries",
+    "profile": {
+      "featureCount": 177,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 177,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 175,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 0
+        },
+        {
+          "name": "subregion",
+          "type": "string",
+          "uniqueValues": 22,
+          "nullCount": 0
+        },
+        {
+          "name": "pop_est",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 140,
+          "max": 1397715000
+        },
+        {
+          "name": "gdp_md",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 16,
+          "max": 21433226
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.64513,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "prompt": "GDP per capita worldwide",
+    "difficulty": "easy",
+    "category": "global-stats",
+    "expectedIntent": "GDP per capita choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1070,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "GDP per capita worldwide",
+    "dataUrl": "/api/geo/world-countries",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-countries",
+    "profile": {
+      "featureCount": 177,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 177,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 175,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 0
+        },
+        {
+          "name": "subregion",
+          "type": "string",
+          "uniqueValues": 22,
+          "nullCount": 0
+        },
+        {
+          "name": "pop_est",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 140,
+          "max": 1397715000
+        },
+        {
+          "name": "gdp_md",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 16,
+          "max": 21433226
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.64513,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "prompt": "CO2 emissions per country",
+    "difficulty": "easy",
+    "category": "global-stats",
+    "expectedIntent": "CO2 choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1820,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "CO2 emissions per country",
+    "dataUrl": "/api/geo/cached/worldbank-EN.GHG.CO2.MT.CE.AR5",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 165,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 165,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 165,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "EN.GHG.CO2.MT.CE.AR5",
+          "type": "number",
+          "uniqueValues": 165,
+          "nullCount": 0,
+          "min": 0.2851,
+          "max": 13124.728
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 165,
+          "nullCount": 0,
+          "min": 0.2851,
+          "max": 13124.728
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "prompt": "Life expectancy around the world",
+    "difficulty": "easy",
+    "category": "global-stats",
+    "expectedIntent": "Life expectancy choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1655,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Life expectancy around the world",
+    "dataUrl": "/api/geo/cached/worldbank-SP.DYN.LE00.IN",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.DYN.LE00.IN",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 54.462,
+          "max": 84.0560975609756
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 54.462,
+          "max": 84.0560975609756
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "prompt": "Show active earthquakes",
+    "difficulty": "easy",
+    "category": "natural-events",
+    "expectedIntent": "Point map of recent earthquakes",
+    "expectedGeography": "point-global",
+    "expectedSource": "catalog-earthquakes",
+    "latencyMs": 8872,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Show active earthquakes — global events from past 24 hours, magnitude 2.5+",
+    "dataUrl": "/api/earthquakes",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-earthquake",
+    "profile": null
+  },
+  {
+    "id": 6,
+    "prompt": "Active wildfires",
+    "difficulty": "easy",
+    "category": "natural-events",
+    "expectedIntent": "Point/cluster map of current wildfires",
+    "expectedGeography": "point-global",
+    "expectedSource": "eonet",
+    "latencyMs": 1481,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Active wildfires",
+    "dataUrl": "/api/geo/cached/eonet-wildfires",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-eonet",
+    "profile": {
+      "featureCount": 200,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 199,
+          "nullCount": 0
+        },
+        {
+          "name": "event_id",
+          "type": "string",
+          "uniqueValues": 200,
+          "nullCount": 0
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "uniqueValues": 189,
+          "nullCount": 0
+        },
+        {
+          "name": "magnitude",
+          "type": "number",
+          "uniqueValues": 172,
+          "nullCount": 0,
+          "min": 500,
+          "max": 572804
+        },
+        {
+          "name": "magnitude_unit",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          26.4147222,
+          -112.26804
+        ],
+        [
+          47.909896,
+          -75.826833
+        ]
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "prompt": "Restaurants in Stockholm",
+    "difficulty": "easy",
+    "category": "overpass-poi",
+    "expectedIntent": "POI point map",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 5911,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Restaurants in Stockholm",
+    "dataUrl": "/api/geo/overpass?type=restaurant&bbox=59.2,17.8,59.45,18.3",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": {
+      "featureCount": 500,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 485,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "addr:housenumber",
+          "type": "string",
+          "uniqueValues": 54,
+          "nullCount": 423
+        },
+        {
+          "name": "addr:street",
+          "type": "string",
+          "uniqueValues": 68,
+          "nullCount": 423
+        },
+        {
+          "name": "amenity",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "cuisine",
+          "type": "string",
+          "uniqueValues": 73,
+          "nullCount": 187
+        },
+        {
+          "name": "opening_hours",
+          "type": "string",
+          "uniqueValues": 320,
+          "nullCount": 132
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "uniqueValues": 133,
+          "nullCount": 367
+        },
+        {
+          "name": "check_date",
+          "type": "string",
+          "uniqueValues": 66,
+          "nullCount": 229
+        },
+        {
+          "name": "check_date:diet:vegetarian",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "check_date:opening_hours",
+          "type": "string",
+          "uniqueValues": 35,
+          "nullCount": 295
+        },
+        {
+          "name": "contact:phone",
+          "type": "string",
+          "uniqueValues": 192,
+          "nullCount": 306
+        },
+        {
+          "name": "contact:website",
+          "type": "string",
+          "uniqueValues": 204,
+          "nullCount": 294
+        },
+        {
+          "name": "diet:vegetarian",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 423
+        },
+        {
+          "name": "alt_name",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 493
+        },
+        {
+          "name": "alt_name:en",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "uniqueValues": 19,
+          "nullCount": 481
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "uniqueValues": 149,
+          "nullCount": 350
+        },
+        {
+          "name": "contact:email",
+          "type": "string",
+          "uniqueValues": 178,
+          "nullCount": 322
+        },
+        {
+          "name": "wheelchair",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 391
+        },
+        {
+          "name": "indoor_seating",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 394
+        },
+        {
+          "name": "outdoor_seating",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 367
+        },
+        {
+          "name": "addr:city",
+          "type": "string",
+          "uniqueValues": 19,
+          "nullCount": 450
+        },
+        {
+          "name": "addr:country",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 433
+        },
+        {
+          "name": "addr:postcode",
+          "type": "string",
+          "uniqueValues": 39,
+          "nullCount": 454
+        },
+        {
+          "name": "toilets",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 491
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 493
+        },
+        {
+          "name": "al_fresco",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 487
+        },
+        {
+          "name": "wikidata",
+          "type": "string",
+          "uniqueValues": 22,
+          "nullCount": 478
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "uniqueValues": 10,
+          "nullCount": 490
+        },
+        {
+          "name": "wikimedia_commons",
+          "type": "string",
+          "uniqueValues": 14,
+          "nullCount": 486
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "uniqueValues": 6,
+          "nullCount": 480
+        },
+        {
+          "name": "takeaway",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 403
+        },
+        {
+          "name": "payment:credit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 484
+        },
+        {
+          "name": "payment:debit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 485
+        },
+        {
+          "name": "contact:facebook",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 492
+        },
+        {
+          "name": "contact:instagram",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 493
+        },
+        {
+          "name": "internet_access",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 484
+        },
+        {
+          "name": "toilets:wheelchair",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 494
+        },
+        {
+          "name": "website:menu",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "name:formal",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "opening_hours:covid19",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "wikipedia",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 485
+        },
+        {
+          "name": "old_name",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "operator",
+          "type": "string",
+          "uniqueValues": 12,
+          "nullCount": 486
+        },
+        {
+          "name": "check_date:smoking",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "payment:cash",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 421
+        },
+        {
+          "name": "smoking",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 485
+        },
+        {
+          "name": "diet:vegan",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 448
+        },
+        {
+          "name": "internet_access:fee",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 493
+        },
+        {
+          "name": "changing_table",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "changing_table:fee",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "reservation",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "toilets:access",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "delivery",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 495
+        },
+        {
+          "name": "air_conditioning",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 493
+        },
+        {
+          "name": "payment:cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "diet:chicken",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "diet:fish",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "diet:meat",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "name:en",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "description:en",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "capacity",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 493
+        },
+        {
+          "name": "contact:fax",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        }
+      ],
+      "bounds": [
+        [
+          59.2206371,
+          17.8009166
+        ],
+        [
+          59.4457182,
+          18.2672845
+        ]
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "prompt": "Cafes in Paris",
+    "difficulty": "easy",
+    "category": "overpass-poi",
+    "expectedIntent": "POI point map",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 4235,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Cafes in Paris",
+    "dataUrl": "/api/geo/overpass?type=cafe&bbox=48.8,2.2,48.95,2.5",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": {
+      "featureCount": 500,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 461,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "amenity",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "ref:FR:SIRET",
+          "type": "string",
+          "uniqueValues": 144,
+          "nullCount": 356
+        },
+        {
+          "name": "addr:city",
+          "type": "string",
+          "uniqueValues": 9,
+          "nullCount": 408
+        },
+        {
+          "name": "addr:housenumber",
+          "type": "string",
+          "uniqueValues": 78,
+          "nullCount": 368
+        },
+        {
+          "name": "addr:postcode",
+          "type": "string",
+          "uniqueValues": 32,
+          "nullCount": 392
+        },
+        {
+          "name": "addr:street",
+          "type": "string",
+          "uniqueValues": 116,
+          "nullCount": 363
+        },
+        {
+          "name": "air_conditioning",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 488
+        },
+        {
+          "name": "indoor_seating",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 302
+        },
+        {
+          "name": "internet_access",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 449
+        },
+        {
+          "name": "layer",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "name:fr",
+          "type": "string",
+          "uniqueValues": 283,
+          "nullCount": 199
+        },
+        {
+          "name": "name:ru",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "opening_hours",
+          "type": "string",
+          "uniqueValues": 151,
+          "nullCount": 326
+        },
+        {
+          "name": "outdoor_seating",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 232
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "uniqueValues": 93,
+          "nullCount": 407
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "uniqueValues": 64,
+          "nullCount": 430
+        },
+        {
+          "name": "wheelchair",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 308
+        },
+        {
+          "name": "wikidata",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 492
+        },
+        {
+          "name": "check_date",
+          "type": "string",
+          "uniqueValues": 157,
+          "nullCount": 286
+        },
+        {
+          "name": "contact:phone",
+          "type": "string",
+          "uniqueValues": 44,
+          "nullCount": 456
+        },
+        {
+          "name": "diet:vegan",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 483
+        },
+        {
+          "name": "diet:vegetarian",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 462
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 454
+        },
+        {
+          "name": "payment:cash",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 472
+        },
+        {
+          "name": "payment:credit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 465
+        },
+        {
+          "name": "payment:debit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 472
+        },
+        {
+          "name": "smoking",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 429
+        },
+        {
+          "name": "toilets",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 475
+        },
+        {
+          "name": "toilets:wheelchair",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 458
+        },
+        {
+          "name": "bar",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 468
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "uniqueValues": 18,
+          "nullCount": 285
+        },
+        {
+          "name": "contact:city",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 447
+        },
+        {
+          "name": "contact:housenumber",
+          "type": "string",
+          "uniqueValues": 50,
+          "nullCount": 440
+        },
+        {
+          "name": "contact:postcode",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 445
+        },
+        {
+          "name": "contact:street",
+          "type": "string",
+          "uniqueValues": 49,
+          "nullCount": 440
+        },
+        {
+          "name": "contact:website",
+          "type": "string",
+          "uniqueValues": 14,
+          "nullCount": 486
+        },
+        {
+          "name": "cuisine",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 402
+        },
+        {
+          "name": "name:en",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "shop",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 471
+        },
+        {
+          "name": "brewery",
+          "type": "string",
+          "uniqueValues": 35,
+          "nullCount": 464
+        },
+        {
+          "name": "check_date:opening_hours",
+          "type": "string",
+          "uniqueValues": 31,
+          "nullCount": 468
+        },
+        {
+          "name": "happy_hours",
+          "type": "string",
+          "uniqueValues": 17,
+          "nullCount": 482
+        },
+        {
+          "name": "name:zh",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "contact:email",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 496
+        },
+        {
+          "name": "contact:facebook",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 492
+        },
+        {
+          "name": "live_music",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "drink:beer",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "drink:cider",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "drink:pastis",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "internet_access:fee",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 487
+        },
+        {
+          "name": "payment:coins",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "payment:contactless",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 497
+        },
+        {
+          "name": "payment:mastercard",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 492
+        },
+        {
+          "name": "payment:visa",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 482
+        },
+        {
+          "name": "check_date:toilets:wheelchair",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "check_date:smoking",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "dinner",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "facebook",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "opening_hours:signed",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 467
+        },
+        {
+          "name": "wikipedia",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "atm",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "drive_through",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 498
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "uniqueValues": 6,
+          "nullCount": 494
+        },
+        {
+          "name": "panoramax",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "survey:date",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 493
+        },
+        {
+          "name": "changing_table",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 492
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 492
+        },
+        {
+          "name": "takeaway",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 468
+        },
+        {
+          "name": "toilets:access",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 491
+        },
+        {
+          "name": "toilets:disposal",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 493
+        },
+        {
+          "name": "toilets:handwashing",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 497
+        },
+        {
+          "name": "toilets:paper_supplied",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 497
+        },
+        {
+          "name": "toilets:position",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 493
+        },
+        {
+          "name": "payment:description",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "contact:instagram",
+          "type": "string",
+          "uniqueValues": 18,
+          "nullCount": 482
+        },
+        {
+          "name": "delivery",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "alt_name",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "tobacco",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 470
+        },
+        {
+          "name": "check_date:diet:vegetarian",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "diet:halal",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 497
+        },
+        {
+          "name": "lottery",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 495
+        },
+        {
+          "name": "sells:tobacco",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "brewery:note",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "diet:kosher",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 494
+        },
+        {
+          "name": "old_name",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "wheelchair:description",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "restaurant",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "ref:beckn",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        }
+      ],
+      "bounds": [
+        [
+          48.8005639,
+          2.2053754
+        ],
+        [
+          48.948877,
+          2.4995826
+        ]
+      ]
+    }
+  },
+  {
+    "id": 9,
+    "prompt": "World countries",
+    "difficulty": "easy",
+    "category": "basemap",
+    "expectedIntent": "Basic country polygons",
+    "expectedGeography": "country",
+    "expectedSource": "catalog|restcountries",
+    "latencyMs": 44,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "World countries",
+    "dataUrl": "/api/geo/world-countries",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-countries",
+    "profile": {
+      "featureCount": 177,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 177,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 175,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 0
+        },
+        {
+          "name": "subregion",
+          "type": "string",
+          "uniqueValues": 22,
+          "nullCount": 0
+        },
+        {
+          "name": "pop_est",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 140,
+          "max": 1397715000
+        },
+        {
+          "name": "gdp_md",
+          "type": "number",
+          "uniqueValues": 177,
+          "nullCount": 0,
+          "min": 16,
+          "max": 21433226
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.64513,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "prompt": "Literacy rate by country",
+    "difficulty": "easy",
+    "category": "global-stats",
+    "expectedIntent": "Literacy choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 2629,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Literacy rate by country",
+    "dataUrl": "/api/geo/cached/worldbank-SE.ADT.LITR.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 144,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 144,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 144,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SE.ADT.LITR.ZS",
+          "type": "number",
+          "uniqueValues": 140,
+          "nullCount": 0,
+          "min": 26.8299999237061,
+          "max": 100
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 140,
+          "nullCount": 0,
+          "min": 26.8299999237061,
+          "max": 100
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 31,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          81.2504,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 11,
+    "prompt": "GDP per capita in Europe",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "GDP per capita, European countries only",
+    "expectedGeography": "country-europe",
+    "expectedSource": "eurostat",
+    "latencyMs": 2582,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "GDP per capita in Europe",
+    "dataUrl": "/api/geo/cached/eurostat-sdg_08_10",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 36,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "nuts_id",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a2",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "gdp_per_capita",
+          "type": "number",
+          "uniqueValues": 36,
+          "nullCount": 0,
+          "min": 10,
+          "max": 100380
+        },
+        {
+          "name": "data_date",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -21.38954,
+          -63.1003
+        ],
+        [
+          80.72217,
+          55.82562
+        ]
+      ]
+    }
+  },
+  {
+    "id": 12,
+    "prompt": "Unemployment rate in EU countries",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "Unemployment choropleth, EU",
+    "expectedGeography": "country-europe",
+    "expectedSource": "eurostat",
+    "latencyMs": 1731,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Unemployment rate in EU countries",
+    "dataUrl": "/api/geo/cached/eurostat-une_rt_a",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 35,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "nuts_id",
+          "type": "string",
+          "uniqueValues": 35,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a2",
+          "type": "string",
+          "uniqueValues": 35,
+          "nullCount": 0
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 35,
+          "nullCount": 0
+        },
+        {
+          "name": "unemployment_rate",
+          "type": "number",
+          "uniqueValues": 31,
+          "nullCount": 0,
+          "min": 3,
+          "max": 842
+        },
+        {
+          "name": "data_date",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -21.38954,
+          -63.1003
+        ],
+        [
+          80.72217,
+          55.82562
+        ]
+      ]
+    }
+  },
+  {
+    "id": 13,
+    "prompt": "Population density in Africa",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "Pop density choropleth, African countries",
+    "expectedGeography": "country-africa",
+    "expectedSource": "worldbank",
+    "latencyMs": 1771,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Population density in Africa",
+    "dataUrl": "/api/geo/cached/worldbank-SP.POP.TOTL",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.POP.TOTL",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 56836,
+          "max": 1450935791
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 56836,
+          "max": 1450935791
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 14,
+    "prompt": "Befolkning per kommun i Sverige",
+    "difficulty": "medium",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Population by municipality, Sweden",
+    "expectedGeography": "municipality-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 1322,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": "tabular_only",
+    "resolvedPrompt": "Befolkning per kommun i Sverige",
+    "dataUrl": "/api/geo/cached/pxweb-se-scb-befolkning",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 2555,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 2555,
+          "nullCount": 0
+        },
+        {
+          "name": "regionCode",
+          "type": "string",
+          "uniqueValues": 2555,
+          "nullCount": 0
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 1577,
+          "nullCount": 0,
+          "min": 7,
+          "max": 5324785
+        },
+        {
+          "name": "metric",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          90,
+          180
+        ],
+        [
+          -90,
+          -180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 15,
+    "prompt": "Medelinkomst per län i Sverige",
+    "difficulty": "medium",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Average income by county, Sweden",
+    "expectedGeography": "county-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 47,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": "map_ready",
+    "resolvedPrompt": "Medelinkomst per län i Sverige",
+    "dataUrl": "/api/geo/cached/pxweb-se-scb-medelinkomst",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 21,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_3166_2",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_value",
+          "type": "number",
+          "uniqueValues": 21,
+          "nullCount": 0,
+          "min": 332.9,
+          "max": 442.2
+        },
+        {
+          "name": "_atlas_geo_code",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_matched",
+          "type": "boolean",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Region",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "ContentsCode",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Tid",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Kon",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Alder",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Inkomstklass",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          55.33695,
+          10.9821
+        ],
+        [
+          69.05997,
+          24.15298
+        ]
+      ]
+    }
+  },
+  {
+    "id": 16,
+    "prompt": "Befolkning per kommune i Norge",
+    "difficulty": "medium",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Population by municipality, Norway",
+    "expectedGeography": "municipality-no",
+    "expectedSource": "pxweb-ssb",
+    "latencyMs": 71,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": "map_ready",
+    "resolvedPrompt": "Befolkning per kommune i Norge",
+    "dataUrl": "/api/geo/cached/pxweb-no-ssb-befolkning-kommune",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 15,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_3166_2",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_value",
+          "type": "number",
+          "uniqueValues": 15,
+          "nullCount": 0,
+          "min": 2826,
+          "max": 25666
+        },
+        {
+          "name": "_atlas_geo_code",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_matched",
+          "type": "boolean",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Region",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 0
+        },
+        {
+          "name": "ContentsCode",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Tid",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "InntektFormue",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          57.97436,
+          4.61212
+        ],
+        [
+          71.1855,
+          31.15093
+        ]
+      ]
+    }
+  },
+  {
+    "id": 17,
+    "prompt": "Infant mortality rate in Asia",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "Infant mortality, Asian countries",
+    "expectedGeography": "country-asia",
+    "expectedSource": "worldbank",
+    "latencyMs": 2282,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Infant mortality rate in Asia",
+    "dataUrl": "/api/geo/cached/worldbank-SP.DYN.IMRT.IN",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 166,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 166,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 166,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.DYN.IMRT.IN",
+          "type": "number",
+          "uniqueValues": 130,
+          "nullCount": 0,
+          "min": 1.6,
+          "max": 72.6
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 130,
+          "nullCount": 0,
+          "min": 1.6,
+          "max": 72.6
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.2332,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 18,
+    "prompt": "Renewable energy percentage by country",
+    "difficulty": "medium",
+    "category": "global-stats",
+    "expectedIntent": "Renewable energy choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1546,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Renewable energy percentage by country",
+    "dataUrl": "/api/geo/cached/worldbank-EG.FEC.RNEW.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "EG.FEC.RNEW.ZS",
+          "type": "number",
+          "uniqueValues": 146,
+          "nullCount": 0,
+          "min": 0,
+          "max": 96.3
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 146,
+          "nullCount": 0,
+          "min": 0,
+          "max": 96.3
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 19,
+    "prompt": "Hospitals in London",
+    "difficulty": "medium",
+    "category": "overpass-poi",
+    "expectedIntent": "POI point map of hospitals",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 11992,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Hospitals in London, UK",
+    "dataUrl": "/api/geo/overpass?type=hospital&bbox=51.3,-0.5,51.7,0.3",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": null
+  },
+  {
+    "id": 20,
+    "prompt": "Parks in Berlin",
+    "difficulty": "medium",
+    "category": "overpass-poi",
+    "expectedIntent": "POI map of parks/green spaces",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 7568,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Parks in Berlin",
+    "dataUrl": "/api/geo/overpass?type=park&bbox=52.35,13.1,52.7,13.8",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": {
+      "featureCount": 4,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 0
+        },
+        {
+          "name": "communication:amateur_radio:pota",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "leisure",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "name:ko",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "name:ru",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "opening_hours",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "protection_title",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "wikidata",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "wikimedia_commons",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "wikipedia",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "addr:city",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "addr:postcode",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "addr:street",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "contact:website",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "image",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "landuse",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 3
+        }
+      ],
+      "bounds": [
+        [
+          52.4457757,
+          13.3567585
+        ],
+        [
+          52.5462418,
+          13.4421722
+        ]
+      ]
+    }
+  },
+  {
+    "id": 21,
+    "prompt": "Mongol Empire",
+    "difficulty": "medium",
+    "category": "historical",
+    "expectedIntent": "Historical basemap ~1279",
+    "expectedGeography": "historical-polygons",
+    "expectedSource": "historical-basemaps",
+    "latencyMs": 1250,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Mongol Empire",
+    "dataUrl": "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1279.geojson",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "historical-basemaps",
+    "profile": {
+      "featureCount": 247,
+      "geometryType": "MultiPolygon",
+      "attributes": [
+        {
+          "name": "NAME",
+          "type": "string",
+          "uniqueValues": 113,
+          "nullCount": 131
+        },
+        {
+          "name": "ABBREVN",
+          "type": "string",
+          "uniqueValues": 113,
+          "nullCount": 130
+        },
+        {
+          "name": "SUBJECTO",
+          "type": "string",
+          "uniqueValues": 106,
+          "nullCount": 131
+        },
+        {
+          "name": "BORDERPRECISION",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 0,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "name": "PARTOF",
+          "type": "string",
+          "uniqueValues": 112,
+          "nullCount": 131
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.57906683560076,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 22,
+    "prompt": "Roman Empire at its peak",
+    "difficulty": "medium",
+    "category": "historical",
+    "expectedIntent": "Historical basemap ~100 AD",
+    "expectedGeography": "historical-polygons",
+    "expectedSource": "historical-basemaps",
+    "latencyMs": 287,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Roman Empire at its peak",
+    "dataUrl": "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_100.geojson",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "historical-basemaps",
+    "profile": {
+      "featureCount": 440,
+      "geometryType": "MultiPolygon",
+      "attributes": [
+        {
+          "name": "NAME",
+          "type": "string",
+          "uniqueValues": 83,
+          "nullCount": 355
+        },
+        {
+          "name": "ABBREVN",
+          "type": "string",
+          "uniqueValues": 82,
+          "nullCount": 356
+        },
+        {
+          "name": "SUBJECTO",
+          "type": "string",
+          "uniqueValues": 82,
+          "nullCount": 354
+        },
+        {
+          "name": "BORDERPRECISION",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 0,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "name": "PARTOF",
+          "type": "string",
+          "uniqueValues": 75,
+          "nullCount": 354
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.57906683535938,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 23,
+    "prompt": "World War 2 borders",
+    "difficulty": "medium",
+    "category": "historical",
+    "expectedIntent": "Historical basemap ~1938",
+    "expectedGeography": "historical-polygons",
+    "expectedSource": "historical-basemaps",
+    "latencyMs": 711,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "World War 2 borders",
+    "dataUrl": "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1938.geojson",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "historical-basemaps",
+    "profile": {
+      "featureCount": 254,
+      "geometryType": "MultiPolygon",
+      "attributes": [
+        {
+          "name": "NAME",
+          "type": "string",
+          "uniqueValues": 171,
+          "nullCount": 79
+        },
+        {
+          "name": "ABBREVN",
+          "type": "string",
+          "uniqueValues": 170,
+          "nullCount": 79
+        },
+        {
+          "name": "SUBJECTO",
+          "type": "string",
+          "uniqueValues": 121,
+          "nullCount": 79
+        },
+        {
+          "name": "BORDERPRECISION",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 0,
+          "min": 3,
+          "max": 3
+        },
+        {
+          "name": "PARTOF",
+          "type": "string",
+          "uniqueValues": 170,
+          "nullCount": 80
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.57906683535938,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 24,
+    "prompt": "Fertility rate in South America",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "Fertility rate, South American countries",
+    "expectedGeography": "country-southamerica",
+    "expectedSource": "worldbank",
+    "latencyMs": 2578,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Fertility rate in South America",
+    "dataUrl": "/api/geo/cached/worldbank-SP.DYN.TFRT.IN",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.DYN.TFRT.IN",
+          "type": "number",
+          "uniqueValues": 151,
+          "nullCount": 0,
+          "min": 0.721,
+          "max": 6.132
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 151,
+          "nullCount": 0,
+          "min": 0.721,
+          "max": 6.132
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 25,
+    "prompt": "Forest area percentage worldwide",
+    "difficulty": "medium",
+    "category": "global-stats",
+    "expectedIntent": "Forest area % choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1546,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Forest area percentage worldwide",
+    "dataUrl": "/api/geo/cached/worldbank-AG.LND.FRST.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "AG.LND.FRST.ZS",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 0,
+          "max": 94.44758351333
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 0,
+          "max": 94.44758351333
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 26,
+    "prompt": "Arbetslöshet per kommun i Sverige",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Unemployment by municipality, Sweden",
+    "expectedGeography": "municipality-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 51,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": "map_ready",
+    "resolvedPrompt": "Arbetslöshet per kommun i Sverige",
+    "dataUrl": "/api/geo/cached/pxweb-se-scb-arbetsl%C3%B6shet",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 21,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_3166_2",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_value",
+          "type": "number",
+          "uniqueValues": 17,
+          "nullCount": 0,
+          "min": 0.13,
+          "max": 0.4
+        },
+        {
+          "name": "_atlas_geo_code",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_matched",
+          "type": "boolean",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Region",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "ContentsCode",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Tid",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          55.33695,
+          10.9821
+        ],
+        [
+          69.05997,
+          24.15298
+        ]
+      ]
+    }
+  },
+  {
+    "id": 27,
+    "prompt": "Utbildningsnivå per län",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Education level by county, Sweden",
+    "expectedGeography": "county-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 91,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": "map_ready",
+    "resolvedPrompt": "Utbildningsnivå per län",
+    "dataUrl": "/api/geo/cached/pxweb-se-scb-utbildningsniv%C3%A5",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 21,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_3166_2",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_value",
+          "type": "number",
+          "uniqueValues": 21,
+          "nullCount": 0,
+          "min": 2822,
+          "max": 115694
+        },
+        {
+          "name": "_atlas_geo_code",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "_atlas_matched",
+          "type": "boolean",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Region",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "ContentsCode",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "Tid",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "UtbildningsNiva",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          55.33695,
+          10.9821
+        ],
+        [
+          69.05997,
+          24.15298
+        ]
+      ]
+    }
+  },
+  {
+    "id": 28,
+    "prompt": "Boligpriser per fylke i Norge",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Housing prices by county, Norway",
+    "expectedGeography": "county-no",
+    "expectedSource": "pxweb-ssb",
+    "latencyMs": 15353,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Housing prices by county (fylke) in Norway",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "data-source",
+        "question": "Should data come from Statistics Norway (SSB), a real estate broker, or another source?",
+        "options": [
+          "Statistics Norway (SSB official data)",
+          "Real estate market data (Eiendomsverguet or similar)",
+          "Other Norwegian source"
+        ],
+        "recommended": "Statistics Norway (SSB official data)",
+        "aspect": "data-source"
+      },
+      {
+        "id": "metric",
+        "question": "Which housing price metric? Average, median, or price per square meter?",
+        "options": [
+          "Average price per fylke",
+          "Median price per fylke",
+          "Price per square meter"
+        ],
+        "recommended": "Average price per fylke",
+        "aspect": "metric"
+      }
+    ],
+    "dataWarning": "Housing price data by Norwegian county requires access to SSB (Statistics Norway) or real estate databases. Atlas doesn't have this built-in. Once you confirm the data source and metric, I can search for the downloadable dataset or help you prepare your own CSV/GeoJSON upload.",
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 29,
+    "prompt": "Minimum wage across Europe",
+    "difficulty": "hard",
+    "category": "regional-stats",
+    "expectedIntent": "Minimum wage choropleth, Europe",
+    "expectedGeography": "country-europe",
+    "expectedSource": "eurostat",
+    "latencyMs": 2055,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Minimum wage across Europe",
+    "dataUrl": "/api/geo/cached/eurostat-earn_mw_cur",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 28,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "nuts_id",
+          "type": "string",
+          "uniqueValues": 28,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a2",
+          "type": "string",
+          "uniqueValues": 28,
+          "nullCount": 0
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 28,
+          "nullCount": 0
+        },
+        {
+          "name": "minimum_wage_eur",
+          "type": "number",
+          "uniqueValues": 28,
+          "nullCount": 0,
+          "min": 173,
+          "max": 2704
+        },
+        {
+          "name": "data_date",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -21.38954,
+          -63.1003
+        ],
+        [
+          59.62819,
+          55.82562
+        ]
+      ]
+    }
+  },
+  {
+    "id": 30,
+    "prompt": "Gini coefficient by country",
+    "difficulty": "hard",
+    "category": "global-stats",
+    "expectedIntent": "Income inequality choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank|eurostat",
+    "latencyMs": 2739,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Gini coefficient by country",
+    "dataUrl": "/api/geo/cached/worldbank-SI.POV.GINI",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 153,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 153,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 153,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SI.POV.GINI",
+          "type": "number",
+          "uniqueValues": 112,
+          "nullCount": 0,
+          "min": 23.8,
+          "max": 63
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 112,
+          "nullCount": 0,
+          "min": 23.8,
+          "max": 63
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 20,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.2332,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 31,
+    "prompt": "Crime rate in Swedish municipalities",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Crime rate by municipality, Sweden",
+    "expectedGeography": "municipality-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 35812,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Map crime rate by Swedish municipality",
+    "dataUrl": "/api/geo/cached/web-e3fffdf6a58f",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 290,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "lan_code",
+          "type": "string",
+          "uniqueValues": 21,
+          "nullCount": 0
+        },
+        {
+          "name": "kom_namn",
+          "type": "string",
+          "uniqueValues": 290,
+          "nullCount": 0
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "uniqueValues": 290,
+          "nullCount": 0
+        },
+        {
+          "name": "geo_point_2d",
+          "type": "string",
+          "uniqueValues": 290,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          55.32758373359841,
+          10.950510989466226
+        ],
+        [
+          69.05996726798995,
+          24.17761385840489
+        ]
+      ]
+    }
+  },
+  {
+    "id": 32,
+    "prompt": "Internet users per country",
+    "difficulty": "medium",
+    "category": "global-stats",
+    "expectedIntent": "Internet usage choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1456,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Internet users per country",
+    "dataUrl": "/api/geo/cached/worldbank-IT.NET.USER.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "IT.NET.USER.ZS",
+          "type": "number",
+          "uniqueValues": 168,
+          "nullCount": 0,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 168,
+          "nullCount": 0,
+          "min": 0,
+          "max": 100
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 9,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 33,
+    "prompt": "Tectonic plates",
+    "difficulty": "easy",
+    "category": "basemap",
+    "expectedIntent": "Tectonic plate boundaries",
+    "expectedGeography": "global-geological",
+    "expectedSource": "catalog-tectonic",
+    "latencyMs": 196,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Tectonic plates",
+    "dataUrl": "/api/earthquakes",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-earthquake",
+    "profile": {
+      "featureCount": 62,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "mag",
+          "type": "number",
+          "uniqueValues": 33,
+          "nullCount": 0,
+          "min": 2.46,
+          "max": 6.6
+        },
+        {
+          "name": "place",
+          "type": "string",
+          "uniqueValues": 59,
+          "nullCount": 0
+        },
+        {
+          "name": "time",
+          "type": "number",
+          "uniqueValues": 62,
+          "nullCount": 0,
+          "min": 1773920205128,
+          "max": 1773998614290
+        },
+        {
+          "name": "updated",
+          "type": "number",
+          "uniqueValues": 62,
+          "nullCount": 0,
+          "min": 1773922924040,
+          "max": 1773999111199
+        },
+        {
+          "name": "tz",
+          "type": "null",
+          "uniqueValues": 0,
+          "nullCount": 62
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "uniqueValues": 62,
+          "nullCount": 0
+        },
+        {
+          "name": "detail",
+          "type": "string",
+          "uniqueValues": 62,
+          "nullCount": 0
+        },
+        {
+          "name": "felt",
+          "type": "number",
+          "uniqueValues": 2,
+          "nullCount": 60,
+          "min": 1,
+          "max": 4
+        },
+        {
+          "name": "cdi",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 60,
+          "min": 2,
+          "max": 2
+        },
+        {
+          "name": "mmi",
+          "type": "number",
+          "uniqueValues": 7,
+          "nullCount": 55,
+          "min": 1,
+          "max": 4.987
+        },
+        {
+          "name": "alert",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 59
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 0
+        },
+        {
+          "name": "tsunami",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 0,
+          "min": 0,
+          "max": 0
+        },
+        {
+          "name": "sig",
+          "type": "number",
+          "uniqueValues": 32,
+          "nullCount": 0,
+          "min": 93,
+          "max": 670
+        },
+        {
+          "name": "net",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 0
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "uniqueValues": 62,
+          "nullCount": 0
+        },
+        {
+          "name": "ids",
+          "type": "string",
+          "uniqueValues": 62,
+          "nullCount": 0
+        },
+        {
+          "name": "sources",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 0
+        },
+        {
+          "name": "types",
+          "type": "string",
+          "uniqueValues": 9,
+          "nullCount": 0
+        },
+        {
+          "name": "nst",
+          "type": "number",
+          "uniqueValues": 38,
+          "nullCount": 0,
+          "min": 5,
+          "max": 180
+        },
+        {
+          "name": "dmin",
+          "type": "number",
+          "uniqueValues": 52,
+          "nullCount": 1,
+          "min": 0,
+          "max": 23.259
+        },
+        {
+          "name": "rms",
+          "type": "number",
+          "uniqueValues": 46,
+          "nullCount": 0,
+          "min": 0.1,
+          "max": 1.6
+        },
+        {
+          "name": "gap",
+          "type": "number",
+          "uniqueValues": 56,
+          "nullCount": 0,
+          "min": 21,
+          "max": 323
+        },
+        {
+          "name": "magType",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "uniqueValues": 62,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -61.1525,
+          -179.917
+        ],
+        [
+          68.227,
+          179.3256
+        ]
+      ]
+    }
+  },
+  {
+    "id": 34,
+    "prompt": "Universities in Tokyo",
+    "difficulty": "medium",
+    "category": "overpass-poi",
+    "expectedIntent": "POI map of universities",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 14314,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Map of university locations in Tokyo, Japan",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "no-result",
+    "profile": null
+  },
+  {
+    "id": 35,
+    "prompt": "Bars in New York",
+    "difficulty": "medium",
+    "category": "overpass-poi",
+    "expectedIntent": "POI map of bars",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 7109,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Bars in New York",
+    "dataUrl": "/api/geo/overpass?type=bar&bbox=40.5,-74.3,40.9,-73.7",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": {
+      "featureCount": 500,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 488,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "addr:city",
+          "type": "string",
+          "uniqueValues": 13,
+          "nullCount": 312
+        },
+        {
+          "name": "addr:country",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 487
+        },
+        {
+          "name": "addr:housenumber",
+          "type": "string",
+          "uniqueValues": 323,
+          "nullCount": 111
+        },
+        {
+          "name": "addr:postcode",
+          "type": "string",
+          "uniqueValues": 82,
+          "nullCount": 170
+        },
+        {
+          "name": "addr:state",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 346
+        },
+        {
+          "name": "addr:street",
+          "type": "string",
+          "uniqueValues": 219,
+          "nullCount": 106
+        },
+        {
+          "name": "amenity",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "ele",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "gnis:feature_id",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "heritage",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "heritage:website",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "historic",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "lgbtq",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 495
+        },
+        {
+          "name": "opening_hours",
+          "type": "string",
+          "uniqueValues": 221,
+          "nullCount": 257
+        },
+        {
+          "name": "ref:nrhp",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "sport",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 467
+        },
+        {
+          "name": "tourism",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "uniqueValues": 230,
+          "nullCount": 268
+        },
+        {
+          "name": "wheelchair",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 423
+        },
+        {
+          "name": "wikidata",
+          "type": "string",
+          "uniqueValues": 17,
+          "nullCount": 483
+        },
+        {
+          "name": "wikipedia",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "drink:beer",
+          "type": "string",
+          "uniqueValues": 8,
+          "nullCount": 385
+        },
+        {
+          "name": "drink:cider",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "drink:liquor",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 407
+        },
+        {
+          "name": "drink:wine",
+          "type": "string",
+          "uniqueValues": 4,
+          "nullCount": 400
+        },
+        {
+          "name": "outdoor_seating",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 394
+        },
+        {
+          "name": "shop",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 496
+        },
+        {
+          "name": "cocktails",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 402
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "uniqueValues": 200,
+          "nullCount": 300
+        },
+        {
+          "name": "branch",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 498
+        },
+        {
+          "name": "check_date",
+          "type": "string",
+          "uniqueValues": 42,
+          "nullCount": 448
+        },
+        {
+          "name": "happy_hours",
+          "type": "string",
+          "uniqueValues": 30,
+          "nullCount": 460
+        },
+        {
+          "name": "internet_access",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 476
+        },
+        {
+          "name": "internet_access:fee",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 489
+        },
+        {
+          "name": "leisure",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 493
+        },
+        {
+          "name": "payment:credit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 477
+        },
+        {
+          "name": "payment:debit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 483
+        },
+        {
+          "name": "toilets",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 442
+        },
+        {
+          "name": "toilets:unisex",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 469
+        },
+        {
+          "name": "atm",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 489
+        },
+        {
+          "name": "contact:instagram",
+          "type": "string",
+          "uniqueValues": 24,
+          "nullCount": 476
+        },
+        {
+          "name": "cuisine",
+          "type": "string",
+          "uniqueValues": 46,
+          "nullCount": 411
+        },
+        {
+          "name": "payment:cash",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 478
+        },
+        {
+          "name": "bar:type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "source:opening_hours",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "contact:twitter",
+          "type": "string",
+          "uniqueValues": 10,
+          "nullCount": 490
+        },
+        {
+          "name": "start_date",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "indoor_seating",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 469
+        },
+        {
+          "name": "black_owned",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 497
+        },
+        {
+          "name": "addr:housename",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "drink:espresso",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 496
+        },
+        {
+          "name": "designation",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "toilets:wheelchair",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 478
+        },
+        {
+          "name": "alt_name",
+          "type": "string",
+          "uniqueValues": 14,
+          "nullCount": 486
+        },
+        {
+          "name": "bar",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 495
+        },
+        {
+          "name": "opening_hours:covid19",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 497
+        },
+        {
+          "name": "opening_hours:kitchen",
+          "type": "string",
+          "uniqueValues": 10,
+          "nullCount": 490
+        },
+        {
+          "name": "fireplace",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 499
+        },
+        {
+          "name": "contact:facebook",
+          "type": "string",
+          "uniqueValues": 29,
+          "nullCount": 471
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "uniqueValues": 37,
+          "nullCount": 463
+        },
+        {
+          "name": "contact:phone",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 493
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 483
+        },
+        {
+          "name": "brewery",
+          "type": "string",
+          "uniqueValues": 9,
+          "nullCount": 482
+        },
+        {
+          "name": "air_conditioning",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 489
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 489
+        },
+        {
+          "name": "check_date:opening_hours",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "reservation",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 477
+        },
+        {
+          "name": "opening_hours:signed",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 491
+        },
+        {
+          "name": "min_age",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 484
+        },
+        {
+          "name": "payment:contactless",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 495
+        },
+        {
+          "name": "old_name",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 495
+        },
+        {
+          "name": "smoking",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 468
+        },
+        {
+          "name": "diet:gluten_free",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 498
+        },
+        {
+          "name": "diet:vegan",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 496
+        },
+        {
+          "name": "diet:vegetarian",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 495
+        },
+        {
+          "name": "live_music",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 496
+        },
+        {
+          "name": "operator",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 485
+        },
+        {
+          "name": "pinball",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 495
+        },
+        {
+          "name": "toilets:access",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 486
+        }
+      ],
+      "bounds": [
+        [
+          40.539557,
+          -74.2963174
+        ],
+        [
+          40.8984333,
+          -73.7605402
+        ]
+      ]
+    }
+  },
+  {
+    "id": 36,
+    "prompt": "GDP per capita in Nordic countries",
+    "difficulty": "hard",
+    "category": "regional-stats",
+    "expectedIntent": "GDP per capita, SE/NO/DK/FI/IS",
+    "expectedGeography": "country-nordic",
+    "expectedSource": "eurostat|worldbank",
+    "latencyMs": 1830,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "GDP per capita in Nordic countries",
+    "dataUrl": "/api/geo/cached/eurostat-sdg_08_10",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 36,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "nuts_id",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a2",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 36,
+          "nullCount": 0
+        },
+        {
+          "name": "gdp_per_capita",
+          "type": "number",
+          "uniqueValues": 36,
+          "nullCount": 0,
+          "min": 10,
+          "max": 100380
+        },
+        {
+          "name": "data_date",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -21.38954,
+          -63.1003
+        ],
+        [
+          80.72217,
+          55.82562
+        ]
+      ]
+    }
+  },
+  {
+    "id": 37,
+    "prompt": "Healthcare spending as percentage of GDP",
+    "difficulty": "hard",
+    "category": "global-stats",
+    "expectedIntent": "Health expenditure choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 15850,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Map healthcare spending as a percentage of GDP by country",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "geography-scope",
+        "question": "Which countries or regions should the map cover?",
+        "options": [
+          "All countries",
+          "OECD member states",
+          "High-income countries",
+          "Specific region (EU, Asia, etc.)"
+        ],
+        "recommended": "All countries",
+        "aspect": "geography"
+      },
+      {
+        "id": "data-source",
+        "question": "Do you have this data or can you provide a GeoJSON/CSV file?",
+        "options": [
+          "I have a file to upload",
+          "Get it from OECD/World Bank",
+          "Need help finding the data"
+        ],
+        "recommended": "Get it from OECD/World Bank",
+        "aspect": "data-source"
+      }
+    ],
+    "dataWarning": "Healthcare spending as % of GDP is not available in Atlas's built-in datasets. This metric is typically sourced from OECD Health Statistics, World Bank, or WHO. You'll need to: (1) download the data from OECD.org, data.worldbank.org, or WHO GHO, (2) convert to GeoJSON format with country identifiers, (3) upload to Atlas. Alternatively, contact your data provider to request a pre-formatted geographic dataset.",
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 38,
+    "prompt": "Urban population percentage",
+    "difficulty": "medium",
+    "category": "global-stats",
+    "expectedIntent": "Urbanization rate choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "worldbank",
+    "latencyMs": 1785,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Urban population percentage",
+    "dataUrl": "/api/geo/cached/worldbank-SP.URB.TOTL.IN.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.URB.TOTL.IN.ZS",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 15.4061816403333,
+          "max": 100
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 15.4061816403333,
+          "max": 100
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 39,
+    "prompt": "Deforestation rates by country",
+    "difficulty": "hard",
+    "category": "global-stats",
+    "expectedIntent": "Annual forest loss choropleth",
+    "expectedGeography": "country",
+    "expectedSource": "web-search|worldbank",
+    "latencyMs": 45004,
+    "error": "AbortError: This operation was aborted",
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": null,
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "no-result",
+    "profile": null
+  },
+  {
+    "id": 40,
+    "prompt": "Electric vehicle adoption in Europe",
+    "difficulty": "hard",
+    "category": "regional-stats",
+    "expectedIntent": "EV market share/registration, Europe",
+    "expectedGeography": "country-europe",
+    "expectedSource": "eurostat|web-search",
+    "latencyMs": 4023,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Electric vehicle adoption in Europe",
+    "dataUrl": "/api/geo/cached/worldbank-EG.ELC.RNEW.ZS",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "EG.ELC.RNEW.ZS",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 0.0110915492957746,
+          "max": 100
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 0.0110915492957746,
+          "max": 100
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 41,
+    "prompt": "Medianinkomst i Stockholms län",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Median income in Stockholm county municipalities",
+    "expectedGeography": "municipality-se",
+    "expectedSource": "pxweb-scb",
+    "latencyMs": 18329,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Map median income in Stockholm County (Stockholms län), Sweden",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "geography_q",
+        "question": "Visualize median income for: municipalities in Stockholm, or the whole county?",
+        "options": [
+          "All municipalities in Stockholms län",
+          "Whole county as single region",
+          "Specific city or district"
+        ],
+        "recommended": "All municipalities in Stockholms län",
+        "aspect": "geography"
+      },
+      {
+        "id": "data_source_q",
+        "question": "Do you have access to Swedish income data (SCB, Statistics Sweden)?",
+        "options": [
+          "Yes, I have a CSV/GeoJSON file",
+          "No, need help finding the data",
+          "Not sure"
+        ],
+        "aspect": "data-source"
+      }
+    ],
+    "dataWarning": "Median income data for Swedish regions is typically available from Statistics Sweden (SCB) but not exposed through standard public APIs. You may need to download data from scb.se or provide a CSV/GeoJSON file with income values per municipality to map it in Atlas.",
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 42,
+    "prompt": "Innvandrere per kommune i Norge",
+    "difficulty": "hard",
+    "category": "pxweb-nordic",
+    "expectedIntent": "Immigrants by municipality, Norway",
+    "expectedGeography": "municipality-no",
+    "expectedSource": "pxweb-ssb",
+    "latencyMs": 22715,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Map of immigrants by municipality (kommune) in Norway with population counts or percentages",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "metric",
+        "question": "Should the map show absolute numbers or percentage of immigrants per municipality?",
+        "options": [
+          "Absolute count",
+          "Percentage of total population",
+          "Both"
+        ],
+        "recommended": "Percentage of total population",
+        "aspect": "metric"
+      },
+      {
+        "id": "source",
+        "question": "Do you have access to Statistics Norway (SSB) data or can you upload a CSV?",
+        "options": [
+          "I have SSB data to upload",
+          "I can provide a data file",
+          "I need help accessing SSB",
+          "Other source"
+        ],
+        "aspect": "data-source"
+      }
+    ],
+    "dataWarning": "Immigrant statistics by Norwegian municipality are not available in public APIs. This data is typically available directly from Statistics Norway (SSB) at data.ssb.no. You can download the dataset and upload it as CSV or GeoJSON to Atlas. Recommend querying table 05196 (population by immigration background and municipality) or similar from SSB's data portal.",
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 43,
+    "prompt": "Population of African countries",
+    "difficulty": "medium",
+    "category": "regional-stats",
+    "expectedIntent": "Population choropleth, Africa only",
+    "expectedGeography": "country-africa",
+    "expectedSource": "worldbank",
+    "latencyMs": 1526,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Population of African countries",
+    "dataUrl": "/api/geo/cached/worldbank-SP.POP.TOTL",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "cached-pipeline",
+    "profile": {
+      "featureCount": 169,
+      "geometryType": "Mixed",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "iso_a3",
+          "type": "string",
+          "uniqueValues": 169,
+          "nullCount": 0
+        },
+        {
+          "name": "continent",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "SP.POP.TOTL",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 56836,
+          "max": 1450935791
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "uniqueValues": 169,
+          "nullCount": 0,
+          "min": 56836,
+          "max": 1450935791
+        },
+        {
+          "name": "year",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -55.6118,
+          -180
+        ],
+        [
+          83.6451,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 44,
+    "prompt": "Cold War era world map",
+    "difficulty": "medium",
+    "category": "historical",
+    "expectedIntent": "Historical basemap ~1960",
+    "expectedGeography": "historical-polygons",
+    "expectedSource": "historical-basemaps",
+    "latencyMs": 246,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Cold War era world map",
+    "dataUrl": "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/world_1960.geojson",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "historical-basemaps",
+    "profile": {
+      "featureCount": 197,
+      "geometryType": "MultiPolygon",
+      "attributes": [
+        {
+          "name": "NAME",
+          "type": "string",
+          "uniqueValues": 157,
+          "nullCount": 37
+        },
+        {
+          "name": "ABBREVN",
+          "type": "string",
+          "uniqueValues": 158,
+          "nullCount": 37
+        },
+        {
+          "name": "SUBJECTO",
+          "type": "string",
+          "uniqueValues": 155,
+          "nullCount": 37
+        },
+        {
+          "name": "BORDERPRECISION",
+          "type": "number",
+          "uniqueValues": 1,
+          "nullCount": 0,
+          "min": 3,
+          "max": 3
+        },
+        {
+          "name": "PARTOF",
+          "type": "string",
+          "uniqueValues": 155,
+          "nullCount": 39
+        }
+      ],
+      "bounds": [
+        [
+          -90,
+          -180
+        ],
+        [
+          83.57906683535938,
+          180
+        ]
+      ]
+    }
+  },
+  {
+    "id": 45,
+    "prompt": "Volcanoes worldwide",
+    "difficulty": "easy",
+    "category": "natural-events",
+    "expectedIntent": "Volcano point map",
+    "expectedGeography": "point-global",
+    "expectedSource": "catalog|eonet",
+    "latencyMs": 1897,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Volcanoes worldwide",
+    "dataUrl": "/api/geo/cached/eonet-volcanoes",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "catalog-eonet",
+    "profile": {
+      "featureCount": 44,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 44,
+          "nullCount": 0
+        },
+        {
+          "name": "event_id",
+          "type": "string",
+          "uniqueValues": 44,
+          "nullCount": 0
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "uniqueValues": 43,
+          "nullCount": 0
+        },
+        {
+          "name": "magnitude",
+          "type": "null",
+          "uniqueValues": 0,
+          "nullCount": 44
+        },
+        {
+          "name": "magnitude_unit",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        }
+      ],
+      "bounds": [
+        [
+          -37.52,
+          -176.13
+        ],
+        [
+          63.817,
+          177.18
+        ]
+      ]
+    }
+  },
+  {
+    "id": 46,
+    "prompt": "Compare Sweden and Norway",
+    "difficulty": "hard",
+    "category": "ambiguous",
+    "expectedIntent": "Ambiguous — needs metric clarification",
+    "expectedGeography": "country-nordic",
+    "expectedSource": "should-ask",
+    "latencyMs": 8655,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Compare Sweden and Norway across economic, demographic, and environmental metrics",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "comparison_scope",
+        "question": "Which metrics matter most for your comparison?",
+        "options": [
+          "Economic (GDP, GDP per capita, trade)",
+          "Social (population, life expectancy, literacy)",
+          "Environmental (forest area, renewable energy, CO2)",
+          "All of the above"
+        ],
+        "recommended": "All of the above",
+        "aspect": "metric"
+      },
+      {
+        "id": "map_type",
+        "question": "How do you want to visualize this?",
+        "options": [
+          "Side-by-side statistics table",
+          "Choropleth map (color-coded values)",
+          "Time series chart (trends over years)",
+          "Dashboard with multiple indicators"
+        ],
+        "recommended": "Dashboard with multiple indicators",
+        "aspect": "visualization"
+      }
+    ],
+    "dataWarning": null,
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 47,
+    "prompt": "Show me some data about Europe",
+    "difficulty": "hard",
+    "category": "ambiguous",
+    "expectedIntent": "Ambiguous — needs topic clarification",
+    "expectedGeography": "country-europe",
+    "expectedSource": "should-ask",
+    "latencyMs": 5088,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": null,
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "metric",
+        "question": "What metric would you like to visualize?",
+        "options": [
+          "Population or demographics",
+          "GDP or economic data",
+          "Natural events (earthquakes, wildfires, storms)",
+          "Country boundaries and basic info",
+          "Something else"
+        ],
+        "recommended": "Population or demographics",
+        "aspect": "metric"
+      }
+    ],
+    "dataWarning": null,
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 48,
+    "prompt": "Weather in Stockholm",
+    "difficulty": "hard",
+    "category": "unsupported",
+    "expectedIntent": "Real-time weather — likely no good source",
+    "expectedGeography": "city",
+    "expectedSource": "should-warn",
+    "latencyMs": 7393,
+    "error": null,
+    "ready": false,
+    "resolutionStatus": null,
+    "resolvedPrompt": null,
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": true,
+    "questions": [
+      {
+        "id": "weather-type",
+        "question": "What weather data do you need: current conditions, forecast, historical patterns, or climate normals?",
+        "options": [
+          "Current conditions",
+          "5-day forecast",
+          "Historical climate data",
+          "30-year climate normals"
+        ],
+        "recommended": "Current conditions",
+        "aspect": "metric"
+      }
+    ],
+    "dataWarning": "Atlas is a mapping platform for geographic data (boundaries, events, amenities). Real-time weather requires a dedicated weather API (e.g. OpenWeatherMap, WeatherAPI). Consider: Do you want to map Stockholm on a basemap, or visualize weather patterns across regions?",
+    "inferredSource": "asked-questions",
+    "profile": null
+  },
+  {
+    "id": 49,
+    "prompt": "Pub in Malmö",
+    "difficulty": "medium",
+    "category": "overpass-poi",
+    "expectedIntent": "POI point map of pubs",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 8923,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Pub in Malmö",
+    "dataUrl": "/api/geo/overpass?type=pub&bbox=55.5,12.85,55.65,13.15",
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "overpass",
+    "profile": {
+      "featureCount": 30,
+      "geometryType": "Point",
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string",
+          "uniqueValues": 29,
+          "nullCount": 0
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "amenity",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 0
+        },
+        {
+          "name": "check_date",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 21
+        },
+        {
+          "name": "indoor_seating",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 23
+        },
+        {
+          "name": "outdoor_seating",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 21
+        },
+        {
+          "name": "cuisine",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 25
+        },
+        {
+          "name": "diet:vegan",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "name:en",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 28
+        },
+        {
+          "name": "name:sv",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "opening_hours",
+          "type": "string",
+          "uniqueValues": 14,
+          "nullCount": 16
+        },
+        {
+          "name": "payment:cash",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 25
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "uniqueValues": 11,
+          "nullCount": 19
+        },
+        {
+          "name": "short_name",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "wheelchair",
+          "type": "string",
+          "uniqueValues": 3,
+          "nullCount": 24
+        },
+        {
+          "name": "addr:city",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 20
+        },
+        {
+          "name": "addr:housenumber",
+          "type": "string",
+          "uniqueValues": 13,
+          "nullCount": 16
+        },
+        {
+          "name": "addr:postcode",
+          "type": "string",
+          "uniqueValues": 5,
+          "nullCount": 25
+        },
+        {
+          "name": "addr:street",
+          "type": "string",
+          "uniqueValues": 15,
+          "nullCount": 15
+        },
+        {
+          "name": "brewery",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 28
+        },
+        {
+          "name": "contact:facebook",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "contact:instagram",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "addr:country",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 22
+        },
+        {
+          "name": "alt_name",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "contact:email",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "food",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "internet_access",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "microbrewery",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 27
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "uniqueValues": 7,
+          "nullCount": 23
+        },
+        {
+          "name": "smoking",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "check_date:opening_hours",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "payment:credit_cards",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "takeaway",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "brand",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 27
+        },
+        {
+          "name": "brand:wikidata",
+          "type": "string",
+          "uniqueValues": 2,
+          "nullCount": 27
+        },
+        {
+          "name": "brand:wikipedia",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "payment:mastercard",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 28
+        },
+        {
+          "name": "payment:visa",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 28
+        },
+        {
+          "name": "toilets",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "toilets:wheelchair",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "start_date",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "sport",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        },
+        {
+          "name": "payment:swish",
+          "type": "string",
+          "uniqueValues": 1,
+          "nullCount": 29
+        }
+      ],
+      "bounds": [
+        [
+          55.5771529,
+          12.9737484
+        ],
+        [
+          55.6150584,
+          13.0441898
+        ]
+      ]
+    }
+  },
+  {
+    "id": 50,
+    "prompt": "Bicycle paths in Copenhagen",
+    "difficulty": "hard",
+    "category": "overpass-poi",
+    "expectedIntent": "POI/line map of cycle infrastructure",
+    "expectedGeography": "city-poi",
+    "expectedSource": "overpass",
+    "latencyMs": 20417,
+    "error": null,
+    "ready": true,
+    "resolutionStatus": null,
+    "resolvedPrompt": "Bicycle paths and cycling infrastructure in Copenhagen, Denmark",
+    "dataUrl": null,
+    "matchedCatalogId": null,
+    "hasQuestions": false,
+    "questions": null,
+    "dataWarning": null,
+    "inferredSource": "no-result",
+    "profile": null
+  }
+]
