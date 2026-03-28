@@ -23,7 +23,7 @@ import type { DetectionResult } from "./geography-detector";
 import { detectGeographyWithPlugins } from "./geography-detector";
 import type { JoinPlanResult } from "./join-planner";
 import { planJoinWithPlugins } from "./join-planner";
-import { collectJoinEnrichment } from "./geography-plugins";
+import { collectJoinEnrichment, getKnownTablesForSource } from "./geography-plugins";
 // Side-effect import: registers built-in geography plugins
 import "./register-plugins";
 import type { JoinExecutionResult, JoinExecutionDiagnostics } from "./geometry-join";
@@ -46,17 +46,20 @@ import {
   buildPxSearchQuery,
   translateSearchQuery,
   extractGeoLevelHint,
+  getStatsAdapter,
 } from "./pxweb-client";
 import type {
   PxTableMetadata,
   PxDataRecord,
   PxDimensionSelection,
   PxTableInfo,
+  StatsApiAdapter,
 } from "./pxweb-client";
-import { aiSelectContentsValue } from "./ai-metric-matcher";
+import { aiSelectContentsValue, aiSelectTable } from "./ai-metric-matcher";
 import { getCachedData, setCache, type CacheEntry } from "./data-search";
 import { profileDataset } from "../profiler";
 import { recordsToGeoJSON } from "./pxweb-client";
+import { recordResolution, getLearnedTables } from "./resolution-memory";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -387,7 +390,7 @@ export async function resolveGeometryForNormalized(
 // ═══════════════════════════════════════════════════════════════
 
 /** Maximum number of ranked tables to try before giving up. */
-const MAX_TABLE_ATTEMPTS = 3;
+const MAX_TABLE_ATTEMPTS = 5;
 
 /**
  * Resolve a single PxWeb table: metadata → data → normalize → detect → join → classify.
@@ -406,11 +409,13 @@ async function resolveOneTable(
   cachePrefix: string,
   searchCacheKey: string,
   geoLevelHint?: string | null,
+  adapter?: StatsApiAdapter,
 ): Promise<PxWebResolutionResult> {
   const baseUrl = source.baseUrl;
+  const api = adapter ?? { searchTables, fetchMetadata, fetchData };
 
   // ── Fetch metadata ─────────────────────────────────────────
-  const metadata = await fetchMetadata(baseUrl, table.id, lang);
+  const metadata = await api.fetchMetadata(baseUrl, table.id, lang);
   if (!metadata || metadata.dimensions.length === 0) {
     return {
       status: "unsupported",
@@ -434,6 +439,7 @@ async function resolveOneTable(
       searchQuery,
       tables: allTables,
       language: lang,
+      apiType: source.id === "dk-dst" ? "dst" : undefined,
     });
     return resolvePxWebPure(normalized);
   }
@@ -479,7 +485,7 @@ async function resolveOneTable(
     }
   }
 
-  const data = await fetchData(baseUrl, table.id, selections, lang);
+  const data = await api.fetchData(baseUrl, table.id, selections, lang);
   if (!data || data.value.length === 0) {
     return {
       status: "unsupported",
@@ -515,6 +521,7 @@ async function resolveOneTable(
     searchQuery,
     tables: allTables,
     language: lang,
+    apiType: source.id === "dk-dst" ? "dst" : undefined,
   });
 
   // ── Load registry-backed geometry ──────────────────────────
@@ -563,6 +570,21 @@ async function resolveOneTable(
       await setCache(searchCacheKey, cacheEntry);
     }
 
+    // Learn from success — store the recipe for future similar prompts
+    if (result.status === "map_ready") {
+      const coverageRatio =
+        result.joinExecution?.diagnostics?.coverageRatio ?? 0;
+      recordResolution({
+        sourceId: source.id,
+        countryCode: source.countryCode ?? "",
+        tableId: table.id,
+        tableLabel: table.label,
+        geoLevel: result.detection?.level ?? "unknown",
+        keywords: searchQuery.split(/\s+/).filter((w) => w.length > 2),
+        coverageRatio,
+      }).catch(() => {});  // fire-and-forget, non-critical
+    }
+
     return {
       ...result,
       cacheKey: tableKey,
@@ -589,7 +611,12 @@ export async function resolvePxWeb(
   prompt: string,
 ): Promise<PxWebResolutionResult> {
   const baseUrl = source.baseUrl;
-  const lang = source.countryCode === "SE" ? "sv" : "en";
+  const adapter = getStatsAdapter(source) ?? { searchTables, fetchMetadata, fetchData };
+  const lang = source.countryCode === "SE" ? "sv"
+    : source.countryCode === "NO" ? "no"
+    : source.countryCode === "DK" ? "da"
+    : source.countryCode === "FI" ? "en"
+    : "en";
 
   // Build search query
   const searchQuery = buildPxSearchQuery(prompt);
@@ -616,14 +643,21 @@ export async function resolvePxWeb(
   // ── 1. Search for tables ──────────────────────────────────
   // Translate English keywords to the source language (e.g. "income" → "inkomst")
   const localQuery = translateSearchQuery(searchQuery, lang);
-  let tables = await searchTables(baseUrl, localQuery, lang);
 
-  // If geo-level detected, also search with "region" to find regional tables
-  // (e.g. "utbildningsnivå" alone returns mortality tables where education is
-  // a dimension; "utbildningsnivå region" returns the actual education-by-region tables)
+  let tables = await adapter.searchTables(baseUrl, localQuery, lang, 30);
+
+  // If geo-level detected, also search with the appropriate geo term to find
+  // tables at the right level (e.g. "kommun" for municipality, not "region")
   if (geoLevelHint && tables.length > 0) {
-    const geoEnrichedQuery = `${localQuery} region`;
-    const geoTables = await searchTables(baseUrl, geoEnrichedQuery, lang);
+    const geoTermByLevel: Record<string, Record<string, string>> = {
+      municipality: { sv: "kommun", en: "municipality", da: "kommune" },
+      county: { sv: "lan", en: "county", da: "region" },
+      region: { sv: "region", en: "region", da: "region" },
+      admin1: { sv: "region", en: "region", da: "region" },
+    };
+    const enrichTerm = geoTermByLevel[geoLevelHint]?.[lang] ?? "region";
+    const geoEnrichedQuery = `${localQuery} ${enrichTerm}`;
+    const geoTables = await adapter.searchTables(baseUrl, geoEnrichedQuery, lang, 30);
     if (geoTables.length > 0) {
       // Merge: deduplicate by table ID, geo-enriched results first
       const seen = new Set<string>();
@@ -640,11 +674,11 @@ export async function resolvePxWeb(
 
   // If translation changed the query and got no results, try original English
   if (tables.length === 0 && localQuery !== searchQuery) {
-    tables = await searchTables(baseUrl, searchQuery, lang);
+    tables = await adapter.searchTables(baseUrl, searchQuery, lang);
   }
   // Fallback to English language endpoint
   if (tables.length === 0 && lang !== "en") {
-    tables = await searchTables(baseUrl, searchQuery, "en");
+    tables = await adapter.searchTables(baseUrl, searchQuery, "en");
   }
   if (tables.length === 0) {
     return {
@@ -657,23 +691,87 @@ export async function resolvePxWeb(
 
   // Rank tables with geo-level awareness
   const ranked = rankTables(tables, prompt, geoLevelHint, localQuery);
-  const fetchLang = tables === ranked ? lang : "en";
+
+  // Prepend plugin-known tables (e.g. SSB 11342 for "population") so they are
+  // always attempted first. Plugins know which table IDs are canonical for each
+  // topic — free-text search and ranking can miss them (e.g. 11342 has
+  // variableNames ["region", "contents", "year"] which gets no geo-level boost).
+  // Pass both translated and raw query tokens to catch Norwegian→English mismatches.
+  const rawKeywords = searchQuery.split(/\s+/);
+  const translatedKeywords = localQuery !== searchQuery ? localQuery.split(/\s+/) : [];
+  const allTopicKeywords = [...new Set([...rawKeywords, ...translatedKeywords])];
+  const knownTableIds = getKnownTablesForSource(
+    { sourceId: source.id, countryCode: source.countryCode ?? undefined },
+    allTopicKeywords,
+  );
+
+  // Prepend learned tables — proven table IDs from past map_ready resolutions
+  const learnedTableIds = await getLearnedTables(source.id, allTopicKeywords);
+  // Merge: learned first, then plugin-known (deduped)
+  const knownSet = new Set(knownTableIds);
+  const allKnownTableIds = [
+    ...learnedTableIds.filter((id) => !knownSet.has(id)),
+    ...knownTableIds,
+  ];
+
+  // Build stub PxTableInfo objects for known tables that aren't in the search results.
+  // resolveOneTable only needs the table id — all other fields are fetched from metadata.
+  let orderedTables = ranked;
+  if (allKnownTableIds.length > 0) {
+    const rankedIds = new Set(ranked.map((t) => t.id));
+    const knownStubs: PxTableInfo[] = allKnownTableIds
+      .filter((id) => !rankedIds.has(id))
+      .map((id) => ({
+        id,
+        label: id,
+        description: "",
+        variableNames: [],
+        firstPeriod: "",
+        lastPeriod: "",
+        source: source.agencyName,
+      }));
+    // Known/learned tables go first; already-ranked ones are hoisted to front.
+    const knownFirst = [
+      ...allKnownTableIds
+        .map((id) => ranked.find((t) => t.id === id))
+        .filter((t): t is PxTableInfo => t !== undefined),
+      ...knownStubs,
+    ];
+    const remainingRanked = ranked.filter((t) => !allKnownTableIds.includes(t.id));
+    orderedTables = [...knownFirst, ...remainingRanked];
+  }
+
+  // Use Haiku to pick the best table from the top-25 ranked candidates.
+  // This handles cases where deterministic ranking picks the wrong table
+  // (e.g. "utdanning fylke" returns barnehage tables before education tables).
+  // Skip AI selection when known tables dominate the front — they are already
+  // authoritative choices from the plugin.
+  const candidatesForAi = orderedTables.slice(0, 25);
+  const aiPickedId = await aiSelectTable(prompt, candidatesForAi, geoLevelHint, allKnownTableIds);
+
+  if (aiPickedId) {
+    const aiTable = orderedTables.find((t) => t.id === aiPickedId);
+    if (aiTable) {
+      orderedTables = [aiTable, ...orderedTables.filter((t) => t.id !== aiPickedId)];
+    }
+  }
 
   // ── 2. Try tables in ranked order until map_ready ─────────
   let bestTabularResult: PxWebResolutionResult | null = null;
-  const attemptsLimit = Math.min(ranked.length, MAX_TABLE_ATTEMPTS);
+  const attemptsLimit = Math.min(orderedTables.length, MAX_TABLE_ATTEMPTS);
 
   for (let i = 0; i < attemptsLimit; i++) {
     const result = await resolveOneTable(
       source,
-      ranked[i],
-      ranked,
+      orderedTables[i],
+      orderedTables,
       prompt,
       searchQuery,
-      fetchLang,
+      lang,
       cachePrefix,
       cachedKey,
       geoLevelHint,
+      adapter,
     );
 
     if (result.status === "map_ready") {

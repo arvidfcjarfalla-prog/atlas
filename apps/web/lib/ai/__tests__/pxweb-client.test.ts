@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildPxSearchQuery,
+  translateSearchQuery,
   isPxWebV2,
   rankTables,
   classifyDimension,
@@ -48,6 +49,36 @@ describe("buildPxSearchQuery", () => {
   it("returns empty for pure stop words", () => {
     const q = buildPxSearchQuery("show me a map");
     expect(q.trim()).toBe("");
+  });
+});
+
+// ─── translateSearchQuery ───────────────────────────────────
+
+describe("translateSearchQuery", () => {
+  it("translates English to Swedish for lang=sv", () => {
+    expect(translateSearchQuery("population", "sv")).toBe("folkmängd");
+    expect(translateSearchQuery("income", "sv")).toBe("förvärvsinkomst");
+  });
+
+  it("returns Swedish synonyms normalized for lang=sv", () => {
+    expect(translateSearchQuery("befolkning", "sv")).toBe("folkmängd");
+    expect(translateSearchQuery("invånare", "sv")).toBe("folkmängd");
+  });
+
+  it("translates Norwegian 'befolkning' to English for lang=en", () => {
+    expect(translateSearchQuery("befolkning", "en")).toBe("population");
+  });
+
+  it("translates Norwegian 'arbeidsledighet' to English for lang=en", () => {
+    expect(translateSearchQuery("arbeidsledighet", "en")).toBe("unemployment");
+  });
+
+  it("leaves already-English words unchanged for lang=en", () => {
+    expect(translateSearchQuery("population", "en")).toBe("population");
+  });
+
+  it("returns query unchanged for unknown lang", () => {
+    expect(translateSearchQuery("befolkning", "de")).toBe("befolkning");
   });
 });
 

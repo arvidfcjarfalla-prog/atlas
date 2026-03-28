@@ -19,12 +19,14 @@ export interface CSVParseResult {
 const LAT_EXACT = new Set([
   "lat", "latitude", "y", "lat_wgs84", "breddgrad", "latitud",
   "lat_dd", "decimallatitude", "lat_y", "geo_lat",
+  "coord_lat", "point_y",
 ]);
 
 const LNG_EXACT = new Set([
   "lon", "lng", "longitude", "x", "lon_wgs84", "long",
   "langd", "längd", "longitud",
   "lng_dd", "lon_dd", "decimallongitude", "lon_x", "geo_lon", "geo_lng",
+  "coord_lng", "coord_lon", "point_x",
 ]);
 
 /**
@@ -160,7 +162,7 @@ function detectCoordinateColumns(
   }
 
   // Strategy 2: Find numeric columns that look like coordinates
-  const sampleSize = Math.min(rows.length, 20);
+  const sampleSize = Math.min(rows.length, 200);
   const candidates: Array<{
     idx: number;
     isLat: boolean;
@@ -258,6 +260,20 @@ function describeSkipReason(
   return `lat=${lat}, lng=${lng} (invalid)`;
 }
 
+// ─── Coordinate cleaning ────────────────────────────────────
+
+/** Parse a coordinate string, handling trailing direction letters (e.g. "59.33N", "18.07W"). */
+export function cleanCoordinate(raw: string): number {
+  let s = raw.trim().replace(/[°'"]/g, "");
+  const dir = s.slice(-1).toUpperCase();
+  if ("NSEW".includes(dir) && s.length > 1) {
+    s = s.slice(0, -1).trim();
+    const num = parseFloat(s);
+    return dir === "S" || dir === "W" ? -num : num;
+  }
+  return parseFloat(s);
+}
+
 // ─── Main converter ─────────────────────────────────────────
 
 /**
@@ -307,14 +323,16 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
   let skippedRows = 0;
   const skippedSamples: string[] = []; // first few skip reasons
 
+  warnings.push(`Coordinates: using "${latColumn}" (lat) and "${lngColumn}" (lng)`);
+
   const features: GeoJSON.Feature[] = [];
 
   for (let rowIdx = 0; rowIdx < dataRows.length; rowIdx++) {
     const row = dataRows[rowIdx];
     const rawLat = row[coords.latIdx] ?? "";
     const rawLng = row[coords.lngIdx] ?? "";
-    const lat = parseFloat(rawLat);
-    const lng = parseFloat(rawLng);
+    const lat = cleanCoordinate(rawLat);
+    const lng = cleanCoordinate(rawLng);
 
     if (
       isNaN(lat) ||
@@ -360,6 +378,14 @@ export function csvToGeoJSON(csvText: string): CSVParseResult {
     if (skippedSamples.length > 0) {
       warnings.push(`Sample issues: ${skippedSamples.join("; ")}`);
     }
+  }
+
+  if (skippedRows > dataRows.length * 0.5 && features.length < 10) {
+    throw new Error(
+      `${skippedRows} of ${dataRows.length} rows had invalid coordinates. ` +
+      `Using columns "${latColumn}" (lat) and "${lngColumn}" (lng). ` +
+      `Check that these are the correct coordinate columns.`,
+    );
   }
 
   if (features.length > 100_000) {

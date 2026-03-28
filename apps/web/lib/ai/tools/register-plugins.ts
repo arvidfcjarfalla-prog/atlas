@@ -12,6 +12,8 @@ import {
   registerPlugin,
   pluginCount,
   swedenScbPlugin,
+  norwaySsbPlugin,
+  denmarkDstPlugin,
   eurostatNutsPlugin,
   usFipsPlugin,
   pxwebGenericPlugin,
@@ -20,6 +22,8 @@ import {
 
 if (pluginCount() === 0) {
   registerPlugin(swedenScbPlugin);      // priority 10 — SE-specific
+  registerPlugin(norwaySsbPlugin);      // priority 10 — NO-specific
+  registerPlugin(denmarkDstPlugin);     // priority 10 — DK-specific
   registerPlugin(eurostatNutsPlugin);   // priority  5 — EU NUTS
   registerPlugin(usFipsPlugin);         // priority  5 — US FIPS
   registerPlugin(pxwebGenericPlugin);   // priority  3 — all PxWeb v2 sources

@@ -95,7 +95,18 @@ export function decideClarifyAction(
     };
   }
 
-  // Not ready — need more info from user
+  // Not ready — show alternative suggestions if available.
+  // Suggestions are preferred over clarification questions because
+  // they let the user pick a working prompt with one click.
+  const suggestions = data.suggestions ?? [];
+  if (suggestions.length > 0 || data.dataWarning) {
+    return {
+      kind: "tabular_warning",
+      message: data.dataWarning ?? "Atlas kunde inte hitta data för din sökning.",
+      suggestions,
+    };
+  }
+
   const questions = data.questions ?? [];
 
   // If every question has a recommended answer and there's no warning
@@ -103,7 +114,6 @@ export function decideClarifyAction(
   // to skip the question step entirely.
   if (
     questions.length > 0 &&
-    !data.dataWarning &&
     questions.every((q) => q.recommended)
   ) {
     const answers: Record<string, string> = {};
@@ -116,6 +126,6 @@ export function decideClarifyAction(
   return {
     kind: "ask_questions",
     questions,
-    warning: data.dataWarning ?? null,
+    warning: null,
   };
 }

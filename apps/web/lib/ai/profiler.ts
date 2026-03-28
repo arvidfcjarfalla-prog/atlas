@@ -27,7 +27,7 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
 
   // Geometry type detection
   const geomTypes = new Set<string>();
-  let south = 90, west = 180, north = -90, east = -180;
+  let south = Infinity, west = Infinity, north = -Infinity, east = -Infinity;
 
   for (const f of features) {
     if (!f.geometry) continue;
@@ -38,6 +38,10 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
       if (lng < west) west = lng;
       if (lng > east) east = lng;
     });
+  }
+
+  if (!isFinite(south)) {
+    south = 0; west = 0; north = 0; east = 0;
   }
 
   const geometryType = resolveGeometryType(geomTypes);
@@ -95,14 +99,13 @@ function profileAttributes(
 ): AttributeProfile[] {
   if (features.length === 0) return [];
 
-  // Collect all attribute names from first 100 features
+  // Collect all attribute names from ALL features (already capped at 5000 by caller)
   const nameSet = new Set<string>();
-  for (let i = 0; i < Math.min(features.length, 100); i++) {
-    const props = features[i].properties;
-    if (props) {
-      for (const key of Object.keys(props)) {
-        nameSet.add(key);
-      }
+  for (const f of features) {
+    const props = f.properties;
+    if (!props) continue;
+    for (const key of Object.keys(props)) {
+      nameSet.add(key);
     }
   }
 

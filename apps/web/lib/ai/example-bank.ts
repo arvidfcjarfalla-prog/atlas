@@ -1,5 +1,6 @@
 import type { MapFamily } from "@atlas/data-models";
 import type { ProfileGeometryType, DatasetProfile } from "./types";
+import type { GenSkill } from "./skills/router";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -11,6 +12,8 @@ export interface FewShotExample {
   hasProfile: boolean;
   /** Geometry types this example is relevant for. */
   geometryTypes: ProfileGeometryType[];
+  /** Generation skills this example is relevant for. */
+  genSkills: GenSkill[];
   /** User prompt text. */
   prompt: string;
   /** Dataset-profile XML block (only for with-profile examples). */
@@ -27,6 +30,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["cluster", "point"],
     hasProfile: false,
     geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
     prompt: "Visa alla jordbävningar senaste veckan, färgade efter magnitud",
     output: `{
   "version": 2,
@@ -102,6 +106,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["choropleth"],
     hasProfile: false,
     geometryTypes: ["Polygon", "MultiPolygon"],
+    genSkills: ["thematic", "general"],
     prompt: "Visa bostadspriser per kommun i Stockholms län",
     output: `{
   "version": 2,
@@ -180,6 +185,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["heatmap"],
     hasProfile: false,
     geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
     prompt: "Var sker flest inbrott i Göteborg?",
     output: `{
   "version": 2,
@@ -244,6 +250,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["proportional-symbol"],
     hasProfile: false,
     geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["thematic", "locational", "general"],
     prompt: "Visa världens största städer, större cirkel = fler invånare",
     output: `{
   "version": 2,
@@ -313,6 +320,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["point"],
     hasProfile: false,
     geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
     prompt: "Mappa alla restauranger i Stockholms innerstad",
     output: `{
   "version": 2,
@@ -374,6 +382,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["point"],
     hasProfile: true,
     geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
     prompt: "Visa jordbävningar senaste dygnet",
     profile: `{
   "featureCount": 143,
@@ -472,6 +481,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["choropleth"],
     hasProfile: true,
     geometryTypes: ["Polygon", "MultiPolygon"],
+    genSkills: ["thematic", "general"],
     prompt: "Jämför kommunernas skattesats",
     profile: `{
   "featureCount": 290,
@@ -561,6 +571,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["flow"],
     hasProfile: true,
     geometryTypes: ["LineString", "MultiLineString"],
+    genSkills: ["flow", "general"],
     prompt: "Visa pendlingsflöden mellan kommuner i Skåne",
     profile: `{
   "featureCount": 87,
@@ -650,6 +661,7 @@ export const EXAMPLES: FewShotExample[] = [
     families: ["isochrone"],
     hasProfile: false,
     geometryTypes: ["Polygon", "MultiPolygon"],
+    genSkills: ["general"],
     prompt: "Hur långt når man från Malmö centralstation på 10, 20 och 30 minuter med cykel?",
     output: `{
   "version": 2,
@@ -722,6 +734,142 @@ export const EXAMPLES: FewShotExample[] = [
   }
 }`,
   },
+  {
+    id: "taxi-hexbin",
+    families: ["hexbin"],
+    hasProfile: true,
+    geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
+    prompt: "Visa täthet av taxiresor i New York med hexagoner",
+    profile: `{
+  "featureCount": 5200,
+  "geometryType": "Point",
+  "bounds": [[40.63, -74.05], [40.88, -73.77]],
+  "crs": null,
+  "attributes": [
+    { "name": "fare", "type": "number", "uniqueValues": 3800, "nullCount": 12, "min": 2.5, "max": 250, "mean": 14.2, "median": 10.5, "distribution": "skewed-right" },
+    { "name": "passengers", "type": "number", "uniqueValues": 6, "nullCount": 0, "min": 1, "max": 6, "mean": 1.7, "distribution": "skewed-right" },
+    { "name": "trip_distance", "type": "number", "uniqueValues": 4100, "nullCount": 0, "min": 0.1, "max": 45, "mean": 3.2, "distribution": "skewed-right" }
+  ]
+}`,
+    output: `{
+  "version": 2,
+  "id": "nyc-taxi-hexbin",
+  "title": "NYC Taxi Trip Density — Hexagonal Bins",
+  "description": "Hexagonal binning of taxi pickup locations in New York City, colored by trip count per cell.",
+  "theme": "explore",
+  "defaultCenter": [40.76, -73.91],
+  "defaultZoom": 11,
+  "basemap": { "nightlights": true },
+  "layers": [
+    {
+      "id": "taxi-hexbins",
+      "kind": "event",
+      "label": "Taxi pickups",
+      "sourceType": "geojson-url",
+      "sourceUrl": "/api/user-data/current",
+      "geometryType": "point",
+      "hexbin": { "resolution": 7, "aggregation": "mean", "aggregationField": "fare" },
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "hexbin",
+        "classification": { "method": "quantile", "classes": 7 },
+        "color": { "scheme": "viridis", "colorblindSafe": true },
+        "fillOpacity": 0.8,
+        "strokeColor": "rgba(255,255,255,0.15)",
+        "strokeWidth": 0.5
+      },
+      "legend": { "title": "Average fare ($)", "type": "gradient" },
+      "interaction": {
+        "tooltipFields": ["_hex_value", "_hex_count"],
+        "clickBehavior": "popup",
+        "hoverEffect": "highlight"
+      },
+      "attribution": "NYC TLC"
+    }
+  ],
+  "accessibility": { "colorblindSafe": true, "contrastTarget": "AA", "locale": "en" },
+  "intent": {
+    "userPrompt": "Visa täthet av taxiresor i New York med hexagoner",
+    "taskType": "density-analysis",
+    "confidence": 0.90,
+    "assumptions": [
+      "5200 points binned into H3 resolution 7 hexagons",
+      "Aggregation: mean fare per hex cell",
+      "viridis scheme works well for density on dark basemap"
+    ]
+  },
+  "validation": { "valid": true, "errors": [], "warnings": [] }
+}`,
+  },
+  {
+    id: "school-buffer-zones",
+    families: ["choropleth"],
+    hasProfile: true,
+    geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
+    prompt: "Visa 1 km bufferzoner runt alla skolor",
+    profile: `{
+  "featureCount": 85,
+  "geometryType": "Point",
+  "bounds": [[59.28, 17.90], [59.42, 18.20]],
+  "crs": null,
+  "attributes": [
+    { "name": "name", "type": "string", "uniqueValues": 85, "nullCount": 0, "sampleValues": ["Örskolan", "Bredängsskolan", "Skarpnäcks skola"] },
+    { "name": "students", "type": "number", "uniqueValues": 78, "nullCount": 2, "min": 45, "max": 890, "mean": 340, "distribution": "normal" },
+    { "name": "type", "type": "string", "uniqueValues": 3, "nullCount": 0, "sampleValues": ["grundskola", "gymnasium", "förskola"] }
+  ]
+}`,
+    output: `{
+  "version": 2,
+  "id": "school-buffer-zones",
+  "title": "Bufferzoner 1 km — Skolor",
+  "description": "1 km buffer zones around schools in Stockholm, showing coverage areas.",
+  "theme": "decision",
+  "defaultCenter": [59.35, 18.05],
+  "defaultZoom": 11,
+  "layers": [
+    {
+      "id": "school-buffers",
+      "kind": "zone",
+      "label": "Bufferzoner",
+      "sourceType": "geojson-url",
+      "sourceUrl": "/api/user-data/current",
+      "geometryType": "point",
+      "transform": { "type": "buffer", "distance": 1, "units": "kilometers" },
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "choropleth",
+        "colorField": "type",
+        "classification": { "method": "categorical", "classes": 3 },
+        "color": { "scheme": "set2", "colorblindSafe": true },
+        "fillOpacity": 0.4,
+        "strokeColor": "rgba(255,255,255,0.5)",
+        "strokeWidth": 1
+      },
+      "legend": { "title": "Skoltyp", "type": "categorical" },
+      "interaction": {
+        "tooltipFields": ["name", "type", "students"],
+        "clickBehavior": "popup",
+        "hoverEffect": "highlight"
+      },
+      "attribution": "Skolverket"
+    }
+  ],
+  "accessibility": { "colorblindSafe": true, "contrastTarget": "AA", "locale": "sv" },
+  "intent": {
+    "userPrompt": "Visa 1 km bufferzoner runt alla skolor",
+    "taskType": "coverage-analysis",
+    "confidence": 0.90,
+    "assumptions": [
+      "Buffer transform converts points to 1 km polygons",
+      "Categorical coloring by school type (grundskola/gymnasium/förskola)",
+      "Low fillOpacity because buffer zones overlap"
+    ]
+  },
+  "validation": { "valid": true, "errors": [], "warnings": [] }
+}`,
+  },
 ];
 
 // ─── With-profile examples by geometry group ─────────────────
@@ -763,17 +911,25 @@ function exampleMatchesGroup(ex: FewShotExample, group: GeometryGroup): boolean 
 // ─── Selector ────────────────────────────────────────────────
 
 /**
- * Select relevant few-shot examples based on a dataset profile.
+ * Select relevant few-shot examples based on a dataset profile and optional skill.
  *
  * - Without profile: returns all examples (no risk of regression).
  * - With profile: returns `count` examples maximizing family coverage
  *   for the given geometry type.
+ * - With skill: prefers examples tagged for that skill.
  */
 export function selectExamples(
   profile?: DatasetProfile,
-  count = 3,
+  count?: number,
+  skill?: GenSkill,
 ): FewShotExample[] {
+  const effectiveCount = count ?? (profile && skill && skill !== "general" ? 2 : 3);
   if (!profile) {
+    // Without profile but with skill, filter to skill-relevant examples
+    if (skill && skill !== "general") {
+      const skillExamples = EXAMPLES.filter((e) => e.genSkills.includes(skill));
+      return skillExamples.length >= 2 ? skillExamples : EXAMPLES;
+    }
     return EXAMPLES;
   }
 
@@ -790,35 +946,46 @@ export function selectExamples(
   }
 
   // Slot 2+: from remaining examples matching the geometry, maximize family coverage
+  // When skill is set, prefer examples matching that skill
   const remaining = EXAMPLES.filter(
     (e) => !selected.includes(e) && exampleMatchesGroup(e, group),
   );
 
-  // Sort by number of unseen families (descending) for greedy coverage
+  // Sort by: skill relevance (descending) then unseen families (descending)
   remaining.sort((a, b) => {
+    if (skill && skill !== "general") {
+      const aSkill = a.genSkills.includes(skill) ? 1 : 0;
+      const bSkill = b.genSkills.includes(skill) ? 1 : 0;
+      if (aSkill !== bSkill) return bSkill - aSkill;
+    }
     const unseenA = a.families.filter((f) => !seenFamilies.has(f)).length;
     const unseenB = b.families.filter((f) => !seenFamilies.has(f)).length;
     return unseenB - unseenA;
   });
 
   for (const ex of remaining) {
-    if (selected.length >= count) break;
+    if (selected.length >= effectiveCount) break;
     selected.push(ex);
     for (const f of ex.families) seenFamilies.add(f);
   }
 
   // If slots remain, pad with examples from other geometry types for breadth
-  if (selected.length < count) {
+  if (selected.length < effectiveCount) {
     const others = EXAMPLES.filter(
       (e) => !selected.includes(e) && !exampleMatchesGroup(e, group),
     );
     others.sort((a, b) => {
+      if (skill && skill !== "general") {
+        const aSkill = a.genSkills.includes(skill) ? 1 : 0;
+        const bSkill = b.genSkills.includes(skill) ? 1 : 0;
+        if (aSkill !== bSkill) return bSkill - aSkill;
+      }
       const unseenA = a.families.filter((f) => !seenFamilies.has(f)).length;
       const unseenB = b.families.filter((f) => !seenFamilies.has(f)).length;
       return unseenB - unseenA;
     });
     for (const ex of others) {
-      if (selected.length >= count) break;
+      if (selected.length >= effectiveCount) break;
       selected.push(ex);
       for (const f of ex.families) seenFamilies.add(f);
     }

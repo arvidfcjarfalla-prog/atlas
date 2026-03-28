@@ -9,7 +9,7 @@
  * already-loaded FeatureCollections. Loading is the caller's responsibility.
  *
  * Execution rules:
- *   - alias_crosswalk plans are rejected (no crosswalk mechanism exists yet)
+ *   - alias_crosswalk plans are supported via plugin alias normalizers
  *   - fuzzy_name plans are rejected (too unreliable for production joins)
  *   - null geometry output never counts as map_ready
  *   - weak join coverage downgrades or blocks map_ready
@@ -459,6 +459,8 @@ export function normalizeForJoin(s: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 

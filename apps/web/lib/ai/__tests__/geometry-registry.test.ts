@@ -219,11 +219,11 @@ describe("findByJoinCompatibility", () => {
     expect(entries.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("finds entries joinable via national codes (returns empty — no national keys in ADM2-only registry)", () => {
-    const family: CodeFamily = { family: "national", namespace: "se-scb" };
+  it("finds entries joinable via national codes (no:municipalities has no-ssb national key)", () => {
+    const family: CodeFamily = { family: "national", namespace: "no-ssb" };
     const entries = findByJoinCompatibility(family);
-    // geoBoundaries ADM2 has no codes, so no national keys exist in registry
-    expect(entries).toEqual([]);
+    const ids = entries.map((e) => e.id);
+    expect(ids).toContain("no:municipalities");
   });
 
   it("returns empty for code family with no matching entries", () => {
@@ -232,11 +232,12 @@ describe("findByJoinCompatibility", () => {
     expect(entries).toEqual([]);
   });
 
-  it("namespace-free query for national returns empty (no national keys in registry)", () => {
+  it("namespace-free query for national returns no:municipalities (has national/no-ssb key)", () => {
     const family: CodeFamily = { family: "national" };
     const entries = findByJoinCompatibility(family);
-    // geoBoundaries ADM2 has no codes — national keys removed
-    expect(entries).toEqual([]);
+    const ids = entries.map((e) => e.id);
+    // no:municipalities has a national/no-ssb key which matches a namespace-free national query
+    expect(ids).toContain("no:municipalities");
   });
 });
 

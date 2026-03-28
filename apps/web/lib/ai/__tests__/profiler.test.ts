@@ -112,11 +112,11 @@ describe("profileDataset", () => {
       expect(profile.bounds).toEqual([[10, 0], [30, 20]]);
     });
 
-    it("returns initial bounds when all geometries are null", () => {
+    it("returns zero bounds when all geometries are null", () => {
       const profile = profileDataset(fc([
         { type: "Feature", geometry: null, properties: {} },
       ]));
-      expect(profile.bounds).toEqual([[90, 180], [-90, -180]]);
+      expect(profile.bounds).toEqual([[0, 0], [0, 0]]);
     });
   });
 

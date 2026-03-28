@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseCSV, csvToGeoJSON, parseNumericValue } from "../csv-parser";
+import { parseCSV, csvToGeoJSON, parseNumericValue, cleanCoordinate } from "../csv-parser";
 
 // ═══════════════════════════════════════════════════════════════
 // parseNumericValue
@@ -232,26 +232,33 @@ describe("error messages", () => {
     const csv = "lat,lng,name\n59.33,18.07,OK\n999,18.07,Bad\n";
     const result = csvToGeoJSON(csv);
     expect(result.skippedRows).toBe(1);
-    expect(result.warnings[0]).toContain('"lat"');
-    expect(result.warnings[0]).toContain('"lng"');
+    // warnings[0] is the coordinate-choice info, skipped-row warning follows
+    expect(result.warnings[0]).toContain("Coordinates: using");
+    expect(result.warnings[1]).toContain('"lat"');
+    expect(result.warnings[1]).toContain('"lng"');
   });
 
   it("shows sample skip reasons with out-of-range coordinates", () => {
     const csv = "lat,lng,name\n59.33,18.07,OK\n999,18.07,Bad\n";
     const result = csvToGeoJSON(csv);
-    expect(result.warnings).toHaveLength(2);
-    expect(result.warnings[1]).toContain("Sample issues:");
-    expect(result.warnings[1]).toContain("outside -90..90");
+    // coordinate-choice + skipped-row + sample issues = 3
+    expect(result.warnings).toHaveLength(3);
+    expect(result.warnings[2]).toContain("Sample issues:");
+    expect(result.warnings[2]).toContain("outside -90..90");
   });
 
   it("shows sample skip reasons with non-numeric values", () => {
     const csv = "lat,lng,name\n59.33,18.07,OK\nN/A,18.07,Bad\n";
     const result = csvToGeoJSON(csv);
-    expect(result.warnings[1]).toContain("not numeric");
+    expect(result.warnings[2]).toContain("not numeric");
   });
 
   it("limits sample issues to 3 rows", () => {
     const rows = ["lat,lng,name"];
+    // Need enough valid rows (>=10) so the >50% throw doesn't fire
+    for (let i = 0; i < 15; i++) {
+      rows.push(`${50 + i * 0.1},${10 + i * 0.1},Good${i}`);
+    }
     for (let i = 0; i < 10; i++) {
       rows.push(`999,${i},Bad${i}`);
     }
@@ -270,5 +277,85 @@ describe("error messages", () => {
     const csv = headers.join(",") + "\n" + values.join(",") + "\n";
     const result = csvToGeoJSON(csv);
     expect(result.warnings[0]).toContain("20 columns total");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// cleanCoordinate
+// ═══════════════════════════════════════════════════════════════
+
+describe("cleanCoordinate", () => {
+  it("parses plain decimal", () => {
+    expect(cleanCoordinate("59.33")).toBeCloseTo(59.33);
+  });
+
+  it("handles north direction", () => {
+    expect(cleanCoordinate("59.33N")).toBeCloseTo(59.33);
+  });
+
+  it("handles south direction (negates)", () => {
+    expect(cleanCoordinate("33.86S")).toBeCloseTo(-33.86);
+  });
+
+  it("handles east direction", () => {
+    expect(cleanCoordinate("18.07E")).toBeCloseTo(18.07);
+  });
+
+  it("handles west direction (negates)", () => {
+    expect(cleanCoordinate("18.07W")).toBeCloseTo(-18.07);
+  });
+
+  it("strips degree symbols", () => {
+    expect(cleanCoordinate("59.33°")).toBeCloseTo(59.33);
+  });
+
+  it("handles direction after degree symbol", () => {
+    expect(cleanCoordinate("59.33°N")).toBeCloseTo(59.33);
+  });
+
+  it("returns NaN for empty string", () => {
+    expect(cleanCoordinate("")).toBeNaN();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Coordinate choice warning
+// ═══════════════════════════════════════════════════════════════
+
+describe("coordinate choice warning", () => {
+  it("always logs which columns were chosen", () => {
+    const csv = "lat,lng,name\n59.33,18.07,A\n";
+    const result = csvToGeoJSON(csv);
+    expect(result.warnings[0]).toContain('Coordinates: using "lat" (lat) and "lng" (lng)');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// High skip rate with few features
+// ═══════════════════════════════════════════════════════════════
+
+describe("high skip rate throws", () => {
+  it("throws when >50% skipped and <10 features", () => {
+    const rows = ["lat,lng,name"];
+    // 1 valid row + 20 invalid rows
+    rows.push("59.33,18.07,OK");
+    for (let i = 0; i < 20; i++) {
+      rows.push(`999,${i},Bad${i}`);
+    }
+    const csv = rows.join("\n") + "\n";
+    expect(() => csvToGeoJSON(csv)).toThrow("had invalid coordinates");
+  });
+
+  it("does not throw when enough valid features exist", () => {
+    const rows = ["lat,lng,name"];
+    // 15 valid rows + 10 invalid rows
+    for (let i = 0; i < 15; i++) {
+      rows.push(`${50 + i * 0.1},${10 + i * 0.1},Good${i}`);
+    }
+    for (let i = 0; i < 10; i++) {
+      rows.push(`999,${i},Bad${i}`);
+    }
+    const csv = rows.join("\n") + "\n";
+    expect(() => csvToGeoJSON(csv)).not.toThrow();
   });
 });

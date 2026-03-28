@@ -51,7 +51,7 @@ export interface ClarificationQuestion {
   options?: string[];
   /** The single best default answer when the AI is ≥70% confident. */
   recommended?: string;
-  aspect: "geography" | "metric" | "timeframe" | "data-source" | "visualization";
+  aspect: "geography" | "metric" | "timeframe" | "data-source" | "visualization" | "basemap";
 }
 
 /**
@@ -98,6 +98,8 @@ export interface ClarifyResponse {
   confidence?: number;
   /** Join coverage ratio 0-1 (fraction of regions matched). */
   coverageRatio?: number;
+  /** Geographic scope hint — tells generate-map to apply a filter. */
+  scopeHint?: { region: string; filterField: string };
 }
 
 /** Request body for /api/ai/clarify. */
@@ -146,6 +148,8 @@ export interface CaseRecord {
   attempts: number;
   outcome: "accepted" | "edited" | "reset";
   refinements: RefinementEvent[];
+  /** Token usage from the AI generation. */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 // ─── Map patterns ────────────────────────────────────────────

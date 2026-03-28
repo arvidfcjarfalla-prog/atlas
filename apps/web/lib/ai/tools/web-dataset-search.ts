@@ -17,6 +17,7 @@ import {
   setCache,
   fetchGeoJSON,
   hasNumericProperties,
+  isUsableDataset,
   type DataSearchResult,
   type CacheEntry,
 } from "./data-search";
@@ -330,6 +331,7 @@ async function csvToCountryFeatures(
 async function fetchCandidate(
   candidate: WebDatasetCandidate,
   countryHint?: string,
+  requireMetrics = false,
 ): Promise<{ fc: GeoJSON.FeatureCollection; description: string } | null> {
   try {
     const res = await fetch(candidate.url, {
@@ -355,8 +357,9 @@ async function fetchCandidate(
           if (fc.features.length > MAX_GEOJSON_FEATURES) {
             fc.features = fc.features.slice(0, MAX_GEOJSON_FEATURES);
           }
-          // Reject boundary-only GeoJSON (no numeric data properties)
-          if (!hasNumericProperties(fc)) return null;
+          // Reject boundary-only GeoJSON — for statistical queries, require numeric data
+          if (requireMetrics && !hasNumericProperties(fc)) return null;
+          if (!isUsableDataset(fc)) return null;
           return { fc, description: `${candidate.datasetName} (GeoJSON, ${fc.features.length} features)` };
         }
       } catch {
@@ -494,14 +497,12 @@ The user needs data about:
 - Geography: ${intent.geography ?? "global"}
 - Timeframe: ${intent.timeframe ?? "latest available"}${sourceHintBlock}
 
-CRITICAL: The dataset MUST contain numeric metric values (population numbers, GDP figures, rates, etc.), not just geographic boundaries or administrative metadata.
-
 Rules:
 - Only return REAL URLs you found via web search
-- Prefer: CSV files with region/country names AND numeric data columns
-- Also accept: GeoJSON with data properties, API endpoints returning data
-- Avoid: boundary-only GeoJSON (just shapes, no data), HTML tables, API docs, paywalled sources
-- Prioritize: Eurostat, OECD, Our World in Data, data.gov, HDX, GitHub raw data files
+- For statistical/metric queries: prefer CSV or GeoJSON with numeric data columns (population, GDP, rates, etc.)
+- For location/POI queries (landmarks, sites, wonders, heritage, etc.): GeoJSON or CSV with lat/lon + name columns is perfect
+- Avoid: boundary-only GeoJSON (just polygon shapes, no names or data), HTML tables, API docs, paywalled sources
+- Prioritize: Our World in Data, data.gov, HDX, GitHub raw data files, Wikipedia-derived datasets, UNESCO, natural-earth
 - Never invent or guess URLs — every URL must come from a search result
 - Call the extract_dataset_urls tool with your findings
 - If you find nothing downloadable, call extract_dataset_urls with an empty candidates array`;
@@ -646,7 +647,7 @@ Rules:
     for (const candidate of candidates) {
       // For GeoJSON URLs, try the existing fetchGeoJSON first (it handles caching)
       if (candidate.format === "geojson") {
-        const result = await fetchGeoJSON(candidate.url, { requireNumericData: true });
+        const result = await fetchGeoJSON(candidate.url, { requireNumericData: intent.metric !== undefined });
         if (result.found && result.cacheKey && result.profile) {
           // Re-cache under the web search key for topic-based lookup
           const cachedEntry = await getCachedData(result.cacheKey);
@@ -683,7 +684,7 @@ Rules:
       }
 
       // General fetch + validate
-      const fetchResult = await fetchCandidate(candidate, countryHint);
+      const fetchResult = await fetchCandidate(candidate, countryHint, intent.metric !== undefined);
       if (fetchResult) {
         const profile = profileDataset(fetchResult.fc);
 

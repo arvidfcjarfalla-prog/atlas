@@ -103,7 +103,7 @@ describe("decideClarifyAction", () => {
     }
   });
 
-  it("not ready with dataWarning propagates warning", () => {
+  it("not ready with dataWarning shows suggestions instead of questions", () => {
     const data = makeResponse({
       ready: false,
       dataWarning: "No data available for this topic",
@@ -112,9 +112,9 @@ describe("decideClarifyAction", () => {
 
     const action = decideClarifyAction(data, "prompt");
 
-    expect(action.kind).toBe("ask_questions");
-    if (action.kind === "ask_questions") {
-      expect(action.warning).toBe("No data available for this topic");
+    expect(action.kind).toBe("tabular_warning");
+    if (action.kind === "tabular_warning") {
+      expect(action.message).toBe("No data available for this topic");
     }
   });
 
@@ -259,10 +259,11 @@ describe("decideClarifyAction", () => {
     }
   });
 
-  it("asks questions even with all recommended when dataWarning present", () => {
+  it("shows suggestions when dataWarning present even with recommended questions", () => {
     const data = makeResponse({
       ready: false,
       dataWarning: "Limited data available",
+      suggestions: ["GDP in Europe", "Population worldwide"],
       questions: [
         {
           id: "region",
@@ -276,9 +277,32 @@ describe("decideClarifyAction", () => {
 
     const action = decideClarifyAction(data, "prompt");
 
-    expect(action.kind).toBe("ask_questions");
-    if (action.kind === "ask_questions") {
-      expect(action.warning).toBe("Limited data available");
+    expect(action.kind).toBe("tabular_warning");
+    if (action.kind === "tabular_warning") {
+      expect(action.message).toBe("Limited data available");
+      expect(action.suggestions).toEqual(["GDP in Europe", "Population worldwide"]);
+    }
+  });
+
+  it("prefers suggestions over questions when both present", () => {
+    const data = makeResponse({
+      ready: false,
+      suggestions: ["BNP per capita i Europa", "Befolkning per land"],
+      questions: [
+        {
+          id: "q1",
+          question: "What data source?",
+          options: ["Upload", "SCB API"],
+          aspect: "data-source" as const,
+        },
+      ],
+    });
+
+    const action = decideClarifyAction(data, "prompt");
+
+    expect(action.kind).toBe("tabular_warning");
+    if (action.kind === "tabular_warning") {
+      expect(action.suggestions).toHaveLength(2);
     }
   });
 

@@ -11,7 +11,8 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { MODELS } from "../ai-client";
 import { profileDataset } from "../profiler";
 import {
   getCachedData,
@@ -23,10 +24,9 @@ import {
 // ─── Constants ──────────────────────────────────────────────
 
 const EUROSTAT_API_BASE =
-  "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data";
+  "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data";
 const API_TIMEOUT_MS = 8_000;
 const AI_TIMEOUT_MS = 2_500;
-const INTENT_MODEL = "claude-haiku-4-5-20251001";
 const NUTS0_GEO_FILE = "geo/eu/nuts0.geojson";
 
 // ─── Dataset catalog ────────────────────────────────────────
@@ -161,7 +161,107 @@ const DATASET_DESCRIPTIONS = DATASET_KEYS.map(
   (k) => `${k}: ${EUROSTAT_DATASETS[k].label} (${EUROSTAT_DATASETS[k].code})`,
 ).join("\n");
 
-// ─── AI intent extraction ───────────────────────────────────
+// ─── Keyword-based intent extraction (no AI credits) ────────
+
+const EUROPE_KEYWORDS = [
+  "europe", "european", "europa", "europeisk",
+  "eu-länder", "eu countries", "eurozone",
+];
+const EU_WORD_REGEX = /\beu\b/i;
+
+/** Keyword → Eurostat dataset key. Sorted longest-first at lookup time. */
+const EUROSTAT_KEYWORDS: Record<string, string> = {
+  // minimum_wage
+  "minimum wage": "minimum_wage",
+  minimilön: "minimum_wage",
+  mindestlohn: "minimum_wage",
+  // gdp_per_capita
+  "gdp per capita": "gdp_per_capita",
+  "bnp per capita": "gdp_per_capita",
+  // unemployment
+  unemployment: "unemployment",
+  arbetslöshet: "unemployment",
+  // inflation
+  inflation: "inflation",
+  // life_expectancy
+  "life expectancy": "life_expectancy",
+  livslängd: "life_expectancy",
+  medellivslängd: "life_expectancy",
+  // fertility
+  "fertility rate": "fertility",
+  fertility: "fertility",
+  fertilitet: "fertility",
+  födelsetal: "fertility",
+  // renewable_energy
+  "renewable energy": "renewable_energy",
+  "förnybar energi": "renewable_energy",
+  // greenhouse_gas
+  "greenhouse gas": "greenhouse_gas",
+  växthusgaser: "greenhouse_gas",
+  "co2 emission": "greenhouse_gas",
+  "carbon emission": "greenhouse_gas",
+  koldioxidutsläpp: "greenhouse_gas",
+  // population
+  population: "population",
+  befolkning: "population",
+  // median_income
+  "median income": "median_income",
+  medianinkomst: "median_income",
+  income: "median_income",
+  inkomst: "median_income",
+  // poverty_rate
+  poverty: "poverty_rate",
+  fattigdom: "poverty_rate",
+  // gini
+  gini: "gini",
+  inequality: "gini",
+  ojämlikhet: "gini",
+  // healthcare_spending
+  "healthcare spending": "healthcare_spending",
+  "health expenditure": "healthcare_spending",
+  sjukvårdskostnad: "healthcare_spending",
+  hälsovårdsutgifter: "healthcare_spending",
+  // education_spending
+  "education spending": "education_spending",
+  utbildningskostnad: "education_spending",
+  // homicide_rate
+  homicide: "homicide_rate",
+  murder: "homicide_rate",
+  mord: "homicide_rate",
+  // internet_usage
+  "internet usage": "internet_usage",
+  internetanvändning: "internet_usage",
+  // house_prices
+  "house price": "house_prices",
+  bostadspris: "house_prices",
+  huspriser: "house_prices",
+  // tourism
+  tourism: "tourism",
+  turism: "tourism",
+};
+
+const EUROSTAT_KEYWORD_ENTRIES = Object.entries(EUROSTAT_KEYWORDS)
+  .sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * Keyword-based intent extraction — no AI credits needed.
+ * Requires both a Europe keyword and a topic keyword match.
+ */
+function keywordExtractIntent(query: string): IntentResult | null {
+  const lower = query.toLowerCase();
+
+  const isEuropean = EUROPE_KEYWORDS.some((kw) => lower.includes(kw)) || EU_WORD_REGEX.test(lower);
+  if (!isEuropean) return null;
+
+  for (const [keyword, datasetKey] of EUROSTAT_KEYWORD_ENTRIES) {
+    if (lower.includes(keyword)) {
+      return { isEuropean: true, datasetKey, englishPrompt: query };
+    }
+  }
+  return null;
+}
+
+// ─── AI intent extraction (fallback) ────────────────────────
 
 interface IntentResult {
   isEuropean: boolean;
@@ -179,9 +279,9 @@ Reply with a single JSON object:
 }
 
 Rules:
-- isEuropean: true ONLY if the prompt explicitly mentions Europe, EU, European Union, or names 2+ European countries. If the prompt just says "by country", "global", "worldwide", or names non-European locations, return false.
+- isEuropean: true ONLY if the prompt explicitly mentions Europe, EU, European Union, or names 2+ European countries. Single-country queries (even European ones) are false — they belong to that country's national statistics.
   Examples: "GDP in Europe" → true. "Unemployment in EU countries" → true. "Minimilön i Europa" → true.
-  Counter-examples: "Life expectancy by country" → false. "CO2 emissions per country" → false. "GDP per capita globally" → false. "Population of Brazil" → false.
+  Counter-examples: "Income by county Norway" → false. "Population Sweden" → false. "Life expectancy by country" → false. "CO2 emissions per country" → false. "GDP per capita globally" → false.
 - datasetKey: pick the best match from the list below. null if none match.
 - englishPrompt: translate the prompt to concise English (max 15 words).
 
@@ -191,26 +291,18 @@ ${DATASET_DESCRIPTIONS}
 Output ONLY the JSON object, nothing else.`;
 
 async function extractIntent(query: string): Promise<IntentResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
   try {
-    const client = new Anthropic({ apiKey });
-    const promise = client.messages.create({
-      model: INTENT_MODEL,
-      max_tokens: 128,
-      system: INTENT_SYSTEM,
-      messages: [{ role: "user", content: query }],
-    });
     const timeout = new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), AI_TIMEOUT_MS),
     );
-    const res = await Promise.race([promise, timeout]);
-    if (!res) return null;
+    const aiPromise = generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: 128,
+      system: INTENT_SYSTEM,
+      messages: [{ role: "user", content: query }],
+    }).then((r) => r.text.trim());
 
-    const text = res.content.find(
-      (b): b is Anthropic.TextBlock => b.type === "text",
-    )?.text.trim();
+    const text = await Promise.race([aiPromise, timeout]);
     if (!text) return null;
 
     const jsonStart = text.indexOf("{");
@@ -235,7 +327,7 @@ async function extractIntent(query: string): Promise<IntentResult | null> {
   }
 }
 
-// ─── SDMX-JSON parser ──────────────────────────────────────
+// ─── JSON-stat 2.0 parser ───────────────────────────────────
 
 interface ParsedObservation {
   geoCode: string;
@@ -243,46 +335,37 @@ interface ParsedObservation {
   timePeriod: string;
 }
 
+type DimCategory = { category?: { index?: Record<string, number> } };
+
 /**
- * Parse Eurostat SDMX-JSON response and extract the latest value per
- * country (GEO dimension). Handles variable dimension ordering by
- * reading the `id` and `size` arrays from the response.
+ * Parse Eurostat JSON-stat 2.0 response (Statistics API v1.0).
+ *
+ * With `geoLevel=country` the API only returns 2-char country codes.
+ * With `lastTimePeriod=1` it returns only the latest period.
+ * Values are a flat array indexed by dimension strides.
  */
-function parseSdmxJson(
+function parseJsonStat(
   data: Record<string, unknown>,
 ): ParsedObservation[] {
   const dimIds = data.id as string[] | undefined;
   const sizes = data.size as number[] | undefined;
-  const values = data.value as Record<string, number> | undefined;
-  const dimensions = data.dimension as Record<string, unknown> | undefined;
+  const values = data.value as (number | null)[] | undefined;
+  const dimensions = data.dimension as Record<string, DimCategory> | undefined;
 
   if (!dimIds || !sizes || !values || !dimensions) return [];
 
-  // Find geo and time dimension indices
   const geoIdx = dimIds.indexOf("geo");
+  if (geoIdx === -1) return [];
+
+  const geoDim = dimensions.geo?.category?.index;
+  if (!geoDim) return [];
+
+  // Get time period label (single value with lastTimePeriod=1)
+  let timePeriod = "latest";
   const timeIdx = dimIds.indexOf("time");
-  if (geoIdx === -1 || timeIdx === -1) return [];
-
-  // Get geo and time category mappings (index → code)
-  const geoDim = dimensions.geo as {
-    category?: { index?: Record<string, number> };
-  };
-  const timeDim = dimensions.time as {
-    category?: { index?: Record<string, number> };
-  };
-  if (!geoDim?.category?.index || !timeDim?.category?.index) return [];
-
-  const geoIndex = geoDim.category.index;
-  const timeIndex = timeDim.category.index;
-
-  // Invert: index → code
-  const geoByIdx = new Map<number, string>();
-  for (const [code, idx] of Object.entries(geoIndex)) {
-    geoByIdx.set(idx, code);
-  }
-  const timeByIdx = new Map<number, string>();
-  for (const [code, idx] of Object.entries(timeIndex)) {
-    timeByIdx.set(idx, code);
+  if (timeIdx !== -1) {
+    const timeIndex = dimensions.time?.category?.index;
+    if (timeIndex) timePeriod = Object.keys(timeIndex)[0] ?? "latest";
   }
 
   // Compute dimension strides for flat index decoding
@@ -292,39 +375,31 @@ function parseSdmxJson(
     strides[i] = strides[i + 1] * sizes[i + 1];
   }
 
-  // Iterate all values, group by geo, keep latest time period
-  const latestByGeo = new Map<
-    string,
-    { value: number; timePeriod: string; timeIdx: number }
-  >();
-
-  for (const [flatIdxStr, value] of Object.entries(values)) {
-    const flatIdx = parseInt(flatIdxStr, 10);
-
-    // Decode geo and time indices from flat index
-    const geoVal = Math.floor(flatIdx / strides[geoIdx]) % sizes[geoIdx];
-    const timeVal = Math.floor(flatIdx / strides[timeIdx]) % sizes[timeIdx];
-
-    const geoCode = geoByIdx.get(geoVal);
-    const timePeriod = timeByIdx.get(timeVal);
-    if (!geoCode || !timePeriod) continue;
-
-    // Skip aggregate codes (EU27, EA20, etc.)
+  const results: ParsedObservation[] = [];
+  for (const [geoCode, geoPos] of Object.entries(geoDim)) {
+    // Safety: skip aggregate codes if the API returns any
     if (geoCode.length > 2) continue;
 
-    const existing = latestByGeo.get(geoCode);
-    if (!existing || timeVal > existing.timeIdx) {
-      latestByGeo.set(geoCode, { value, timePeriod, timeIdx: timeVal });
+    // Compute flat index across all dimensions.
+    // - geo dimension: use geoPos
+    // - time dimension: use sizes[i] - 1 (last = most recent period)
+    // - all other dimensions: use 0 (first value)
+    // This handles the case where lastTimePeriod=1 filter is ignored and
+    // multiple time periods are returned.
+    let flatIdx = 0;
+    for (let i = 0; i < dimIds.length; i++) {
+      if (i === geoIdx) {
+        flatIdx += geoPos * strides[i];
+      } else if (dimIds[i] === "time") {
+        flatIdx += (sizes[i] - 1) * strides[i];
+      }
+      // All other dimensions: position 0, contributes 0 * stride = 0
     }
-  }
 
-  const results: ParsedObservation[] = [];
-  for (const [geoCode, entry] of latestByGeo) {
-    results.push({
-      geoCode,
-      value: entry.value,
-      timePeriod: entry.timePeriod,
-    });
+    const value = values[flatIdx];
+    if (value == null) continue;
+
+    results.push({ geoCode, value, timePeriod });
   }
 
   return results;
@@ -355,7 +430,8 @@ export interface EurostatResult extends DataSearchResult {
 export async function searchEurostat(
   query: string,
 ): Promise<EurostatResult> {
-  const intent = await extractIntent(query);
+  // Keyword match first (instant, no credits), AI fallback if needed
+  const intent = keywordExtractIntent(query) ?? await extractIntent(query);
   if (!intent) return { found: false };
   if (!intent.isEuropean) return { found: false };
   if (!intent.datasetKey) return { found: false };
@@ -382,9 +458,9 @@ export async function searchEurostat(
   }
 
   try {
-    // Step 1: Fetch data from Eurostat
+    // Step 1: Fetch data from Eurostat (JSON-stat Statistics API)
     const filterStr = config.filters ? `&${config.filters}` : "";
-    const url = `${EUROSTAT_API_BASE}/${config.code}?format=JSON&sinceTimePeriod=2020${filterStr}`;
+    const url = `${EUROSTAT_API_BASE}/${config.code}?lang=EN&geoLevel=country&lastTimePeriod=1${filterStr}`;
     const res = await fetch(url, {
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
@@ -397,7 +473,7 @@ export async function searchEurostat(
     }
 
     const json = await res.json();
-    const observations = parseSdmxJson(json as Record<string, unknown>);
+    const observations = parseJsonStat(json as Record<string, unknown>);
     if (observations.length === 0) {
       return {
         found: false,

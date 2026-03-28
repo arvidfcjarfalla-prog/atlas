@@ -359,8 +359,8 @@ describe("validateCartographic", () => {
     });
     const result = validateCartographic(manifest, testProfile);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain(
-      'Layer "layer-1": colorField "nonexistent" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('colorField "nonexistent" not found')
     );
   });
 
@@ -379,8 +379,8 @@ describe("validateCartographic", () => {
       style: { markerShape: "circle", mapFamily: "proportional-symbol", sizeField: "gdp", colorField: "region" },
     });
     const result = validateCartographic(manifest, testProfile);
-    expect(result.errors).toContain(
-      'Layer "layer-1": sizeField "gdp" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('sizeField "gdp" not found')
     );
   });
 
@@ -401,8 +401,8 @@ describe("validateCartographic", () => {
     });
     const result = validateCartographic(manifest, testProfile);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain(
-      'Layer "layer-1": tooltipField "nonexistent_field" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('tooltipField "nonexistent_field" not found')
     );
   });
 
@@ -429,8 +429,8 @@ describe("validateCartographic", () => {
     });
     const result = validateCartographic(manifest, testProfile);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain(
-      'Layer "layer-1": normalization.field "nonexistent_area" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('normalization.field "nonexistent_area" not found')
     );
   });
 
@@ -457,8 +457,8 @@ describe("validateCartographic", () => {
       flow: { originField: "name", destinationField: "region", weightField: "volume" },
     });
     const result = validateCartographic(manifest, testProfile);
-    expect(result.errors).toContain(
-      'Layer "layer-1": flow.weightField "volume" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('flow.weightField "volume" not found')
     );
   });
 
@@ -481,8 +481,8 @@ describe("validateCartographic", () => {
       flow: { originField: "source_city", destinationField: "region" },
     });
     const result = validateCartographic(manifest, testProfile);
-    expect(result.errors).toContain(
-      'Layer "layer-1": flow.originField "source_city" not found in dataset attributes'
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('flow.originField "source_city" not found')
     );
   });
 

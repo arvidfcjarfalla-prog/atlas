@@ -337,3 +337,136 @@ describe("normalizer safety invariants", () => {
     expect(result.confidence).toBeLessThan(0.55);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Code-to-label normalizer (PxWeb municipality codes → names)
+// ═══════════════════════════════════════════════════════════════
+
+describe("code-to-label normalizer (SCB municipality scenario)", () => {
+  /** Simulates the auto-injected code→label normalizer from PxWeb dimension metadata. */
+  function makeCodeToLabelNormalizer(
+    mapping: Record<string, string>,
+  ): { name: string; normalizer: AliasNormalizer } {
+    return {
+      name: "source-code-to-label",
+      normalizer: (code: string) => mapping[code] ?? null,
+    };
+  }
+
+  function makeNameFeature(name: string): GeoJSON.Feature {
+    return {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] },
+      properties: { name },
+    };
+  }
+
+  it("joins SCB 4-digit municipality codes to name-keyed geometry via labels", () => {
+    // SCB PxWeb dimension values: code "0180" → label "Stockholm", etc.
+    const codeToLabel = makeCodeToLabelNormalizer({
+      "0180": "Stockholm",
+      "1480": "Göteborg",
+      "1280": "Malmö",
+      "0380": "Uppsala",
+      "0580": "Linköping",
+    });
+
+    // Data rows have SCB municipality codes
+    const rows = [
+      makeRow("0180", 975000),
+      makeRow("1480", 590000),
+      makeRow("1280", 350000),
+      makeRow("0380", 230000),
+      makeRow("0580", 160000),
+    ];
+
+    // Geometry has name-based features (from geoBoundaries)
+    const geometry = makeFC([
+      makeNameFeature("Stockholm"),
+      makeNameFeature("Göteborg"),
+      makeNameFeature("Malmö"),
+      makeNameFeature("Uppsala"),
+      makeNameFeature("Linköping"),
+    ]);
+
+    // Plan uses alias_crosswalk with name-keyed geometry
+    const plan = makePlan({
+      strategy: "alias_crosswalk",
+      geometryJoinField: "name",
+      confidence: 0.7,
+    });
+
+    const result = executeJoin(
+      plan, rows, geometry, "production", "first", [codeToLabel],
+    );
+
+    expect(result.diagnostics.matched).toBe(5);
+    expect(result.diagnostics.unmatched).toBe(0);
+    expect(result.diagnostics.coverageRatio).toBe(1);
+    expect(result.status).toBe("map_ready");
+    expect(result.diagnostics.reasons.some((r) => r.includes("alias normalizers rescued 5"))).toBe(true);
+
+    // Verify the data values are attached to features
+    const sthlm = result.features.find((f) => f.properties?.name === "Stockholm");
+    expect(sthlm?.properties?._atlas_value).toBe(975000);
+  });
+
+  it("handles diacritics and case differences between labels and geometry names", () => {
+    const codeToLabel = makeCodeToLabelNormalizer({
+      "01": "Örebro",
+      "02": "Västerås",
+      "03": "Malmö",
+    });
+
+    const rows = [makeRow("01", 100), makeRow("02", 200), makeRow("03", 300)];
+    const geometry = makeFC([
+      makeNameFeature("örebro"),   // lowercase
+      makeNameFeature("VÄSTERÅS"), // uppercase
+      makeNameFeature("Malmö"),    // exact
+    ]);
+
+    const plan = makePlan({
+      strategy: "alias_crosswalk",
+      geometryJoinField: "name",
+      confidence: 0.7,
+    });
+
+    const result = executeJoin(plan, rows, geometry, "production", "first", [codeToLabel]);
+
+    // normalizeForJoin strips diacritics and lowercases — all should match
+    expect(result.diagnostics.matched).toBe(3);
+    expect(result.status).toBe("map_ready");
+  });
+
+  it("unmatched labels do not crash — just reduce coverage", () => {
+    const codeToLabel = makeCodeToLabelNormalizer({
+      "0180": "Stockholm",
+      "1480": "Göteborg",       // SCB says "Göteborg"
+      "9999": "Nonexistent",    // no geometry match
+    });
+
+    const rows = [
+      makeRow("0180", 100),
+      makeRow("1480", 200),
+      makeRow("9999", 300),
+    ];
+
+    // Geometry has "Gothenburg" (English) instead of "Göteborg"
+    const geometry = makeFC([
+      makeNameFeature("Stockholm"),
+      makeNameFeature("Gothenburg"),
+    ]);
+
+    const plan = makePlan({
+      strategy: "alias_crosswalk",
+      geometryJoinField: "name",
+      confidence: 0.7,
+    });
+
+    const result = executeJoin(plan, rows, geometry, "production", "first", [codeToLabel]);
+
+    // Stockholm matches. Göteborg ≠ Gothenburg after normalization. Nonexistent has no geometry.
+    expect(result.diagnostics.matched).toBe(1);
+    expect(result.diagnostics.unmatched).toBe(2);
+  });
+});

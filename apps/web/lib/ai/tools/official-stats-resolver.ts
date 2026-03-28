@@ -33,11 +33,15 @@ export interface ResolvedSource {
  */
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
   // Nordic
-  sweden: "SE", sverige: "SE", swedish: "SE",
-  norway: "NO", norge: "NO", norwegian: "NO",
-  denmark: "DK", danmark: "DK", danish: "DK",
-  finland: "FI", finnish: "FI",
-  iceland: "IS", island: "IS",
+  sweden: "SE", sverige: "SE", swedish: "SE", svenska: "SE", svensk: "SE",
+  // Swedish admin terms — unambiguously imply Sweden
+  kommun: "SE", kommunerna: "SE", län: "SE",
+  norway: "NO", norge: "NO", norwegian: "NO", norska: "NO", norsk: "NO",
+  // Norwegian admin terms — unambiguously imply Norway
+  kommune: "NO", fylke: "NO", fylker: "NO",
+  denmark: "DK", danmark: "DK", danish: "DK", danska: "DK", dansk: "DK",
+  finland: "FI", finnish: "FI", finska: "FI", finsk: "FI",
+  iceland: "IS", island: "IS", isländska: "IS",
   // Europe
   uk: "GB", "united kingdom": "GB", britain: "GB", british: "GB", england: "GB",
   germany: "DE", deutschland: "DE", german: "DE", tysk: "DE", tyskland: "DE",
@@ -174,7 +178,14 @@ const TOPIC_TO_TAGS: Record<string, string[]> = {
   gdp: ["economy"],
   "gross domestic product": ["economy"],
   income: ["economy", "labor"],
+  inkomst: ["economy", "labor"],
+  förvärvsinkomst: ["economy", "labor"],
+  medianinkomst: ["economy", "labor"],
+  medelinkomst: ["economy", "labor"],
+  lön: ["labor", "economy"],
+  löner: ["labor", "economy"],
   poverty: ["poverty", "economy", "social"],
+  fattigdom: ["poverty", "economy", "social"],
   inflation: ["economy", "prices"],
   prices: ["prices", "economy"],
   wages: ["labor", "economy"],
@@ -251,6 +262,26 @@ const TOPIC_TO_TAGS: Record<string, string[]> = {
   hundägare: ["social", "demographics"],
   pet: ["social", "demographics"],
   husdjur: ["social", "demographics"],
+  // Nordic languages (Norwegian / Danish)
+  befolkning: ["population", "demographics"],
+  folkemengde: ["population", "demographics"],
+  folketal: ["population", "demographics"],
+  innbyggere: ["population", "demographics"],
+  innvandring: ["demographics", "social"],
+  utvandring: ["demographics", "social"],
+  sysselsetting: ["labor", "economy"],
+  arbeidsledighet: ["labor", "economy"],
+  inntekt: ["economy", "labor"],
+  bolig: ["housing"],
+  utdanning: ["education"],
+  helse: ["health"],
+  // Finnish
+  väestö: ["population", "demographics"],
+  työttömyys: ["labor", "economy"],
+  tulot: ["economy", "labor"],
+  // Icelandic
+  íbúar: ["population", "demographics"],
+  mannfjöldi: ["population", "demographics"],
 };
 
 /**

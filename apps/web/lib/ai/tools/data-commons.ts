@@ -11,7 +11,8 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { MODELS } from "../ai-client";
 import { profileDataset } from "../profiler";
 import {
   getCachedData,
@@ -26,7 +27,6 @@ const DC_API_BASE = "https://api.datacommons.org/v2";
 const OBSERVATION_TIMEOUT_MS = 6_000;
 const NODE_TIMEOUT_MS = 4_000;
 const AI_TIMEOUT_MS = 3_500;
-const INTENT_MODEL = "claude-haiku-4-5-20251001";
 
 // ─── Country config ─────────────────────────────────────────
 
@@ -126,26 +126,18 @@ Rules:
 Output ONLY the JSON object, nothing else.`;
 
 async function extractIntent(query: string): Promise<IntentResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
   try {
-    const client = new Anthropic({ apiKey });
-    const promise = client.messages.create({
-      model: INTENT_MODEL,
-      max_tokens: 128,
-      system: INTENT_SYSTEM,
-      messages: [{ role: "user", content: query }],
-    });
     const timeout = new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), AI_TIMEOUT_MS),
     );
-    const res = await Promise.race([promise, timeout]);
-    if (!res) return null;
+    const aiPromise = generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: 128,
+      system: INTENT_SYSTEM,
+      messages: [{ role: "user", content: query }],
+    }).then((r) => r.text.trim());
 
-    const text = res.content.find(
-      (b): b is Anthropic.TextBlock => b.type === "text",
-    )?.text.trim();
+    const text = await Promise.race([aiPromise, timeout]);
     if (!text) return null;
 
     // Parse JSON — handle markdown fences
@@ -268,7 +260,14 @@ export interface DataCommonsResult extends DataSearchResult {
   englishPrompt?: string;
 }
 
-/** Country name hints for fast keyword pre-filter (avoids expensive AI call). */
+/** Words that signal a subnational query (state, county, municipality, etc.). */
+const SUBNATIONAL_WORDS = [
+  "state", "states", "county", "counties", "region", "regions",
+  "municipality", "municipalities", "province", "provinces",
+  "län", "kommun", "kommuner", "district", "districts", "prefecture",
+];
+
+/** Country name hints for keyword-based matching (avoids expensive AI call). */
 const DC_COUNTRY_NAMES: Record<string, string[]> = {
   AU: ["australia"], BR: ["brazil", "brasil"],
   CA: ["canada"], CN: ["china"],
@@ -285,22 +284,65 @@ const DC_COUNTRY_NAMES: Record<string, string[]> = {
   ZA: ["south africa"],
 };
 
-export async function searchDataCommons(query: string): Promise<DataCommonsResult> {
-  // Fast pre-filter: if the prompt mentions a known country but none of the
-  // DC metric keywords (population, unemployment, etc.), skip the AI call.
-  // Saves ~3.5s for prompts that will inevitably fail at the metric check.
+// Sort country names longest-first to prevent "south korea" losing to "korea"
+const DC_COUNTRY_ENTRIES = Object.entries(DC_COUNTRY_NAMES)
+  .flatMap(([code, names]) => names.map((n) => ({ name: n, code })))
+  .sort((a, b) => b.name.length - a.name.length);
+
+const DC_METRIC_ENTRIES = Object.keys(DC_VARIABLES)
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * Keyword-based intent extraction — no AI credits needed.
+ * Matches country names + metric keywords from existing maps.
+ * Since Data Commons is specifically for subnational data, assumes isSubnational: true.
+ */
+function keywordExtractIntent(query: string): IntentResult | null {
   const lower = query.toLowerCase();
-  const mentionsCountry = Object.values(DC_COUNTRY_NAMES).some((names) =>
-    names.some((n) => lower.includes(n)),
-  );
+
+  // Find country
+  let countryCode: string | null = null;
+  for (const { name, code } of DC_COUNTRY_ENTRIES) {
+    if (lower.includes(name)) {
+      countryCode = code;
+      break;
+    }
+  }
+  if (!countryCode) return null;
+
+  // Find metric
+  let metric: string | null = null;
+  for (const key of DC_METRIC_ENTRIES) {
+    if (lower.includes(key)) {
+      metric = key;
+      break;
+    }
+  }
+  if (!metric) return null;
+
+  const isSubnational = SUBNATIONAL_WORDS.some((w) => lower.includes(w));
+
+  return {
+    isSubnational,
+    countryCode,
+    metric,
+    englishPrompt: query,
+  };
+}
+
+export async function searchDataCommons(query: string): Promise<DataCommonsResult> {
+  const lower = query.toLowerCase();
+
+  // Fast pre-filter: if the prompt mentions a known country but none of the
+  // DC metric keywords (population, unemployment, etc.), skip entirely.
+  const mentionsCountry = DC_COUNTRY_ENTRIES.some(({ name }) => lower.includes(name));
   if (mentionsCountry) {
-    const metricKeys = Object.keys(DC_VARIABLES);
-    const hasMetric = metricKeys.some((k) => lower.includes(k));
+    const hasMetric = DC_METRIC_ENTRIES.some((k) => lower.includes(k));
     if (!hasMetric) return { found: false };
   }
 
-  // AI extracts intent — handles any language, any phrasing
-  const intent = await extractIntent(query);
+  // Keyword match first (instant, no credits), AI fallback if needed
+  const intent = keywordExtractIntent(query) ?? await extractIntent(query);
   if (!intent) return { found: false };
   if (!intent.isSubnational) return { found: false };
   if (!intent.countryCode) return { found: false };

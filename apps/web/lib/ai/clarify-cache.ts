@@ -7,19 +7,28 @@ export function normalizePrompt(prompt: string): string {
   return prompt.toLowerCase().trim().replace(/\s+/g, " ");
 }
 
-/** Classify if a resolved response is time-sensitive. Returns TTL in hours (0 = no expiry). */
+/**
+ * Classify TTL in hours for a clarify cache entry.
+ *
+ * IMPORTANT: clarify_cache entries that reference /api/geo/cached/* must expire
+ * before or together with the underlying data_cache entries (24h). Otherwise the
+ * clarify cache returns a dataUrl that points to expired/missing geo data → 404.
+ *
+ * Max TTL is 24h to stay in sync with data_cache DB_TTL_MS.
+ */
+const MAX_CLARIFY_TTL_HOURS = 24;
+
 export function classifyTTL(response: ClarifyResponse): number {
-  if (!response.dataUrl) return 0;
+  if (!response.dataUrl) return MAX_CLARIFY_TTL_HOURS;
   const url = response.dataUrl.toLowerCase();
   // Real-time feeds — short TTL
   if (url.includes("eonet") || url.includes("earthquake") || url.includes("/flights") || url.includes("/iss")) return 1;
   // Near-real-time — moderate TTL
   if (url.includes("overpass") || url.includes("citybikes") || url.includes("firms")) return 6;
-  // Web-research and web-search results may be stale or suboptimal
-  if (url.includes("/cached/web-")) return 48;
-  // Semi-static APIs (heritage, volcanoes) — long TTL
-  if (url.includes("/heritage") || url.includes("/volcanoes")) return 168; // 1 week
-  return 0;
+  // Static local files (public/geo/) — these never expire from data_cache
+  if (url.startsWith("/geo/") || url.startsWith("/api/geo/overpass")) return MAX_CLARIFY_TTL_HOURS;
+  // Everything else (cached World Bank, Eurostat, Data Commons, web search, etc.)
+  return MAX_CLARIFY_TTL_HOURS;
 }
 
 export interface CacheHit {
@@ -38,7 +47,9 @@ export async function getCachedClarify(promptKey: string): Promise<CacheHit | nu
       .eq("prompt_key", promptKey)
       .maybeSingle();
     if (error || !data) return null;
-    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
+    // Reject expired entries. Legacy rows without expires_at are treated as expired
+    // to avoid serving stale dataUrls that point to purged data_cache entries.
+    if (!data.expires_at || new Date(data.expires_at) < new Date()) return null;
     return { response: data.response as unknown as ClarifyResponse, hitCount: data.hit_count };
   } catch {
     return null;
@@ -53,9 +64,7 @@ export async function storeClarifyResult(
   const client = getServiceClient();
   if (!client) return;
   const ttlHours = classifyTTL(response);
-  const expiresAt = ttlHours > 0
-    ? new Date(Date.now() + ttlHours * 3600_000).toISOString()
-    : null;
+  const expiresAt = new Date(Date.now() + ttlHours * 3600_000).toISOString();
   try {
     await client.from("clarify_cache").upsert(
       {

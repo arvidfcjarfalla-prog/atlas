@@ -117,7 +117,17 @@ const GB_ADM2_KEYS: JoinKeyConfig[] = [
   { geometryProperty: "name", codeFamily: { family: "name" } },
 ];
 
-const ENTRIES: GeometryEntry[] = [
+// Import auto-generated entries (if they exist)
+let GENERATED_ENTRIES: GeometryEntry[] = [];
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const generated = require("./geometry-registry-generated");
+  GENERATED_ENTRIES = generated.GENERATED_ENTRIES ?? [];
+} catch {
+  // Generated file doesn't exist yet — skip
+}
+
+const MANUAL_ENTRIES: GeometryEntry[] = [
   // ── Global layers ──────────────────────────────────────────
 
   {
@@ -322,12 +332,16 @@ const ENTRIES: GeometryEntry[] = [
     scope: { regionCode: "NO" },
     loaderType: "local_file",
     loaderTarget: "geo/no/municipalities.geojson",
-    joinKeys: GB_ADM2_KEYS,
-    featureIdProperty: "name",
-    nameProperty: "name",
-    featureCount: 431,
+    joinKeys: [
+      { geometryProperty: "kommunenummer", codeFamily: { family: "national", namespace: "no-ssb" } },
+      { geometryProperty: "name", codeFamily: { family: "name" } },
+    ],
+    featureIdProperty: "kommunenummer",
+    nameProperty: "kommunenavn",
+    featureCount: 357,
     resolution: "high",
     status: "production",
+    notes: "Source: robhop/fylker-og-kommuner. 357 features, 2024 municipality structure. kommunenummer is 4-digit string (e.g. '0301' for Oslo).",
   },
 
   // ── Denmark ────────────────────────────────────────────────
@@ -1019,6 +1033,10 @@ const ENTRIES: GeometryEntry[] = [
     status: "production",
   },
 ];
+
+// Merge manual (production) + generated (provisional) entries.
+// Manual entries take precedence in resolveBestEntry() via status ranking.
+const ENTRIES: GeometryEntry[] = [...MANUAL_ENTRIES, ...GENERATED_ENTRIES];
 
 // ═══════════════════════════════════════════════════════════════
 // Lookup helpers

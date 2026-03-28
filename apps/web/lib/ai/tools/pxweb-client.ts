@@ -1,10 +1,11 @@
 /**
- * PxWeb v2 API client.
+ * PxWeb API client.
  *
  * Searches tables, fetches metadata, queries data, and converts
  * JSON-stat2 responses to GeoJSON FeatureCollections.
  *
- * Supports PxWeb v2 APIs (SCB, SSB). v1 support deferred.
+ * Supports PxWeb v2 (SCB, SSB), PxWeb v1 (Finland, Estonia, Latvia, etc.),
+ * and Denmark StatBank (DST) via the StatsApiAdapter interface.
  */
 
 import { profileDataset } from "../profiler";
@@ -15,6 +16,8 @@ import {
   type DataSearchResult,
 } from "./data-search";
 import type { OfficialStatsSource } from "./global-stats-registry";
+import { worldBankAdapter } from "./worldbank-client";
+import { createSdmxAdapter, SDMX_CONFIGS } from "./sdmx-client";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -26,6 +29,8 @@ export interface PxTableInfo {
   firstPeriod: string;
   lastPeriod: string;
   source: string;
+  /** PxWeb v1: path within the database (e.g. "/synt") needed to build table URLs. */
+  path?: string;
 }
 
 export interface PxDimensionValue {
@@ -125,9 +130,16 @@ const PX_STOP_WORDS = new Set([
 const PX_COUNTRY_NAMES = new Set([
   "sweden", "sverige", "swedish", "svenska", "svenskt",
   "norway", "norge", "norwegian", "norska",
-  "denmark", "danmark", "danish", "danska",
-  "finland", "finnish", "finska",
-  "iceland", "isländska",
+  "denmark", "danmark", "danish", "danska", "danske",
+  "finland", "finnish", "finska", "suomi",
+  "iceland", "icelandic", "isländska", "ísland",
+  "estonia", "estonian", "eesti",
+  "latvia", "latvian", "latvija",
+  "lithuania", "lithuanian", "lietuva",
+  "slovenia", "slovenian", "slovenija",
+  "switzerland", "swiss", "schweiz", "suisse", "svizzera",
+  "cyprus", "cypriot",
+  "macedonia", "north macedonia", "makedonija",
   "municipalities", "municipality", "municipal",
   "kommuner", "kommun", "kommunerna",
   "counties", "county", "lan", "län",
@@ -153,8 +165,8 @@ const GEO_LEVEL_KEYWORDS: Record<string, string> = {
 
 /** Map from geo level hint to variableNames patterns that match that level. */
 const GEO_LEVEL_VARIABLE_PATTERNS: Record<string, string[]> = {
-  municipality: ["kommun", "kommune", "municipality"],
-  county: ["län", "fylke", "county"],
+  municipality: ["kommun", "kommuner", "kommune", "municipality"],
+  county: ["län", "länskod", "fylke", "county"],
   region: ["region"],
   admin1: ["region", "state", "province"],
 };
@@ -188,10 +200,10 @@ const TOTAL_LABEL_PATTERNS = [
 /** Dimension ID patterns for classification. */
 const GEO_PATTERNS = [
   "region", "kommun", "kommune", "fylke", "county", "län",
-  "municipality", "area", "geo",
+  "municipality", "area", "geo", "område",
 ];
 const TIME_PATTERNS = ["tid", "time", "year", "month", "quarter", "period", "år"];
-const CONTENTS_PATTERNS = ["contentscode", "contents", "tabellinnehåll"];
+const CONTENTS_PATTERNS = ["contentscode", "contents", "tabellinnehåll", "indhold"];
 
 /**
  * Multi-word English → Swedish compound phrases.
@@ -205,6 +217,8 @@ const EN_TO_SV_PHRASES: [string, string][] = [
   ["crime rate", "brottslighet"],
   ["employment rate", "sysselsättningsgrad"],
   ["unemployment rate", "arbetslöshet"],
+  ["housing prices", "bostadspriser"],
+  ["house prices", "bostadspriser"],
 ];
 
 /**
@@ -248,6 +262,75 @@ const SV_SYNONYMS: [string, string][] = [
 ];
 
 /**
+ * Nordic language (Norwegian, Danish, Finnish, Icelandic) statistical terms
+ * → English equivalents.
+ * Applied when searching non-Swedish PxWeb APIs (SSB, Statistics Denmark, etc.)
+ * that expose English-language tables.
+ */
+const NORDIC_TO_EN: Record<string, string> = {
+  // Norwegian / Danish (population & demographics)
+  befolkning: "population",
+  befolkningstall: "population",
+  folkemengde: "population",
+  folkegruppe: "population",
+  folketal: "population",
+  innbyggere: "population",
+  innvandring: "immigration",
+  utvandring: "emigration",
+  fødsler: "births",
+  fødselstall: "births",
+  dødsfall: "deaths",
+  dødstall: "deaths",
+  levealder: "life expectancy",
+  // Norwegian / Danish (labor & economy)
+  sysselsetting: "employment",
+  sysselsatte: "employment",
+  arbeidsledighet: "unemployment",
+  arbeidsledige: "unemployment",
+  inntekt: "income",
+  lønn: "wages",
+  bruttonasjonalprodukt: "gdp",
+  // Norwegian / Danish (housing)
+  bolig: "housing",
+  boliger: "housing",
+  husleie: "rent",
+  // Norwegian / Danish (geography levels)
+  fylke: "county",
+  fylker: "county",
+  kommune: "municipality",
+  kommuner: "municipality",
+  // Norwegian / Danish (education)
+  utdanning: "education",
+  utdanningsnivå: "educational attainment",
+  // Norwegian / Danish (health)
+  helse: "health",
+  sykdom: "disease",
+  // Danish-specific
+  indkomst: "income",
+  arbejdsløshed: "unemployment",
+  beskæftigelse: "employment",
+  uddannelse: "education",
+  sundhed: "health",
+  kriminalitet: "crime",
+  indvandring: "immigration",
+  udvandring: "emigration",
+  dødsfald: "deaths",
+  middellevetid: "life expectancy",
+  // Finnish
+  väestö: "population",
+  väestömäärä: "population",
+  syntyvyys: "births",
+  kuolleisuus: "deaths",
+  työttömyys: "unemployment",
+  työllisyys: "employment",
+  tulot: "income",
+  // Icelandic
+  íbúar: "population",
+  mannfjöldi: "population",
+  atvinnuleysi: "unemployment",
+};
+
+/**
  * English → Swedish translations for common statistical terms.
  * Used when searching SCB (Swedish) PxWeb APIs with English prompts.
  */
@@ -283,6 +366,11 @@ const EN_TO_SV: Record<string, string> = {
   agriculture: "jordbruk",
   divorce: "skilsmässa",
   marriage: "giftermål",
+  commuting: "pendling",
+  commute: "pendling",
+  emissions: "utsläpp",
+  emission: "utsläpp",
+  pollution: "utsläpp",
 };
 
 // ─── Pure functions ─────────────────────────────────────────
@@ -307,12 +395,23 @@ export function buildPxSearchQuery(prompt: string): string {
 }
 
 /**
- * Translate an English search query to Swedish for SCB PxWeb searches.
- * Replaces known English statistical terms with their Swedish equivalents,
- * then normalizes Swedish colloquial terms to SCB canonical terms.
+ * Translate a search query for the target API language.
+ *
+ * - lang="sv": English prompt words → Swedish SCB terms, then SV synonym normalization.
+ * - lang="en": Nordic-language words → English equivalents (for SSB, Statistics Denmark, etc.)
+ * - other: returned unchanged.
  */
 export function translateSearchQuery(query: string, lang: string): string {
+  if (lang === "en") {
+    // Translate Nordic statistical terms to English for non-Swedish PxWeb APIs
+    const words = query.split(/\s+/);
+    const translated = words.map((w) => NORDIC_TO_EN[w.toLowerCase()] ?? w);
+    return translated.join(" ");
+  }
+
   if (lang !== "sv") return query;
+
+  // Swedish path: English → Swedish + SV synonym normalization
   // 1. Apply multi-word English phrase translations first
   let result = query;
   for (const [en, sv] of EN_TO_SV_PHRASES) {
@@ -465,6 +564,25 @@ function findTotalValue(values: PxDimensionValue[]): string | null {
 }
 
 /**
+ * Remove historical/discontinued codes from a geo dimension.
+ *
+ * Stats agencies (SSB, SCB, etc.) often keep historical administrative units
+ * in the same dimension as current ones. Historical codes are identified by
+ * labels that contain a date range or "closed" marker:
+ *   "Viken (2020-2023)" — active only 2020-2023
+ *   "Akershus (-2019)"  — dissolved in 2019
+ *   "Bergen (-1971)"    — historical city
+ *
+ * When the remaining active set has ≥3 codes, remove the historical ones.
+ * Otherwise return the original set (prefer over-inclusive to empty).
+ */
+function filterHistoricalCodes(values: PxDimensionValue[]): PxDimensionValue[] {
+  const HISTORICAL_PATTERN = /\(\s*-?\d{4}|\(\d{4}\s*-\s*\d{4}\)/;
+  const active = values.filter((v) => !HISTORICAL_PATTERN.test(v.label));
+  return active.length >= 3 ? active : values;
+}
+
+/**
  * Filter mixed-level numeric geo codes to the most granular level.
  *
  * SCB (and other national stats agencies) often pack county codes (2-digit)
@@ -495,7 +613,7 @@ function filterToMostGranularLevel(codes: string[], geoHint?: string | null): st
   // If caller wants municipality level, prefer 4-digit codes
   if (geoHint === "municipality") {
     const muniLen4 = byLength.get(4);
-    if (muniLen4 && muniLen4.length >= 100) return muniLen4;
+    if (muniLen4 && muniLen4.length >= 10) return muniLen4;
   }
 
   // Default: most granular (longest codes) when there are enough of them
@@ -536,10 +654,14 @@ export function selectDimensions(
 
       case "geo": {
         geoDimIndex = selections.length;
-        // All regions, excluding national aggregate "00"
-        let codes = dim.values
-          .filter((v) => v.code !== "00")
-          .map((v) => v.code);
+        // Exclude national aggregate "00" and historical/discontinued units
+        let activeValues = filterHistoricalCodes(
+          dim.values.filter((v) => v.code !== "00"),
+        );
+        // Also exclude non-geographic special codes (abroad, ocean, shelf, etc.)
+        const NON_GEO_LABELS = /abroad|ocean|continental shelf|jan mayen|svalbard|not resident|not stated/i;
+        activeValues = activeValues.filter((v) => !NON_GEO_LABELS.test(v.label));
+        let codes = activeValues.map((v) => v.code);
         // When mixed levels exist (e.g. county + municipality), select level matching hint
         codes = filterToMostGranularLevel(codes, geoLevelHint);
         // If filtering removed everything (only "00" existed), include it
@@ -635,9 +757,13 @@ export function selectDimensionsWithAmbiguity(
 
       case "geo": {
         geoDimIndex = selections.length;
-        let codes2 = dim.values
-          .filter((v) => v.code !== "00")
-          .map((v) => v.code);
+        // Exclude national aggregate "00", historical units, and non-geographic specials
+        let activeValues2 = filterHistoricalCodes(
+          dim.values.filter((v) => v.code !== "00"),
+        );
+        const NON_GEO_LABELS2 = /abroad|ocean|continental shelf|jan mayen|svalbard|not resident|not stated/i;
+        activeValues2 = activeValues2.filter((v) => !NON_GEO_LABELS2.test(v.label));
+        let codes2 = activeValues2.map((v) => v.code);
         // When mixed levels exist, select level matching the geo hint
         codes2 = filterToMostGranularLevel(codes2, geoLevelHint);
         selections.push({
@@ -948,8 +1074,10 @@ export async function fetchData(
 
     for (const sel of selections) {
       // PxWeb v2 uses valueCodes[DimId]=code1,code2,...
-      // Use wildcard for large selections to keep URL under server limits.
-      const codes = sel.valueCodes.length > 50 ? "*" : sel.valueCodes.join(",");
+      // Use wildcard only for very large selections (>500) to avoid URL length limits.
+      // For geo dimensions with mixed levels (e.g. county+municipality codes),
+      // explicit codes are required so we only get the requested granularity.
+      const codes = sel.valueCodes.length > 500 ? "*" : sel.valueCodes.join(",");
       params.set(`valueCodes[${sel.dimensionId}]`, codes);
     }
 
@@ -967,6 +1095,406 @@ export async function fetchData(
     return null;
   }
 }
+
+// ─── Stats API adapter ──────────────────────────────────────
+
+/**
+ * Adapter interface for structured statistics APIs.
+ * Allows the resolution pipeline to work with PxWeb v2, DST, and
+ * future API types through a common interface.
+ */
+export interface StatsApiAdapter {
+  searchTables(baseUrl: string, query: string, lang: string, pageSize?: number): Promise<PxTableInfo[]>;
+  fetchMetadata(baseUrl: string, tableId: string, lang: string): Promise<PxTableMetadata | null>;
+  fetchData(baseUrl: string, tableId: string, selections: PxDimensionSelection[], lang: string): Promise<PxJsonStat2Response | null>;
+}
+
+export const pxwebV2Adapter: StatsApiAdapter = { searchTables, fetchMetadata, fetchData };
+export const dstAdapter: StatsApiAdapter = {
+  searchTables: searchTablesDst,
+  fetchMetadata: fetchMetadataDst,
+  fetchData: fetchDataDst,
+};
+
+/**
+ * Get the appropriate API adapter for a source.
+ * Returns null for unsupported sources.
+ */
+export function getStatsAdapter(source: OfficialStatsSource): StatsApiAdapter | null {
+  if (source.apiType === "pxweb" && source.baseUrl.includes("/v2")) return pxwebV2Adapter;
+  if (source.apiType === "pxweb" && source.baseUrl.includes("/v1")) return pxwebV1Adapter;
+  if (source.id === "dk-dst") return dstAdapter;
+  if (source.id === "intl-worldbank") return worldBankAdapter;
+  if (source.apiType === "sdmx" && SDMX_CONFIGS[source.id]) return createSdmxAdapter(SDMX_CONFIGS[source.id]);
+  return null;
+}
+
+// ─── Denmark StatBank (DST) API ─────────────────────────────
+
+/**
+ * Search tables in the Denmark StatBank API.
+ * POST-based search returning table metadata.
+ */
+async function searchTablesDst(
+  baseUrl: string,
+  query: string,
+  lang = "en",
+  _pageSize?: number,
+): Promise<PxTableInfo[]> {
+  try {
+    const res = await fetch(`${baseUrl}/tables`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, lang }),
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    return (json ?? []).map((t: Record<string, unknown>) => ({
+      id: t.id as string,
+      label: (t.text as string) ?? "",
+      description: (t.description as string) ?? "",
+      variableNames: (t.variables as string[]) ?? [],
+      firstPeriod: (t.firstPeriod as string) ?? "",
+      lastPeriod: (t.latestPeriod as string) ?? "",
+      source: "Statistics Denmark",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch table metadata from the Denmark StatBank API.
+ * DST returns {id, text, variables: [{id, text, values: [{id, text}], time, map, elimination}]}.
+ */
+async function fetchMetadataDst(
+  baseUrl: string,
+  tableId: string,
+  lang = "en",
+): Promise<PxTableMetadata | null> {
+  try {
+    const res = await fetch(`${baseUrl}/tableinfo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table: tableId, lang }),
+      signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const dimensions: PxDimension[] = [];
+
+    if (json.variables && Array.isArray(json.variables)) {
+      for (const v of json.variables) {
+        const id = v.id ?? v.code ?? "";
+        const label = v.text ?? v.label ?? id;
+
+        // DST provides explicit time and map flags
+        let type: PxDimension["type"];
+        if (v.time === true) {
+          type = "time";
+        } else if (v.map) {
+          type = "geo";
+        } else {
+          type = classifyDimension(id, label);
+        }
+
+        // DST values are {id, text} objects
+        const values: PxDimensionValue[] = [];
+        if (Array.isArray(v.values)) {
+          for (const val of v.values) {
+            if (typeof val === "object" && val !== null) {
+              values.push({
+                code: (val as Record<string, string>).id ?? "",
+                label: (val as Record<string, string>).text ?? "",
+              });
+            }
+          }
+        }
+
+        dimensions.push({ id, label, type, values });
+      }
+    }
+
+    if (dimensions.length === 0) return null;
+
+    return {
+      id: tableId,
+      label: json.text ?? json.title ?? tableId,
+      source: "Statistics Denmark",
+      dimensions,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch data from the Denmark StatBank API in JSON-stat format.
+ * DST uses POST and returns JSON-stat 1.0 which we normalize to 2.0.
+ */
+async function fetchDataDst(
+  baseUrl: string,
+  tableId: string,
+  selections: PxDimensionSelection[],
+  lang = "en",
+): Promise<PxJsonStat2Response | null> {
+  try {
+    const variables = selections.map((sel) => ({
+      code: sel.dimensionId,
+      values: sel.valueCodes.length > 500 ? ["*"] : sel.valueCodes,
+    }));
+
+    const res = await fetch(`${baseUrl}/data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        table: tableId,
+        format: "JSONSTAT",
+        lang,
+        variables,
+      }),
+      signal: AbortSignal.timeout(DATA_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return normalizeJsonStat(json);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Normalize JSON-stat 1.0 (used by DST) → JSON-stat 2.0 format
+ * so the existing jsonStat2ToRecords parser can handle it.
+ */
+function normalizeJsonStat(json: Record<string, unknown>): PxJsonStat2Response | null {
+  // Already JSON-stat 2.0
+  if (json.class === "dataset" || json.version === "2.0") {
+    return json as unknown as PxJsonStat2Response;
+  }
+
+  // JSON-stat 1.0: dataset under "dataset" key or a named key
+  let dataset: Record<string, unknown> | null = null;
+  if (json.dataset && typeof json.dataset === "object") {
+    dataset = json.dataset as Record<string, unknown>;
+  } else {
+    for (const key of Object.keys(json)) {
+      const val = json[key];
+      if (val && typeof val === "object" && (val as Record<string, unknown>).dimension) {
+        dataset = val as Record<string, unknown>;
+        break;
+      }
+    }
+  }
+
+  if (!dataset) return null;
+
+  const dimension = dataset.dimension as Record<string, unknown> | undefined;
+  const value = dataset.value as (number | null)[] | undefined;
+  if (!dimension || !value) return null;
+
+  // JSON-stat 1.0 stores id, size, role inside the dimension object
+  // rather than at the dataset top level (unlike JSON-stat 2.0).
+  let id = dataset.id as string[] | undefined;
+  let size = dataset.size as number[] | undefined;
+  if (!id && dimension.id) {
+    id = dimension.id as unknown as string[];
+  }
+  if (!size && dimension.size) {
+    size = dimension.size as unknown as number[];
+  }
+
+  // If still no id/size, derive from dimension keys (skip meta keys)
+  const metaKeys = new Set(["id", "size", "role"]);
+  if (!id) {
+    id = Object.keys(dimension).filter((k) => !metaKeys.has(k));
+  }
+  if (!size) {
+    size = id.map((dimId) => {
+      const dim = dimension[dimId] as { category?: { index?: Record<string, number> } } | undefined;
+      const idx = dim?.category?.index;
+      return idx ? Object.keys(idx).length : 1;
+    });
+  }
+
+  if (!id || id.length === 0 || !size) return null;
+
+  // Build clean dimension object (exclude meta keys)
+  const cleanDimension: Record<string, unknown> = {};
+  for (const dimId of id) {
+    if (dimension[dimId]) cleanDimension[dimId] = dimension[dimId];
+  }
+
+  return {
+    version: "2.0",
+    class: "dataset",
+    label: (dataset.label as string) ?? "",
+    source: (dataset.source as string) ?? "",
+    id,
+    size,
+    dimension: cleanDimension as PxJsonStat2Response["dimension"],
+    value,
+  };
+}
+
+// ─── PxWeb v1 API ───────────────────────────────────────────
+
+/**
+ * Swap the language segment in a PxWeb v1 base URL.
+ * e.g. ".../api/v1/en/StatFin" → ".../api/v1/fi/StatFin"
+ */
+function swapV1Lang(baseUrl: string, lang: string): string {
+  return baseUrl.replace(/\/api\/v1\/[a-z]{2}(\/|$)/, `/api/v1/${lang}$1`);
+}
+
+/**
+ * Search tables in a PxWeb v1 API.
+ * V1 uses GET {baseUrl}?query={q} — the baseUrl already includes the database path.
+ */
+async function searchTablesV1(
+  baseUrl: string,
+  query: string,
+  lang = "en",
+  _pageSize?: number,
+): Promise<PxTableInfo[]> {
+  try {
+    const url = `${swapV1Lang(baseUrl, lang)}?query=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    if (!Array.isArray(json)) return [];
+    return json.map((t: Record<string, unknown>) => {
+      const path = (t.path as string) ?? "";
+      const rawId = t.id as string;
+      // Combine path + id so downstream can use table.id directly for metadata/data
+      const fullId = path ? `${path}/${rawId}` : rawId;
+      return {
+        id: fullId,
+        label: (t.title as string) ?? "",
+        description: "",
+        variableNames: [],
+        firstPeriod: "",
+        lastPeriod: "",
+        source: "",
+        path,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch table metadata from a PxWeb v1 API.
+ * V1 uses GET {baseUrl}{path}/{tableId} — returns same variables format as v2.
+ */
+async function fetchMetadataV1(
+  baseUrl: string,
+  tableId: string,
+  lang = "en",
+): Promise<PxTableMetadata | null> {
+  try {
+    // tableId for v1 may include the path prefix (e.g. "/synt/statfin_synt_pxt_12dj.px")
+    const url = `${swapV1Lang(baseUrl, lang)}${tableId.startsWith("/") ? "" : "/"}${tableId}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const dimensions: PxDimension[] = [];
+
+    if (json.variables && Array.isArray(json.variables)) {
+      for (const v of json.variables) {
+        const id = v.code ?? v.id ?? "";
+        const label = v.text ?? v.label ?? id;
+        const values: PxDimensionValue[] = [];
+
+        if (v.values && v.valueTexts) {
+          for (let i = 0; i < v.values.length; i++) {
+            values.push({
+              code: v.values[i],
+              label: v.valueTexts[i] ?? v.values[i],
+            });
+          }
+        }
+
+        dimensions.push({
+          id,
+          label,
+          type: classifyDimension(id, label),
+          values,
+        });
+      }
+    }
+
+    if (dimensions.length === 0) return null;
+
+    return {
+      id: tableId,
+      label: json.title ?? json.label ?? tableId,
+      source: json.source ?? "",
+      dimensions,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch data from a PxWeb v1 API.
+ * V1 uses POST to the table URL with a query body; returns JSON-stat2 when requested.
+ */
+async function fetchDataV1(
+  baseUrl: string,
+  tableId: string,
+  selections: PxDimensionSelection[],
+  lang = "en",
+): Promise<PxJsonStat2Response | null> {
+  try {
+    const url = `${swapV1Lang(baseUrl, lang)}${tableId.startsWith("/") ? "" : "/"}${tableId}`;
+    const query = selections.map((sel) => ({
+      code: sel.dimensionId,
+      selection: {
+        filter: "item",
+        values: sel.valueCodes.length > 500 ? ["*"] : sel.valueCodes,
+      },
+    }));
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        response: { format: "json-stat2" },
+      }),
+      signal: AbortSignal.timeout(DATA_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    // V1 with json-stat2 format should return 2.0 directly, but normalize just in case
+    if (json.class === "dataset" && json.id && json.size && json.value) {
+      return json as PxJsonStat2Response;
+    }
+    return normalizeJsonStat(json);
+  } catch {
+    return null;
+  }
+}
+
+export const pxwebV1Adapter: StatsApiAdapter = {
+  searchTables: searchTablesV1,
+  fetchMetadata: fetchMetadataV1,
+  fetchData: fetchDataV1,
+};
 
 // ─── Main orchestrator ──────────────────────────────────────
 

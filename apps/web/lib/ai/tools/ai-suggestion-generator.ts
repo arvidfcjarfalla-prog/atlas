@@ -8,11 +8,10 @@
  * Called from the clarify route before surfacing the tabular fallback.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { MODELS } from "../ai-client";
 
-const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 256;
-const TIMEOUT_MS = 3_000;
 
 /**
  * Build the prompt for suggestion generation.
@@ -76,30 +75,67 @@ export async function generateTabularSuggestions(
   tableLabel: string,
   reasons: string[],
 ): Promise<string[]> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return [];
-
   try {
-    const client = new Anthropic({ apiKey });
     const { system, user } = buildSuggestionPrompt(
       originalPrompt,
       tableLabel,
       reasons,
     );
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+    const { text } = await generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: MAX_TOKENS,
       system,
       messages: [{ role: "user", content: user }],
     });
 
-    const textBlock = response.content.find(
-      (b): b is Anthropic.TextBlock => b.type === "text",
-    );
-    if (!textBlock) return [];
+    return parseSuggestionResponse(text);
+  } catch {
+    return [];
+  }
+}
 
-    return parseSuggestionResponse(textBlock.text);
+/**
+ * Generate alternative prompt suggestions when data resolution fails entirely.
+ *
+ * Similar to tabular suggestions but for the general "no data found" case.
+ * Suggests prompts that are as close as possible to what the user asked
+ * but that Atlas can actually resolve (World Bank, Eurostat, Overpass, etc.).
+ */
+export async function generateAlternativeSuggestions(
+  originalPrompt: string,
+  warning?: string,
+): Promise<string[]> {
+  try {
+    const system = `You are a geographic data assistant for Atlas, a mapping platform. The user asked for a map but we could not find the data.
+
+Atlas can resolve these data sources automatically:
+- World Bank: country-level stats (GDP, population, CO2, life expectancy, literacy, unemployment, etc.)
+- Eurostat: European country-level stats (minimum wage, Gini, unemployment, etc.)
+- Data Commons: subnational stats for US states, European NUTS regions
+- Overpass/OSM: points of interest in cities (restaurants, parks, museums, hospitals, etc.)
+- NASA EONET: active natural events (earthquakes, wildfires, volcanoes, storms)
+- USGS: earthquake data
+
+Generate exactly 3 short alternative prompt suggestions (under 15 words each) as a JSON array of strings. Each suggestion must be:
+1. As close as possible to the user's original intent
+2. Something Atlas can actually resolve with its built-in data sources
+3. A complete prompt the user can submit directly
+
+Rules:
+- Output ONLY a JSON array, no other text
+- Do not suggest uploading data
+- Prefer the same geographic region if possible
+- Prefer the same topic/metric at a different geographic level if possible`;
+
+    const { text } = await generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: MAX_TOKENS,
+      system,
+      messages: [{ role: "user", content: `Original prompt: ${originalPrompt}${warning ? `\nReason for failure: ${warning}` : ""}` }],
+    });
+
+    return parseSuggestionResponse(text);
   } catch {
     return [];
   }

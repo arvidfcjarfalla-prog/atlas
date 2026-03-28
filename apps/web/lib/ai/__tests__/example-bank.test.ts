@@ -38,11 +38,11 @@ const lineProfile: DatasetProfile = {
 };
 
 describe("EXAMPLES bank", () => {
-  it("contains 9 examples", () => {
-    expect(EXAMPLES).toHaveLength(9);
+  it("contains 11 examples", () => {
+    expect(EXAMPLES).toHaveLength(11);
   });
 
-  it("covers all 7 map families", () => {
+  it("covers all 8 map families", () => {
     const families = new Set(EXAMPLES.flatMap((e) => e.families));
     expect(families).toEqual(
       new Set([
@@ -53,27 +53,28 @@ describe("EXAMPLES bank", () => {
         "proportional-symbol",
         "flow",
         "isochrone",
+        "hexbin",
       ]),
     );
   });
 
-  it("has 3 with-profile examples", () => {
+  it("has 5 with-profile examples", () => {
     const withProfile = EXAMPLES.filter((e) => e.hasProfile);
-    expect(withProfile).toHaveLength(3);
+    expect(withProfile).toHaveLength(5);
     expect(withProfile.every((e) => e.profile)).toBe(true);
   });
 });
 
 describe("selectExamples", () => {
-  it("returns all 9 examples without profile", () => {
+  it("returns all 11 examples without profile", () => {
     const result = selectExamples();
-    expect(result).toHaveLength(9);
+    expect(result).toHaveLength(11);
     expect(result).toEqual(EXAMPLES);
   });
 
-  it("returns all 9 when profile is undefined", () => {
+  it("returns all 11 when profile is undefined", () => {
     const result = selectExamples(undefined);
-    expect(result).toHaveLength(9);
+    expect(result).toHaveLength(11);
   });
 
   it("returns 3 examples for Point profile", () => {

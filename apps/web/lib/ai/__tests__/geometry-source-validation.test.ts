@@ -431,26 +431,29 @@ describe("no:admin1 property validation", () => {
 describe("no:municipalities property validation", () => {
   const entry = findById("no:municipalities")!;
 
-  it("exists and uses name-only join (geoBoundaries ADM2 has no codes)", () => {
+  it("exists with kommunenummer as primary join key and name as fallback", () => {
     expect(entry).toBeDefined();
-    expect(entry.joinKeys.length).toBe(1);
-    expect(entry.joinKeys[0].geometryProperty).toBe("name");
-    expect(entry.joinKeys[0].codeFamily.family).toBe("name");
+    expect(entry.joinKeys.length).toBe(2);
+    expect(entry.joinKeys[0].geometryProperty).toBe("kommunenummer");
+    expect(entry.joinKeys[0].codeFamily.family).toBe("national");
+    expect(entry.joinKeys[0].codeFamily.namespace).toBe("no-ssb");
+    expect(entry.joinKeys[1].geometryProperty).toBe("name");
+    expect(entry.joinKeys[1].codeFamily.family).toBe("name");
   });
 
   it("has production status", () => {
     expect(entry.status).toBe("production");
   });
 
-  it("representative municipality names join via name", () => {
+  it("representative municipality SSB codes join via kommunenummer", () => {
     const geometry = makeFC([
-      makeFeature({ name: "Oslo", iso_a3: "NOR" }),
-      makeFeature({ name: "Stavanger", iso_a3: "NOR" }),
-      makeFeature({ name: "Bergen", iso_a3: "NOR" }),
+      makeFeature({ kommunenummer: "0301", name: "Oslo" }),
+      makeFeature({ kommunenummer: "1103", name: "Stavanger" }),
+      makeFeature({ kommunenummer: "4601", name: "Bergen" }),
     ]);
 
-    const rows = [makeRow("Oslo", 100), makeRow("Stavanger", 200), makeRow("Bergen", 300)];
-    const plan = makePlan(entry, 0); // name join key
+    const rows = [makeRow("0301", 100), makeRow("1103", 200), makeRow("4601", 300)];
+    const plan = makePlan(entry, 0); // kommunenummer join key (index 0)
 
     const result = executeJoin(plan, rows, geometry);
     expect(result.diagnostics.matched).toBe(3);

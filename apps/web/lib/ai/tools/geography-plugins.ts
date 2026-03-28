@@ -175,6 +175,20 @@ export interface GeographyPlugin {
    * Applied after the generic detector/planner runs.
    */
   confidenceHints?(): ConfidenceHint[];
+
+  /**
+   * Return known table IDs for specific topics.
+   *
+   * When free-text search fails to surface the right table, plugins can
+   * contribute hardcoded table IDs for well-known metrics. The pipeline
+   * will fetch these directly before falling back to full-text search.
+   *
+   * Keys are normalized topic keywords (lowercase English), values are
+   * arrays of table IDs in priority order.
+   *
+   * Example: { "population": ["11342", "05803"] }
+   */
+  knownTables?(): Record<string, string[]>;
 }
 
 /** Plugin family categories. */
@@ -236,6 +250,62 @@ export function clearPlugins(): void {
  */
 export function pluginCount(): number {
   return pluginRegistry.length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plugin runner: known table lookup
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Collect known table IDs from all plugins applicable to a source,
+ * for the given topic keywords (normalized lowercase English).
+ *
+ * Takes a minimal source descriptor so it can be called early in the
+ * pipeline before a full NormalizedSourceResult is available.
+ *
+ * Returns an array of table IDs in plugin priority order, de-duplicated.
+ * The caller should try these first before falling back to full-text search.
+ */
+export function getKnownTablesForSource(
+  source: { sourceId: string; countryCode?: string },
+  topicKeywords: string[],
+): string[] {
+  // Build a minimal NormalizedSourceResult for appliesTo checks
+  const minimalSource = {
+    sourceMetadata: { sourceId: source.sourceId, apiType: "pxweb-v2" as const },
+    countryHints: source.countryCode ? [source.countryCode] : [],
+    geographyHints: [],
+    dimensions: [],
+    rows: [],
+    candidateMetricFields: [],
+    adapterStatus: "ok" as const,
+    confidence: 0,
+    diagnostics: { steps: [] },
+    candidates: [],
+  } as unknown as NormalizedSourceResult;
+
+  const tableIds: string[] = [];
+  const seen = new Set<string>();
+
+  for (const plugin of pluginRegistry) {
+    if (!plugin.appliesTo(minimalSource)) continue;
+    if (!plugin.knownTables) continue;
+
+    const map = plugin.knownTables();
+    for (const kw of topicKeywords) {
+      const ids = map[kw.toLowerCase()];
+      if (ids) {
+        for (const id of ids) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            tableIds.push(id);
+          }
+        }
+      }
+    }
+  }
+
+  return tableIds;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -711,6 +781,268 @@ export const swedenScbPlugin: GeographyPlugin = {
           minUnits: 100,
         },
         reason: "SCB municipality data with ≥100 municipalities — high confidence",
+      },
+    ];
+  },
+};
+
+/**
+ * Norway SSB plugin.
+ *
+ * Recognizes SSB county codes (2-digit, 03–56) and maps them to
+ * the GeoJSON county names (2020-era 11-county structure).
+ * SSB labels contain bilingual suffixes ("Nordland - Nordlánnda") —
+ * the normalizer strips the suffix and maps to clean GeoJSON names.
+ */
+export const norwaySsbPlugin: GeographyPlugin = {
+  id: "pxweb-no-ssb",
+  name: "Norway SSB (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("no-ssb") || sid.includes("ssb") ||
+      source.countryHints.includes("NO");
+  },
+
+  matchCodes(codes, _dimension) {
+    // SSB county codes: 2-digit, "03"–"56" (current + recent historical)
+    const countyMatch = codes.filter((c) => /^\d{2}$/.test(c) && Number(c) >= 3 && Number(c) <= 56);
+    if (countyMatch.length / codes.length >= 0.6 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "no-ssb" },
+        level: "admin1",
+        confidence: 0.75,
+        reason: `${countyMatch.length}/${codes.length} match SSB county code pattern (2-digit 03–56)`,
+      };
+    }
+
+    // SSB municipality codes: 4-digit, "0101"–"5630"
+    // SSB tables often include county aggregates (2-digit) alongside municipality
+    // codes in the same dimension. Accept if there are ≥ 50 4-digit codes,
+    // regardless of what fraction of the total they are.
+    const munMatch = codes.filter((c) => /^\d{4}$/.test(c));
+    const munRatioOk = munMatch.length / codes.length >= 0.8;
+    const munCountOk = munMatch.length >= 50;
+    if ((munRatioOk || munCountOk) && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "no-ssb" },
+        level: "municipality",
+        confidence: munRatioOk ? 0.7 : 0.6,
+        reason: `${munMatch.length}/${codes.length} match SSB municipality code pattern (4-digit)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        dimensionId: "Region",
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "no-ssb" },
+        confidence: 0.8,
+      },
+      {
+        // SSB municipality dimension is also called "Region" when scoped to (K)-level tables
+        dimensionId: /^Region$/,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "no-ssb" },
+        confidence: 0.5, // lower — actual level is determined by matchCodes
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Municipality level: SSB 4-digit codes match kommunenummer directly
+        sourceFamily: { family: "national" as const, namespace: "no-ssb" },
+        targetFamily: { family: "national" as const, namespace: "no-ssb" },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.9,
+        description: "SSB municipality codes → GeoJSON kommunenummer (direct code match)",
+      },
+      {
+        // County level: SSB 2-digit codes → GeoJSON county names via label crosswalk
+        sourceFamily: { family: "national" as const, namespace: "no-ssb" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.85,
+        description: "SSB county codes → GeoJSON county names via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // SSB county codes → GeoJSON names.
+    //
+    // GeoJSON uses the 2020-era 11-county structure (Viken, Vestfold og Telemark,
+    // Troms og Finnmark as merged counties). Norway re-split these in 2024, so
+    // SSB data from 2024+ uses the new 15-county codes (31-33, 39-40, 55-56).
+    //
+    // The 2024 → 2020 mapping comes from SSB KLASS correspondence table 1282
+    // ("Fylkesinndeling 2024 - Fylkesinndeling 2022"):
+    //   31 Østfold, 32 Akershus, 33 Buskerud → 30 Viken
+    //   39 Vestfold, 40 Telemark → 38 Vestfold og Telemark
+    //   55 Troms, 56 Finnmark → 54 Troms og Finnmark
+    const SSB_TO_NAME: Record<string, string> = {
+      // 2020-era codes (11 counties, still valid for 2020-2023 data)
+      "03": "Oslo",
+      "11": "Rogaland",
+      "15": "Møre og Romsdal",
+      "18": "Nordland",
+      "30": "Viken",
+      "34": "Innlandet",
+      "38": "Vestfold og Telemark",
+      "42": "Agder",
+      "46": "Vestland",
+      "50": "Trøndelag",
+      "54": "Troms og Finnmark",
+      // 2024 re-split codes → mapped to their 2020 merged GeoJSON polygon
+      "31": "Viken",               // Østfold re-established
+      "32": "Viken",               // Akershus re-established
+      "33": "Viken",               // Buskerud re-established
+      "39": "Vestfold og Telemark", // Vestfold re-established
+      "40": "Vestfold og Telemark", // Telemark re-established
+      "55": "Troms og Finnmark",   // Troms re-established
+      "56": "Troms og Finnmark",   // Finnmark re-established
+    };
+    return [
+      {
+        name: "ssb-county-to-name",
+        normalizer: (code: string) => {
+          const padded = code.padStart(2, "0");
+          return SSB_TO_NAME[padded] ?? null;
+        },
+      },
+      {
+        // Strip bilingual label suffixes: "Nordland - Nordlánnda" → "Nordland"
+        // Also strips date ranges: "Viken (2020-2023)" → "Viken"
+        name: "ssb-label-cleanup",
+        normalizer: (label: string) => {
+          const cleaned = label
+            .replace(/\s*[-–]\s*[^\s].*$/, "")   // strip " - Nordlánnda" suffix
+            .replace(/\s*\(\d{4}.*\)$/, "")       // strip "(2020-2023)" suffix
+            .trim();
+          return cleaned !== label ? cleaned : null;
+        },
+      },
+      {
+        // SSB municipality codes are 4-digit but may arrive without leading zero.
+        // Normalize to always 4-digit string to match kommunenummer in GeoJSON.
+        name: "ssb-municipality-leading-zero",
+        normalizer: (code: string) => {
+          if (/^\d{3}$/.test(code)) return code.padStart(4, "0");
+          if (/^\d{4}$/.test(code)) return code; // already 4 digits
+          return null;
+        },
+      },
+    ];
+  },
+
+  knownTables() {
+    // SSB table IDs for common topics.
+    // SSB's full-text search doesn't reliably surface these for natural-language
+    // queries — e.g. "population" returns student/income tables before 11342.
+    return {
+      // Population by county
+      population: ["11342", "05803"],
+      // Employment / labor force
+      employment: ["12550", "05111"],
+      // Income
+      income: ["12558", "05655"],
+      // Housing
+      housing: ["06265"],
+      // Education
+      education: ["13362", "09429"],
+      // Immigration
+      immigration: ["10211"],
+    };
+  },
+};
+
+/**
+ * Denmark DST plugin.
+ *
+ * Recognizes DST municipality codes (3-digit 101–860) and region
+ * codes (4-digit 1081–1085). DST metadata has explicit `map` flags
+ * on geographic variables, so dimension classification is handled
+ * upstream — this plugin provides code matching and join key families.
+ */
+export const denmarkDstPlugin: GeographyPlugin = {
+  id: "dst-dk",
+  name: "Denmark DST",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("dk-dst") || sid.includes("dst") ||
+      source.countryHints.includes("DK");
+  },
+
+  matchCodes(codes, _dimension) {
+    // DST municipality codes: 3-digit "101"–"860"
+    const munMatch = codes.filter((c) => /^\d{3}$/.test(c) && Number(c) >= 101 && Number(c) <= 860);
+    if (munMatch.length / codes.length >= 0.7 && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "dk-dst" },
+        level: "municipality",
+        confidence: 0.7,
+        reason: `${munMatch.length}/${codes.length} match DST municipality code pattern (3-digit 101–860)`,
+      };
+    }
+
+    // DST region codes: 4-digit "1081"–"1085"
+    const regMatch = codes.filter((c) => /^10[89]\d$/.test(c));
+    if (regMatch.length >= 4) {
+      return {
+        codeFamily: { family: "national", namespace: "dk-dst" },
+        level: "admin1",
+        confidence: 0.7,
+        reason: `${regMatch.length}/${codes.length} match DST region code pattern (4-digit 108x–109x)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        dimensionId: /^OMRÅDE$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "dk-dst" },
+        confidence: 0.8,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        sourceFamily: { family: "national" as const, namespace: "dk-dst" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.75,
+        description: "DST municipality codes → geometry names via label crosswalk",
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          level: "municipality" as GeographyLevel,
+          minUnits: 50,
+        },
+        reason: "DST municipality data with ≥50 municipalities — good coverage",
       },
     ];
   },

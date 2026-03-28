@@ -71,7 +71,7 @@ describe("normalizeForJoin", () => {
   });
 
   it("handles combined normalization", () => {
-    expect(normalizeForJoin("  Île-de-France  ")).toBe("ile-de-france");
+    expect(normalizeForJoin("  Île-de-France  ")).toBe("ile de france");
   });
 });
 

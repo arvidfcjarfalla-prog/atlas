@@ -293,6 +293,7 @@ export function normalizePxWebResult(opts: {
   searchQuery: string;
   tables: PxTableInfo[];
   language: string;
+  apiType?: string;
 }): NormalizedSourceResult {
   const {
     metadata,
@@ -309,6 +310,7 @@ export function normalizePxWebResult(opts: {
     tables,
     language,
   } = opts;
+  const resolvedApiType = opts.apiType ?? "pxweb-v2";
 
   // No records → no_data
   if (records.length === 0) {
@@ -318,7 +320,7 @@ export function normalizePxWebResult(opts: {
         sourceName,
         tableId: metadata.id,
         tableLabel: metadata.label,
-        apiType: "pxweb-v2",
+        apiType: resolvedApiType,
         fetchedAt: Date.now(),
         language,
       },
@@ -341,7 +343,7 @@ export function normalizePxWebResult(opts: {
         sourceName,
         tableId: metadata.id,
         tableLabel: metadata.label,
-        apiType: "pxweb-v2",
+        apiType: resolvedApiType,
         fetchedAt: Date.now(),
         language,
       },
@@ -410,7 +412,7 @@ export function normalizePxWebResult(opts: {
       sourceName,
       tableId: metadata.id,
       tableLabel: metadata.label,
-      apiType: "pxweb-v2",
+      apiType: resolvedApiType,
       fetchedAt: Date.now(),
       language,
     },
@@ -442,8 +444,10 @@ export function normalizePxNoGeoDimension(opts: {
   searchQuery: string;
   tables: PxTableInfo[];
   language: string;
+  apiType?: string;
 }): NormalizedSourceResult {
   const { metadata, sourceId, sourceName, prompt, searchQuery, tables, language } = opts;
+  const resolvedApiType = opts.apiType ?? "pxweb-v2";
 
   return {
     adapterStatus: "no_geo_dimension",
@@ -457,7 +461,7 @@ export function normalizePxNoGeoDimension(opts: {
       sourceName,
       tableId: metadata.id,
       tableLabel: metadata.label,
-      apiType: "pxweb-v2",
+      apiType: resolvedApiType,
       fetchedAt: Date.now(),
       language,
     },
