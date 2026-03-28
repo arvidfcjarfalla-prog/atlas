@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "origin": "Tyskland", "destination": "Frankrike", "volume": 172, "category": "Varor" },
+      "geometry": { "type": "LineString", "coordinates": [[10.45, 51.17], [2.35, 48.86]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "origin": "Tyskland", "destination": "Nederländerna", "volume": 198, "category": "Varor" },
+      "geometry": { "type": "LineString", "coordinates": [[10.45, 51.17], [4.90, 52.37]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "origin": "Frankrike", "destination": "Spanien", "volume": 82, "category": "Varor" },
+      "geometry": { "type": "LineString", "coordinates": [[2.35, 48.86], [-3.70, 40.42]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "origin": "Storbritannien", "destination": "Tyskland", "volume": 124, "category": "Tjänster" },
+      "geometry": { "type": "LineString", "coordinates": [[-0.13, 51.51], [10.45, 51.17]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "origin": "Sverige", "destination": "Tyskland", "volume": 45, "category": "Tjänster" },
+      "geometry": { "type": "LineString", "coordinates": [[18.07, 59.33], [10.45, 51.17]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "origin": "Italien", "destination": "Tyskland", "volume": 136, "category": "Energi" },
+      "geometry": { "type": "LineString", "coordinates": [[12.50, 41.90], [10.45, 51.17]] }
+    }
+  ]
+}

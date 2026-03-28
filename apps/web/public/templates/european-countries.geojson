@@ -1,0 +1,55 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Tyskland", "population": 83200000, "area_km2": 357022, "density": 233 },
+      "geometry": { "type": "Polygon", "coordinates": [[[5.9, 47.3], [15.0, 47.3], [15.0, 55.1], [5.9, 55.1], [5.9, 47.3]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Frankrike", "population": 67750000, "area_km2": 551695, "density": 123 },
+      "geometry": { "type": "Polygon", "coordinates": [[[-5.1, 42.3], [8.2, 42.3], [8.2, 51.1], [-5.1, 51.1], [-5.1, 42.3]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Storbritannien", "population": 67330000, "area_km2": 243610, "density": 276 },
+      "geometry": { "type": "Polygon", "coordinates": [[[-8.2, 49.9], [1.8, 49.9], [1.8, 58.7], [-8.2, 58.7], [-8.2, 49.9]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Italien", "population": 59110000, "area_km2": 301340, "density": 196 },
+      "geometry": { "type": "Polygon", "coordinates": [[[6.6, 36.6], [18.5, 36.6], [18.5, 47.1], [6.6, 47.1], [6.6, 36.6]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Spanien", "population": 47420000, "area_km2": 505990, "density": 94 },
+      "geometry": { "type": "Polygon", "coordinates": [[[-9.3, 36.0], [3.3, 36.0], [3.3, 43.8], [-9.3, 43.8], [-9.3, 36.0]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Polen", "population": 37750000, "area_km2": 312696, "density": 121 },
+      "geometry": { "type": "Polygon", "coordinates": [[[14.1, 49.0], [24.2, 49.0], [24.2, 54.8], [14.1, 54.8], [14.1, 49.0]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Nederländerna", "population": 17530000, "area_km2": 41543, "density": 422 },
+      "geometry": { "type": "Polygon", "coordinates": [[[3.4, 50.8], [7.2, 50.8], [7.2, 53.5], [3.4, 53.5], [3.4, 50.8]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Sverige", "population": 10450000, "area_km2": 450295, "density": 23 },
+      "geometry": { "type": "Polygon", "coordinates": [[[11.1, 55.3], [24.2, 55.3], [24.2, 69.1], [11.1, 69.1], [11.1, 55.3]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Norge", "population": 5460000, "area_km2": 385207, "density": 14 },
+      "geometry": { "type": "Polygon", "coordinates": [[[4.6, 58.0], [31.1, 58.0], [31.1, 71.2], [4.6, 71.2], [4.6, 58.0]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Finland", "population": 5540000, "area_km2": 338424, "density": 16 },
+      "geometry": { "type": "Polygon", "coordinates": [[[20.6, 59.8], [31.6, 59.8], [31.6, 70.1], [20.6, 70.1], [20.6, 59.8]]] }
+    }
+  ]
+}

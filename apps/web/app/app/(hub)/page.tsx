@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/use-auth";
+import { TEMPLATES } from "@/lib/templates";
+import { TemplateCard } from "@/components/TemplateCard";
+import type { MapTemplate } from "@/lib/templates";
 
 const SUGGESTIONS = [
   "Befolkningstäthet i Europa",
@@ -65,11 +68,64 @@ export default function AppHomePage() {
     router.push(`/app/map/new?prompt=${encodeURIComponent(q)}`);
   }
 
+  function handleTemplateClick(template: MapTemplate) {
+    if (user) {
+      // Logged in: save map, then redirect to editor
+      fetch("/api/maps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: template.manifest.title,
+          prompt: `Mall: ${template.title}`,
+          manifest: template.manifest as unknown as Record<string, unknown>,
+          geojson_url: template.manifest.layers[0]?.sourceUrl ?? null,
+          is_public: false,
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const mapId = data?.map?.id;
+          if (mapId) {
+            queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
+            router.push(`/app/map/${mapId}`);
+          }
+        })
+        .catch(() => {});
+    } else {
+      // Anonymous: go to new map page with template param
+      router.push(`/app/map/new?template=${template.id}`);
+    }
+  }
+
   return (
     <div
       className="relative h-full"
       style={{ backgroundColor: "#0d1217" }}
     >
+      <style>{`
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
+
+      {/* Template grid — centered above prompt bar */}
+      <div className="absolute left-1/2 -translate-x-1/2 px-6" style={{ bottom: 180, width: "100%", maxWidth: 1060 }}>
+        <p style={{
+          fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 500,
+          color: "#5a5752", letterSpacing: "0.08em", textTransform: "uppercase",
+          textAlign: "center", marginBottom: 16,
+        }}>
+          Eller börja med en mall
+        </p>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: 14,
+        }}>
+          {TEMPLATES.map((t, i) => (
+            <TemplateCard key={t.id} template={t} index={i} onClick={handleTemplateClick} />
+          ))}
+        </div>
+      </div>
+
       {/* Prompt bar — fixed at bottom center */}
       <div className="absolute bottom-7 left-1/2 w-full max-w-xl -translate-x-1/2 px-6">
         <div

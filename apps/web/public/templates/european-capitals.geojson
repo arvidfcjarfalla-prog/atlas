@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "London", "country": "Storbritannien", "population": 8982000, "region": "Västeuropa" },
+      "geometry": { "type": "Point", "coordinates": [-0.1276, 51.5074] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Berlin", "country": "Tyskland", "population": 3645000, "region": "Centraleuropa" },
+      "geometry": { "type": "Point", "coordinates": [13.405, 52.52] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Madrid", "country": "Spanien", "population": 3223000, "region": "Sydeuropa" },
+      "geometry": { "type": "Point", "coordinates": [-3.7038, 40.4168] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Rom", "country": "Italien", "population": 2873000, "region": "Sydeuropa" },
+      "geometry": { "type": "Point", "coordinates": [12.4964, 41.9028] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Paris", "country": "Frankrike", "population": 2161000, "region": "Västeuropa" },
+      "geometry": { "type": "Point", "coordinates": [2.3522, 48.8566] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Wien", "country": "Österrike", "population": 1897000, "region": "Centraleuropa" },
+      "geometry": { "type": "Point", "coordinates": [16.3738, 48.2082] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Warszawa", "country": "Polen", "population": 1790000, "region": "Centraleuropa" },
+      "geometry": { "type": "Point", "coordinates": [21.0122, 52.2297] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Amsterdam", "country": "Nederländerna", "population": 872000, "region": "Västeuropa" },
+      "geometry": { "type": "Point", "coordinates": [4.9041, 52.3676] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Stockholm", "country": "Sverige", "population": 975000, "region": "Norden" },
+      "geometry": { "type": "Point", "coordinates": [18.0686, 59.3293] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Oslo", "country": "Norge", "population": 697000, "region": "Norden" },
+      "geometry": { "type": "Point", "coordinates": [10.7522, 59.9139] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Helsingfors", "country": "Finland", "population": 656000, "region": "Norden" },
+      "geometry": { "type": "Point", "coordinates": [24.9384, 60.1699] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Köpenhamn", "country": "Danmark", "population": 794000, "region": "Norden" },
+      "geometry": { "type": "Point", "coordinates": [12.5683, 55.6761] }
+    }
+  ]
+}
