@@ -6,12 +6,15 @@ import { ExportMenu } from "./ExportMenu";
 interface EditorToolbarProps {
   title: string;
   onTitleChange: (title: string) => void;
-  mode: "interactive" | "presentation";
-  onModeChange: (mode: "interactive" | "presentation") => void;
+  mode: "interactive" | "presentation" | "compare";
+  onModeChange: (mode: "interactive" | "presentation" | "compare") => void;
   onShare: () => void;
   onBack: () => void;
-  onExportPNG?: () => void;
+  onExportPNG?: (scale?: number) => void;
   onExportGeoJSON?: () => void;
+  onExportPDF?: () => void;
+  onExportSVG?: () => void;
+  hasCompareManifest?: boolean;
 }
 
 // Design tokens from docs/prototype/atlas.html EditorView
@@ -26,6 +29,9 @@ export function EditorToolbar({
   onBack,
   onExportPNG,
   onExportGeoJSON,
+  onExportPDF,
+  onExportSVG,
+  hasCompareManifest,
 }: EditorToolbarProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -150,7 +156,7 @@ export function EditorToolbar({
           marginLeft: 8,
         }}
       >
-        {(["interactive", "presentation"] as const).map((m) => (
+        {(["interactive", "presentation", ...(hasCompareManifest ? ["compare" as const] : [])] as const).map((m) => (
           <button
             key={m}
             onClick={() => onModeChange(m)}
@@ -167,7 +173,7 @@ export function EditorToolbar({
               transition: "all 0.12s ease",
             }}
           >
-            {m === "interactive" ? "Interactive" : "Presentation"}
+            {m === "interactive" ? "Interactive" : m === "presentation" ? "Presentation" : "Compare"}
           </button>
         ))}
       </div>
@@ -177,7 +183,7 @@ export function EditorToolbar({
 
       {/* Export */}
       {onExportPNG && onExportGeoJSON ? (
-        <ExportMenu onExportPNG={onExportPNG} onExportGeoJSON={onExportGeoJSON} />
+        <ExportMenu onExportPNG={onExportPNG} onExportGeoJSON={onExportGeoJSON} onExportPDF={onExportPDF} onExportSVG={onExportSVG} />
       ) : (
         <button
           style={{

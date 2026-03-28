@@ -2,22 +2,27 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { MapShell, CoordinateWidget, useMap } from "@atlas/map-core";
-import type { CompiledLegendItem } from "@atlas/map-core";
+import { MapShell, CoordinateWidget, useMap, GeocoderControl, MeasureControl, CompareView } from "@atlas/map-core";
+import type { CompiledLegendItem, TimelinePlaybackState, ChartOverlayMetadata } from "@atlas/map-core";
+import { TimelinePlaybackBar, ChartOverlay } from "@atlas/map-modules";
 import type { MapManifest } from "@atlas/data-models";
 import { useAuth } from "@/lib/auth/use-auth";
 import type { MapRow } from "@/lib/supabase/types";
 import { MapContent } from "@/components/MapContent";
 import { LegendOverlay } from "@/components/LegendOverlay";
 import { ChatPanel } from "@/components/ChatPanel";
-import type { ChatMsg } from "@/components/ChatPanel";
+import { useAgentChat, type AgentMessage } from "@/lib/hooks/use-agent-chat";
+import { useToast } from "@/lib/hooks/use-toast";
+import { Toast } from "@/components/Toast";
+import type { DatasetProfile } from "@/lib/ai/types";
 import { EditorToolbar } from "@/components/EditorToolbar";
 import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
 import { MapTooltip } from "@/components/MapTooltip";
 import { ZoomControls } from "@/components/ZoomControls";
 import { ShareModal } from "@/components/ShareModal";
-import { exportPNG, exportGeoJSON } from "@/lib/utils/export";
+import { exportPNG, exportGeoJSON, exportPDF, exportSVG } from "@/lib/utils/export";
+import { KeyboardShortcutsOverlay } from "@/components/KeyboardShortcutsOverlay";
 
 // ─── Saved views ─────────────────────────────────────────────
 
@@ -150,6 +155,14 @@ function EmbedPanel({ slug }: { slug: string }) {
   );
 }
 
+// ─── Chart overlay wrapper (needs map context) ──────────────
+
+function ChartOverlayWrapper({ metadata }: { metadata: ChartOverlayMetadata }) {
+  const { map, isReady } = useMap();
+  if (!map || !isReady) return null;
+  return <ChartOverlay map={map as any} metadata={metadata} />;
+}
+
 // ─── Map page (view + edit merged) ───────────────────────────
 
 export default function MapPage() {
@@ -167,20 +180,27 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const handleSaveView = useCallback((view: SavedView) => setSavedViews((prev) => [...prev, view]), []);
-  const [mode, setMode] = useState<"interactive" | "presentation">("interactive");
+  const [mode, setMode] = useState<"interactive" | "presentation" | "compare">("interactive");
+  const [compareManifest, setCompareManifest] = useState<MapManifest | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
+  // Creative rendering state
+  const [timelineState, setTimelineState] = useState<TimelinePlaybackState | null>(null);
+  const [chartOverlayMeta, setChartOverlayMeta] = useState<ChartOverlayMetadata | null>(null);
+
   // Chat state (only for owner)
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-    { role: "assistant", content: "Kartan är redo! Beskriv vad du vill ändra — färger, zoom, data, lager, etc." },
-  ]);
   const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
   const [manifestHistory, setManifestHistory] = useState<MapManifest[]>([]);
+  const [redoStack, setRedoStack] = useState<MapManifest[]>([]);
+  const [dataProfile, setDataProfile] = useState<DatasetProfile | null>(null);
+  const [initialChatMessages, setInitialChatMessages] = useState<AgentMessage[] | undefined>(undefined);
+  const { toast, show: showToast } = useToast();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDirtyRef = useRef(false);
+  const lastSaveFailedRef = useRef(false);
   const manifestRef = useRef<MapManifest | null>(null);
   manifestRef.current = manifest;
+  const chatMessagesRef = useRef<AgentMessage[]>([]);
   const [draftRestore, setDraftRestore] = useState<{
     manifest: MapManifest;
     geojsonUrl: string | null;
@@ -200,6 +220,12 @@ export default function MapPage() {
       setMapRow(row);
       const m = row.manifest as unknown as MapManifest;
       setManifest(m);
+      setCompareManifest(structuredClone(m));
+
+      // Restore chat history
+      if (Array.isArray(row.chat_history) && row.chat_history.length > 0) {
+        setInitialChatMessages(row.chat_history as unknown as AgentMessage[]);
+      }
 
       // Check for localStorage draft newer than DB
       try {
@@ -255,11 +281,26 @@ export default function MapPage() {
             title: m.title,
           }),
         })
-          .then(() => {
-            isDirtyRef.current = false;
-            try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          .then((res) => {
+            if (res.status === 401) {
+              showToast("Sessionen har gått ut — logga in igen", "error");
+              lastSaveFailedRef.current = true;
+            } else if (!res.ok) {
+              showToast("Kunde inte spara", "error");
+              lastSaveFailedRef.current = true;
+            } else {
+              isDirtyRef.current = false;
+              try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+              if (lastSaveFailedRef.current) {
+                showToast("Sparad", "success");
+                lastSaveFailedRef.current = false;
+              }
+            }
           })
-          .catch(() => {});
+          .catch(() => {
+            showToast("Kunde inte spara", "error");
+            lastSaveFailedRef.current = true;
+          });
       }
     };
     window.addEventListener("online", handleOnline);
@@ -298,16 +339,38 @@ export default function MapPage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await fetch(`/api/maps/${id}`, {
+        const res = await fetch(`/api/maps/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ manifest: m as unknown as Record<string, unknown>, title: m.title, ...(dataUrl ? { geojson_url: dataUrl } : {}) }),
+          body: JSON.stringify({
+            manifest: m as unknown as Record<string, unknown>,
+            title: m.title,
+            ...(dataUrl ? { geojson_url: dataUrl } : {}),
+            chat_history: chatMessagesRef.current
+              .filter((msg) => msg.content)
+              .map((msg) => ({ role: msg.role, content: msg.content })),
+          }),
         });
-        isDirtyRef.current = false;
-        try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
-      } catch { /* non-critical — draft remains in localStorage */ }
+        if (res.status === 401) {
+          showToast("Sessionen har gått ut — logga in igen", "error");
+          lastSaveFailedRef.current = true;
+        } else if (!res.ok) {
+          showToast("Kunde inte spara", "error");
+          lastSaveFailedRef.current = true;
+        } else {
+          isDirtyRef.current = false;
+          try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          if (lastSaveFailedRef.current) {
+            showToast("Sparad", "success");
+            lastSaveFailedRef.current = false;
+          }
+        }
+      } catch {
+        showToast("Kunde inte spara", "error");
+        lastSaveFailedRef.current = true;
+      }
     }, 1000);
-  }, [id]);
+  }, [id, showToast]);
 
   // ── Periodic auto-save (30s) ────────────────────────────────
   useEffect(() => {
@@ -323,71 +386,140 @@ export default function MapPage() {
             title: m.title,
           }),
         })
-          .then(() => {
-            isDirtyRef.current = false;
-            try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          .then((res) => {
+            if (res.status === 401) {
+              showToast("Sessionen har gått ut — logga in igen", "error");
+              lastSaveFailedRef.current = true;
+            } else if (!res.ok) {
+              showToast("Kunde inte spara", "error");
+              lastSaveFailedRef.current = true;
+            } else {
+              isDirtyRef.current = false;
+              try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+              if (lastSaveFailedRef.current) {
+                showToast("Sparad", "success");
+                lastSaveFailedRef.current = false;
+              }
+            }
           })
-          .catch(() => {});
+          .catch(() => {
+            showToast("Kunde inte spara", "error");
+            lastSaveFailedRef.current = true;
+          });
       }
     }, 30_000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [id, showToast]);
 
-  // ── Chat ────────────────────────────────────────────────────
-  const handleSend = useCallback(async () => {
-    const msg = chatInput.trim();
-    if (!msg || !manifest || chatLoading) return;
-    setChatInput("");
-    setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
-    setChatLoading(true);
+  const [mapWarnings, setMapWarnings] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
+  const handleFileUpload = useCallback(async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
     try {
-      const res = await fetch("/api/ai/edit-map", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ manifest, message: msg, chatHistory: chatMessages.map((m) => ({ role: m.role, content: m.content })) }),
-      });
-      const data = await res.json();
-
-      if (data.undo && manifestHistory.length > 0) {
-        const prev = manifestHistory[manifestHistory.length - 1];
-        setManifest(prev);
-        setManifestHistory((h) => h.slice(0, -1));
-        autoSave(prev);
-      } else if (data.manifest) {
-        saveVersion(manifest, msg);
-        setManifestHistory((h) => [...h, manifest]);
-        setManifest(data.manifest);
-        const newDataUrl = data.dataUrl ?? data.manifest?.layers?.[0]?.sourceUrl;
-        if (newDataUrl && newDataUrl !== mapRow?.geojson_url) {
-          try {
-            const geoRes = await fetch(newDataUrl);
-            if (geoRes.ok) {
-              const geo = await geoRes.json();
-              if (geo?.type === "FeatureCollection") setGeojsonData(geo);
-            }
-          } catch { /* non-fatal */ }
-          autoSave(data.manifest, newDataUrl);
-        } else {
-          autoSave(data.manifest);
-        }
+      const res = await fetch("/api/ai/upload-data", { method: "POST", body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setMapWarnings([err.error ?? "Upload failed"]);
+        return;
       }
-
-      setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "Klart.", changes: data.changes }]);
+      const data = await res.json();
+      if (data.geojson) {
+        setGeojsonData(data.geojson);
+        if (data.warnings?.length) setMapWarnings(data.warnings);
+        if (data.profile) setDataProfile(data.profile);
+      }
     } catch {
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "Något gick fel. Försök igen." }]);
+      setMapWarnings(["File upload failed"]);
     }
-    setChatLoading(false);
-  }, [chatInput, manifest, chatLoading, chatMessages, manifestHistory, mapRow, autoSave, saveVersion]);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  }, [handleFileUpload]);
+
+  // ── Agent chat ──────────────────────────────────────────────
+  const handleManifestUpdate = useCallback(
+    (newManifest: MapManifest, dataUrl?: string) => {
+      if (!manifest) return;
+      saveVersion(manifest, "agent-update");
+      setManifestHistory((h) => [...h, manifest]);
+      setRedoStack([]);
+      setManifest(newManifest);
+      if (dataUrl && dataUrl !== mapRow?.geojson_url) {
+        fetch(dataUrl)
+          .then((r) => r.ok ? r.json() : null)
+          .then((geo) => {
+            if (geo?.type === "FeatureCollection") setGeojsonData(geo);
+          })
+          .catch(() => {});
+        autoSave(newManifest, dataUrl);
+      } else {
+        autoSave(newManifest);
+      }
+    },
+    [manifest, mapRow, autoSave, saveVersion],
+  );
+
+  const {
+    messages: chatMessages,
+    sendMessage,
+    isStreaming: chatStreaming,
+    abortStream,
+  } = useAgentChat({
+    manifest: manifest ?? ({ layers: [], basemap: "light" } as unknown as MapManifest),
+    dataProfile,
+    onManifestUpdate: handleManifestUpdate,
+    initialMessages: initialChatMessages,
+  });
+
+  chatMessagesRef.current = chatMessages;
+
+  const handleSend = useCallback(() => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    setChatInput("");
+    sendMessage(msg);
+  }, [chatInput, sendMessage]);
 
   const handleUndo = useCallback(() => {
     if (manifestHistory.length === 0 || !manifest) return;
     const prev = manifestHistory[manifestHistory.length - 1];
+    setRedoStack((r) => [...r, manifest]);
     setManifest(prev);
     setManifestHistory((h) => h.slice(0, -1));
-    setChatMessages((p) => [...p, { role: "assistant", content: "Ångrade senaste ändringen." }]);
     autoSave(prev);
   }, [manifest, manifestHistory, autoSave]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !manifest) return;
+    const next = redoStack[redoStack.length - 1];
+    setManifestHistory((h) => [...h, manifest]);
+    setManifest(next);
+    setRedoStack((r) => r.slice(0, -1));
+    autoSave(next);
+  }, [manifest, redoStack, autoSave]);
+
+  // ── Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z ────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (mod && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
 
   async function handleCopyLink() {
     const slug = mapRow?.slug ?? id;
@@ -400,6 +532,7 @@ export default function MapPage() {
   const handleStyleChange = useCallback(
     (updated: MapManifest) => {
       setManifestHistory((h) => [...h, manifest!]);
+      setRedoStack([]);
       setManifest(updated);
       autoSave(updated);
     },
@@ -436,14 +569,32 @@ export default function MapPage() {
     [id, mapRow],
   );
 
-  const handleExportPNG = useCallback(() => {
+  const handleExportPNG = useCallback((scale?: number) => {
     const canvas = document.querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas");
-    if (canvas) exportPNG(canvas, manifest?.title ?? "map");
+    if (canvas) exportPNG(canvas, manifest?.title ?? "map", scale);
+  }, [manifest]);
+
+  const handleExportPDF = useCallback(async () => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas");
+    if (canvas) {
+      const attribution = manifest?.layers[0]?.attribution;
+      await exportPDF(canvas, manifest?.title ?? "map", attribution);
+    }
+  }, [manifest]);
+
+  const handleExportSVG = useCallback(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas");
+    if (canvas) exportSVG(canvas, manifest?.title ?? "map");
   }, [manifest]);
 
   const handleExportGeoJSON = useCallback(() => {
     if (geojsonData) exportGeoJSON(geojsonData, manifest?.title ?? "map");
   }, [geojsonData, manifest]);
+
+  const handlePromptGenerate = useCallback((prompt: string) => {
+    if (!manifest || chatStreaming) return;
+    sendMessage(prompt);
+  }, [manifest, chatStreaming, sendMessage]);
 
   // ── Loading / not found ──────────────────────────────────────
   if (loading || authLoading) {
@@ -479,30 +630,6 @@ export default function MapPage() {
   if (isOwner) {
     const isInteractive = mode === "interactive";
 
-    const handlePromptGenerate = useCallback(async (prompt: string) => {
-      if (!manifest || chatLoading) return;
-      setChatMessages((prev) => [...prev, { role: "user", content: prompt }]);
-      setChatLoading(true);
-      try {
-        const res = await fetch("/api/ai/edit-map", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ manifest, message: prompt, chatHistory: chatMessages.map((m) => ({ role: m.role, content: m.content })) }),
-        });
-        const data = await res.json();
-        if (data.manifest) {
-          saveVersion(manifest, prompt);
-          setManifestHistory((h) => [...h, manifest]);
-          setManifest(data.manifest);
-          autoSave(data.manifest);
-        }
-        setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply ?? "Klart." }]);
-      } catch {
-        setChatMessages((prev) => [...prev, { role: "assistant", content: "Något gick fel. Försök igen." }]);
-      }
-      setChatLoading(false);
-    }, [manifest, chatLoading, chatMessages, autoSave, saveVersion]);
-
     const ownerSidebar = (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "'Geist',sans-serif" }}>
         <LayerList layers={manifest.layers} onGenerate={handlePromptGenerate} />
@@ -510,7 +637,7 @@ export default function MapPage() {
           <span style={{ fontSize: 13, color: "#5a5752", flexShrink: 0 }}>&#x1F50D;</span>
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Sök features…" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "#e4e0d8", width: "100%", outline: "none", fontFamily: "'Geist',sans-serif" }} />
         </div>
-        <ChatPanel messages={chatMessages} input={chatInput} loading={chatLoading} onInputChange={setChatInput} onSend={handleSend} onUndo={handleUndo} canUndo={manifestHistory.length > 0} />
+        <ChatPanel messages={chatMessages} input={chatInput} isStreaming={chatStreaming} onInputChange={setChatInput} onSend={handleSend} onStop={abortStream} onUndo={handleUndo} canUndo={manifestHistory.length > 0} onFileUpload={handleFileUpload} />
       </div>
     );
 
@@ -527,6 +654,9 @@ export default function MapPage() {
           onBack={() => router.push("/app")}
           onExportPNG={handleExportPNG}
           onExportGeoJSON={handleExportGeoJSON}
+          onExportPDF={handleExportPDF}
+          onExportSVG={handleExportSVG}
+          hasCompareManifest={!!compareManifest}
         />
         <ShareModal
           open={shareModalOpen}
@@ -575,25 +705,77 @@ export default function MapPage() {
             </button>
           </div>
         )}
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <MapShell
-            manifest={manifest}
-            sidebar={isInteractive ? ownerSidebar : undefined}
-            sidebarOpen={isInteractive}
-            detailPanel={isInteractive ? stylePanel : undefined}
-            panelOpen={isInteractive}
-            sidebarWidth={230}
-            panelWidth={230}
-            overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}
-          >
-            <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
-            <MapTooltip layerId={layer?.id} />
-            <ZoomControls />
-            <CoordinateWidget />
-            <ViewsBar savedViews={savedViews} onSaveView={handleSaveView} />
-            <HeatmapControls manifest={manifest} />
-          </MapShell>
+        {mapWarnings.length > 0 && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 16px",
+            background: "rgba(234,179,8,0.08)", borderBottom: "1px solid rgba(234,179,8,0.20)",
+            fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "rgba(234,179,8,0.85)",
+          }}>
+            <div style={{ flex: 1 }}>
+              {mapWarnings.map((w, i) => <div key={i}>{w}</div>)}
+            </div>
+            <button onClick={() => setMapWarnings([])} style={{ background: "none", border: "none", color: "rgba(234,179,8,0.5)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }} title="Dismiss">&times;</button>
+          </div>
+        )}
+        <div
+          style={{ flex: 1, minHeight: 0, position: "relative" }}
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+        >
+          {isDragOver && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 50,
+              background: "rgba(99,130,255,0.12)", border: "2px dashed rgba(99,130,255,0.4)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              pointerEvents: "none",
+            }}>
+              <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "rgba(99,130,255,0.9)" }}>
+                Släpp fil för att ladda data
+              </span>
+            </div>
+          )}
+          {mode === "compare" && compareManifest ? (
+            <CompareView
+              manifestA={compareManifest}
+              manifestB={manifest}
+              childrenA={
+                <div style={{ position: "absolute", top: 12, left: 12, zIndex: 5, ...PILL_STYLE }}>
+                  Saved
+                </div>
+              }
+              childrenB={
+                <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5, ...PILL_STYLE }}>
+                  Current
+                </div>
+              }
+            />
+          ) : (
+            <MapShell
+              manifest={manifest}
+              sidebar={isInteractive ? ownerSidebar : undefined}
+              sidebarOpen={isInteractive}
+              detailPanel={isInteractive ? stylePanel : undefined}
+              panelOpen={isInteractive}
+              sidebarWidth={230}
+              panelWidth={230}
+              overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}
+            >
+              <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} onTimelineState={setTimelineState} onChartOverlayMetadata={setChartOverlayMeta} onWarnings={setMapWarnings} />
+              <MapTooltip layerId={layer?.id} />
+              <ZoomControls />
+              <CoordinateWidget />
+              <GeocoderControl />
+              <MeasureControl />
+              <ViewsBar savedViews={savedViews} onSaveView={handleSaveView} />
+              <HeatmapControls manifest={manifest} />
+              {timelineState && <TimelinePlaybackBar state={timelineState} />}
+              {chartOverlayMeta && <ChartOverlayWrapper metadata={chartOverlayMeta} />}
+            </MapShell>
+          )}
         </div>
+        <Toast toast={toast} />
+        <KeyboardShortcutsOverlay />
       </>
     );
   }
@@ -633,10 +815,13 @@ export default function MapPage() {
       />
       <div style={{ flex: 1, minHeight: 0 }}>
         <MapShell manifest={manifest} sidebar={sidebar} sidebarOpen overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
-          <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} />
+          <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} onTimelineState={setTimelineState} onChartOverlayMetadata={setChartOverlayMeta} />
           <MapTooltip layerId={layer?.id} />
           <ZoomControls />
           <CoordinateWidget />
+          <GeocoderControl />
+          {timelineState && <TimelinePlaybackBar state={timelineState} />}
+          {chartOverlayMeta && <ChartOverlayWrapper metadata={chartOverlayMeta} />}
         </MapShell>
       </div>
     </>

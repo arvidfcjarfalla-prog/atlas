@@ -5,6 +5,7 @@ import {
   MapShell,
   useBasemapLayers,
   useManifestRenderer,
+  getBasemapLandColor,
 } from "@atlas/map-core";
 import type { CompiledLegendItem } from "@atlas/map-core";
 import type { MapManifest } from "@atlas/data-models";
@@ -55,7 +56,10 @@ function LayerContent({
   manifest: MapManifest;
   data: GeoJSON.FeatureCollection;
 }) {
-  useBasemapLayers({ basemap: manifest.basemap });
+  useBasemapLayers({
+    basemap: manifest.basemap,
+    landColor: getBasemapLandColor(manifest.basemap?.style),
+  });
   const layer = manifest.layers[0];
   useManifestRenderer({ layer, data });
   return null;

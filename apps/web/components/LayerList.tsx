@@ -68,10 +68,7 @@ export function LayerList({ layers, onGenerate }: LayerListProps) {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        background: "rgba(16,22,30,0.72)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
+        flexShrink: 0,
       }}
     >
       {/* Header */}
@@ -158,9 +155,6 @@ export function LayerList({ layers, onGenerate }: LayerListProps) {
           );
         })}
       </div>
-
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
 
       {/* Generate prompt — expandable like prototype */}
       <div style={{ padding: 14, borderTop: `1px solid ${bd}` }}>
