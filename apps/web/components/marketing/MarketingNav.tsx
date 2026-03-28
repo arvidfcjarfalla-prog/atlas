@@ -1,85 +1,130 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/use-auth";
 
-interface MarketingNavProps {
-  variant: "transparent" | "solid";
-}
+const sage = "#8ecba0";
+const gold = "#d4a574";
+const c1 = "#0d1217";
+const tx = "#e4e0d8";
+const tx2 = "#908c85";
+const tx3 = "#5a5752";
+const bd2 = "rgba(255,255,255,0.08)";
 
-export function MarketingNav({ variant }: MarketingNavProps) {
+const NAV_LINKS = [
+  { href: "/use-cases", label: "Use Cases" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/enterprise", label: "Enterprise" },
+];
+
+export function MarketingNav() {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
 
   return (
     <nav
-      className={
-        variant === "transparent"
-          ? "absolute inset-x-0 top-0 z-10"
-          : "sticky top-0 z-10"
-      }
-      style={
-        variant === "solid"
-          ? {
-              background: "rgba(10,13,20,0.85)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-            }
-          : undefined
-      }
+      className="s0 sticky top-0 z-30"
+      style={{
+        background: "rgba(13,18,23,0.85)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+      }}
     >
-      <div className="flex items-center justify-between h-14 px-4 sm:px-8">
-        <Link
-          href="/"
-          className="font-geist text-[17px] font-medium tracking-[-0.01em]"
-          style={{ color: "var(--text-primary, rgba(248,249,251,0.90))" }}
-        >
-          atlas
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link
-            href="/explore"
-            className="font-geist-mono text-[11px] font-normal uppercase tracking-[0.05em] transition-colors duration-150"
-            style={{ color: "rgba(248,249,251,0.25)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "rgba(248,249,251,0.50)";
+      <div className="flex items-center justify-between" style={{ padding: "16px 36px" }}>
+        {/* Left: logo */}
+        <Link href="/" className="flex items-center gap-2 cursor-pointer">
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: sage,
+              boxShadow: `0 0 10px ${sage}44`,
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(248,249,251,0.25)";
-            }}
+          />
+          <span
+            style={{ fontSize: 16, fontFamily: "Georgia, 'Times New Roman', serif", color: tx }}
           >
-            Explore
-          </Link>
-          {!loading &&
-            (user ? (
+            Atlas
+          </span>
+        </Link>
+
+        {/* Center: nav links */}
+        <div className="flex gap-[22px]" style={{ fontFamily: "'Courier New', monospace", fontSize: 11 }}>
+          {NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="transition-colors duration-150"
+                style={{ color: isActive ? tx : tx3, textDecoration: "none" }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = tx2; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = tx3; }}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Right: auth buttons */}
+        <div className="flex gap-2">
+          {!loading && (
+            user ? (
               <Link
                 href="/app"
-                className="font-geist-mono text-[11px] font-normal uppercase tracking-[0.05em] transition-colors duration-150"
-                style={{ color: "rgba(248,249,251,0.25)" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "rgba(248,249,251,0.50)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "rgba(248,249,251,0.25)";
+                style={{
+                  background: "transparent",
+                  border: `1px solid ${bd2}`,
+                  color: tx2,
+                  padding: "7px 18px",
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: 10,
+                  borderRadius: 6,
+                  textDecoration: "none",
                 }}
               >
                 Dashboard
               </Link>
             ) : (
-              <Link
-                href="/login"
-                className="font-geist-mono text-[11px] font-normal uppercase tracking-[0.05em] transition-colors duration-150"
-                style={{ color: "rgba(248,249,251,0.25)" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "rgba(248,249,251,0.50)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "rgba(248,249,251,0.25)";
-                }}
-              >
-                Log in
-              </Link>
-            ))}
+              <>
+                <Link
+                  href="/login"
+                  style={{
+                    background: "transparent",
+                    border: `1px solid ${bd2}`,
+                    color: tx2,
+                    padding: "7px 18px",
+                    fontFamily: "'Courier New', monospace",
+                    fontSize: 10,
+                    borderRadius: 6,
+                    textDecoration: "none",
+                  }}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/app"
+                  style={{
+                    background: gold,
+                    color: c1,
+                    border: "none",
+                    padding: "7px 20px",
+                    fontFamily: "'Courier New', monospace",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    borderRadius: 6,
+                    boxShadow: `0 0 16px ${gold}33`,
+                    textDecoration: "none",
+                  }}
+                >
+                  Get Started
+                </Link>
+              </>
+            )
+          )}
         </div>
       </div>
     </nav>

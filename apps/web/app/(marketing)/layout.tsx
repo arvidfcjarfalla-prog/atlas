@@ -4,7 +4,7 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen overflow-auto" style={{ background: "#0a0d14" }}>
+    <div className="min-h-screen overflow-auto" style={{ background: "#0d1217" }}>
       {children}
     </div>
   );

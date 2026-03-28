@@ -2,89 +2,14 @@
 
 import { useEffect, useRef } from "react";
 
-const CITY_LIGHTS: { x: number; y: number; size: number; brightness: number }[] = [
-  // North America
-  { x: 0.16, y: 0.32, size: 2.2, brightness: 1.0 },
-  { x: 0.12, y: 0.34, size: 1.6, brightness: 0.7 },
-  { x: 0.08, y: 0.36, size: 1.8, brightness: 0.8 },
-  { x: 0.14, y: 0.28, size: 1.2, brightness: 0.5 },
-  { x: 0.10, y: 0.38, size: 1.0, brightness: 0.4 },
-  { x: 0.18, y: 0.50, size: 0.9, brightness: 0.35 },
-  { x: 0.20, y: 0.30, size: 1.0, brightness: 0.45 },
-  { x: 0.06, y: 0.32, size: 1.1, brightness: 0.5 },
-  { x: 0.13, y: 0.36, size: 0.8, brightness: 0.35 },
-  // South America
-  { x: 0.24, y: 0.60, size: 1.5, brightness: 0.7 },
-  { x: 0.22, y: 0.56, size: 1.0, brightness: 0.5 },
-  { x: 0.25, y: 0.68, size: 1.2, brightness: 0.5 },
-  { x: 0.23, y: 0.52, size: 0.8, brightness: 0.35 },
-  { x: 0.26, y: 0.64, size: 0.9, brightness: 0.4 },
-  { x: 0.21, y: 0.58, size: 0.7, brightness: 0.3 },
-  // Europe
-  { x: 0.44, y: 0.26, size: 2.0, brightness: 0.9 },
-  { x: 0.46, y: 0.28, size: 1.8, brightness: 0.85 },
-  { x: 0.48, y: 0.26, size: 1.5, brightness: 0.7 },
-  { x: 0.45, y: 0.22, size: 1.3, brightness: 0.65 },
-  { x: 0.50, y: 0.30, size: 1.2, brightness: 0.6 },
-  { x: 0.52, y: 0.28, size: 1.0, brightness: 0.5 },
-  { x: 0.43, y: 0.30, size: 1.1, brightness: 0.55 },
-  { x: 0.47, y: 0.24, size: 0.9, brightness: 0.45 },
-  { x: 0.49, y: 0.32, size: 0.8, brightness: 0.4 },
-  { x: 0.42, y: 0.28, size: 0.7, brightness: 0.35 },
-  { x: 0.51, y: 0.26, size: 0.9, brightness: 0.4 },
-  // Africa
-  { x: 0.47, y: 0.42, size: 1.0, brightness: 0.4 },
-  { x: 0.50, y: 0.55, size: 0.8, brightness: 0.3 },
-  { x: 0.54, y: 0.65, size: 0.9, brightness: 0.35 },
-  { x: 0.44, y: 0.48, size: 0.7, brightness: 0.25 },
-  { x: 0.46, y: 0.52, size: 0.6, brightness: 0.2 },
-  { x: 0.48, y: 0.46, size: 0.7, brightness: 0.25 },
-  { x: 0.52, y: 0.58, size: 0.6, brightness: 0.2 },
-  // Middle East
-  { x: 0.56, y: 0.36, size: 1.0, brightness: 0.5 },
-  { x: 0.54, y: 0.38, size: 0.8, brightness: 0.35 },
-  { x: 0.58, y: 0.34, size: 0.7, brightness: 0.3 },
-  // Asia
-  { x: 0.58, y: 0.30, size: 1.4, brightness: 0.7 },
-  { x: 0.65, y: 0.38, size: 1.2, brightness: 0.6 },
-  { x: 0.68, y: 0.36, size: 1.0, brightness: 0.5 },
-  { x: 0.78, y: 0.32, size: 2.0, brightness: 0.95 },
-  { x: 0.80, y: 0.30, size: 2.2, brightness: 1.0 },
-  { x: 0.76, y: 0.34, size: 1.4, brightness: 0.6 },
-  { x: 0.72, y: 0.42, size: 1.1, brightness: 0.5 },
-  { x: 0.75, y: 0.45, size: 1.0, brightness: 0.45 },
-  { x: 0.70, y: 0.38, size: 0.9, brightness: 0.4 },
-  { x: 0.82, y: 0.34, size: 1.1, brightness: 0.5 },
-  { x: 0.74, y: 0.30, size: 0.8, brightness: 0.35 },
-  { x: 0.66, y: 0.34, size: 0.7, brightness: 0.3 },
-  { x: 0.77, y: 0.38, size: 0.9, brightness: 0.4 },
-  { x: 0.62, y: 0.32, size: 0.8, brightness: 0.35 },
-  // Oceania
-  { x: 0.86, y: 0.68, size: 1.3, brightness: 0.6 },
-  { x: 0.84, y: 0.70, size: 0.9, brightness: 0.4 },
-  { x: 0.88, y: 0.72, size: 0.7, brightness: 0.3 },
-  // Central America
-  { x: 0.14, y: 0.44, size: 0.8, brightness: 0.35 },
-  { x: 0.16, y: 0.46, size: 0.7, brightness: 0.3 },
-  // Caribbean / Atlantic
-  { x: 0.20, y: 0.48, size: 0.6, brightness: 0.25 },
-  // Indonesia / SE Asia fill
-  { x: 0.74, y: 0.48, size: 0.8, brightness: 0.35 },
-  { x: 0.78, y: 0.50, size: 0.7, brightness: 0.3 },
-  { x: 0.80, y: 0.48, size: 0.6, brightness: 0.25 },
-  { x: 0.70, y: 0.44, size: 0.7, brightness: 0.3 },
+// 25 dots from prototype — [relX, relY, scale]
+const RAW: [number, number, number][] = [
+  [.52, .28, 1], [.50, .30, .8], [.53, .32, .6], [.48, .34, .7], [.51, .35, .5],
+  [.55, .30, .4], [.47, .37, .6], [.20, .32, .9], [.22, .35, .7], [.18, .34, .6],
+  [.25, .38, .5], [.15, .30, .7], [.72, .30, .9], [.75, .28, .7], [.78, .32, .8],
+  [.68, .34, .6], [.80, .35, .5], [.30, .60, .7], [.32, .55, .5], [.52, .48, .5],
+  [.50, .55, .4], [.60, .34, .5], [.68, .38, .8], [.70, .40, .6], [.83, .62, .4],
 ];
-
-interface Particle {
-  x: number;
-  y: number;
-  baseX: number;
-  baseY: number;
-  radius: number;
-  brightness: number;
-  phase: number;
-  speed: number;
-}
 
 export function CityLightsCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -95,45 +20,29 @@ export function CityLightsCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const prefersReduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    let raf = 0;
     let w = 0;
     let h = 0;
-    let dpr = 1;
-    const particles: Particle[] = [];
 
-    function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = canvas!.parentElement?.clientWidth ?? window.innerWidth;
-      h = canvas!.parentElement?.clientHeight ?? window.innerHeight;
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
-      canvas!.style.width = w + "px";
-      canvas!.style.height = h + "px";
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      for (let i = 0; i < particles.length; i++) {
-        const light = CITY_LIGHTS[i];
-        particles[i].baseX = light.x * w;
-        particles[i].baseY = light.y * h;
-        particles[i].x = particles[i].baseX;
-        particles[i].y = particles[i].baseY;
-      }
+    interface Dot {
+      x: number; y: number;
+      s: number; phase: number; speed: number; baseR: number;
     }
 
-    for (const light of CITY_LIGHTS) {
-      particles.push({
-        x: 0,
-        y: 0,
-        baseX: 0,
-        baseY: 0,
-        radius: light.size,
-        brightness: light.brightness,
-        phase: Math.random() * Math.PI * 2,
-        speed: 0.2 + Math.random() * 0.35, // 0.2–0.55 Hz
+    const dots: Dot[] = RAW.map(([, , s]) => ({
+      x: 0, y: 0, s,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.2 + Math.random() * 0.35,
+      baseR: 3 + s * 6,
+    }));
+
+    function resize() {
+      w = canvas!.parentElement?.offsetWidth ?? window.innerWidth;
+      h = canvas!.parentElement?.offsetHeight ?? window.innerHeight;
+      canvas!.width = w;
+      canvas!.height = h;
+      dots.forEach((d, i) => {
+        d.x = RAW[i][0] * w;
+        d.y = RAW[i][1] * h;
       });
     }
 
@@ -141,61 +50,61 @@ export function CityLightsCanvas() {
     window.addEventListener("resize", resize);
 
     let t = 0;
+    let drift = 0;
+    let raf = 0;
 
     function draw() {
-      t += 0.016; // ~60fps
+      t += 0.008;
+      drift += 0.15;
       ctx!.clearRect(0, 0, w, h);
 
-      for (const p of particles) {
-        // Subtle drift: sin(time) × 0.8px
-        p.x = p.baseX + Math.sin(t * 0.5 + p.phase) * 0.8;
-        p.y = p.baseY + Math.cos(t * 0.4 + p.phase * 1.3) * 0.8;
+      // 3 sage ellipse background glows
+      ctx!.globalAlpha = 0.05;
+      ctx!.fillStyle = "#8ecba0";
+      ctx!.beginPath();
+      ctx!.ellipse(w * 0.52, h * 0.32, w * 0.06, h * 0.08, -0.1, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.beginPath();
+      ctx!.ellipse(w * 0.20, h * 0.34, w * 0.08, h * 0.07, 0.1, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.beginPath();
+      ctx!.ellipse(w * 0.74, h * 0.33, w * 0.1, h * 0.08, 0, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.globalAlpha = 1;
 
-        const pulse = Math.sin(t * p.speed * Math.PI * 2 + p.phase) * 0.3 + 0.7;
-        const r = p.radius * (0.9 + pulse * 0.2);
-        const alpha = p.brightness * pulse;
+      for (const d of dots) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * d.speed + d.phase);
+        const r = d.baseR * (0.6 + pulse * 0.4);
+        const ox = Math.sin(drift * 0.003 + d.phase) * 0.8;
+        const x = d.x + ox;
 
-        // Outer glow — amber, 6× radius
-        const glowGrad = ctx!.createRadialGradient(
-          p.x, p.y, 0,
-          p.x, p.y, r * 6,
-        );
-        glowGrad.addColorStop(0, `rgba(212,165,116,${alpha * 0.15})`);
-        glowGrad.addColorStop(0.5, `rgba(212,165,116,${alpha * 0.04})`);
-        glowGrad.addColorStop(1, "rgba(212,165,116,0)");
+        // Outer amber glow gradient
+        const grad = ctx!.createRadialGradient(x, d.y, 0, x, d.y, r * 6);
+        grad.addColorStop(0, `rgba(255,190,90,${0.45 * pulse * d.s})`);
+        grad.addColorStop(0.3, `rgba(240,150,60,${0.2 * pulse * d.s})`);
+        grad.addColorStop(1, "rgba(210,120,60,0)");
+        ctx!.fillStyle = grad;
         ctx!.beginPath();
-        ctx!.arc(p.x, p.y, r * 6, 0, Math.PI * 2);
-        ctx!.fillStyle = glowGrad;
+        ctx!.arc(x, d.y, r * 6, 0, Math.PI * 2);
         ctx!.fill();
 
-        // Inner glow
-        const innerGrad = ctx!.createRadialGradient(
-          p.x, p.y, 0,
-          p.x, p.y, r * 2.5,
-        );
-        innerGrad.addColorStop(0, `rgba(212,165,116,${alpha * 0.3})`);
-        innerGrad.addColorStop(1, "rgba(212,165,116,0)");
+        // Dot core — warm amber
+        ctx!.fillStyle = `rgba(255,${200 + Math.round(pulse * 30)},${120 + Math.round(pulse * 40)},${(0.6 + pulse * 0.4) * d.s})`;
         ctx!.beginPath();
-        ctx!.arc(p.x, p.y, r * 2.5, 0, Math.PI * 2);
-        ctx!.fillStyle = innerGrad;
+        ctx!.arc(x, d.y, r, 0, Math.PI * 2);
         ctx!.fill();
 
-        // Core dot
+        // Bright center
+        ctx!.fillStyle = `rgba(255,245,230,${0.6 * pulse * d.s})`;
         ctx!.beginPath();
-        ctx!.arc(p.x, p.y, r * 0.5, 0, Math.PI * 2);
-        ctx!.fillStyle = `rgba(248,230,200,${alpha * 0.7})`;
+        ctx!.arc(x, d.y, r * 0.4, 0, Math.PI * 2);
         ctx!.fill();
       }
 
       raf = requestAnimationFrame(draw);
     }
 
-    if (prefersReduced) {
-      draw();
-      cancelAnimationFrame(raf);
-    } else {
-      raf = requestAnimationFrame(draw);
-    }
+    draw();
 
     return () => {
       cancelAnimationFrame(raf);
@@ -207,8 +116,7 @@ export function CityLightsCanvas() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 0 }}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
     />
   );
 }

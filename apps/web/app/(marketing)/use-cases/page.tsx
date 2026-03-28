@@ -1,194 +1,100 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
-import Link from "next/link";
+import { CaseIcon } from "@/components/marketing/CaseIcon";
 
-export const metadata: Metadata = {
-  title: "Use Cases — Atlas",
-  description:
-    "See how researchers, journalists, urban planners, and educators use Atlas to create maps from natural language.",
-};
+const sage = "#8ecba0";
+const gold = "#d4a574";
+const c1 = "#0d1217";
+const c2 = "#111820";
+const tx = "#e4e0d8";
+const tx2 = "#908c85";
+const tx3 = "#5a5752";
+const bd = "rgba(255,255,255,0.05)";
+const bd2 = "rgba(255,255,255,0.08)";
+const bl = "#5db8ca";
+const cr = "#e8a050";
+const cy = "#5abcaa";
+const rd = "#d06060";
 
-const USE_CASES = [
-  {
-    title: "Research & Academia",
-    description:
-      "Visualize socioeconomic indicators, environmental data, and demographic patterns for papers and presentations.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Business Intelligence",
-    description:
-      "Map market penetration, supply chain logistics, and customer density to uncover regional opportunities.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="20" x2="12" y2="10" />
-        <line x1="18" y1="20" x2="18" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="16" />
-      </svg>
-    ),
-  },
-  {
-    title: "Journalism",
-    description:
-      "Produce publication-ready maps for stories on elections, migration, climate, and urban development.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
-        <path d="M18 14h-8" />
-        <path d="M15 18h-5" />
-        <path d="M10 6h8v4h-8V6Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Urban Planning",
-    description:
-      "Analyze transportation, zoning, infrastructure, and population distribution for informed city development.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="2" width="16" height="20" rx="2" />
-        <path d="M9 22v-4h6v4" />
-        <path d="M8 6h.01" />
-        <path d="M16 6h.01" />
-        <path d="M12 6h.01" />
-        <path d="M12 10h.01" />
-        <path d="M12 14h.01" />
-        <path d="M16 10h.01" />
-        <path d="M16 14h.01" />
-        <path d="M8 10h.01" />
-        <path d="M8 14h.01" />
-      </svg>
-    ),
-  },
-  {
-    title: "Environmental Monitoring",
-    description:
-      "Track wildfires, air quality, deforestation, and natural hazards with near-real-time data overlays.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 22V2L7 7l10 5" />
-        <path d="M7 7v15" />
-      </svg>
-    ),
-  },
-  {
-    title: "Education",
-    description:
-      "Help students explore world data interactively — from geography and economics to history and ecology.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(197,62%,38%)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-        <path d="M6 12v5c3 3 9 3 12 0v-5" />
-      </svg>
-    ),
-  },
+const mono: React.CSSProperties = { fontFamily: "'Courier New', monospace" };
+
+const CASES = [
+  { title: "Research & Academia", desc: "Visualize study data, population distributions, and environmental datasets with publication-ready maps.", icon: "research" as const, color: bl, examples: ["Species migration patterns", "Climate change indicators", "Census data visualization"] },
+  { title: "Business Intelligence", desc: "Turn sales data, market analysis, and regional KPIs into interactive dashboards your team can explore.", icon: "chart" as const, color: gold, examples: ["Regional sales performance", "Market penetration by city", "Supply chain optimization"] },
+  { title: "Journalism & Media", desc: "Create compelling visual stories with data-driven maps that engage readers and clarify complex events.", icon: "pen" as const, color: cr, examples: ["Election results by district", "Conflict zone timelines", "Migration flow reporting"] },
+  { title: "Urban Planning", desc: "Analyze zoning, traffic patterns, infrastructure, and demographic data to make better planning decisions.", icon: "grid" as const, color: sage, examples: ["Zoning density analysis", "Public transit coverage", "Green space accessibility"] },
+  { title: "Non-profits & NGOs", desc: "Communicate impact, track field operations, and present findings with clear, accessible visualizations.", icon: "globe" as const, color: cy, examples: ["Aid distribution mapping", "Water access coverage", "Deforestation tracking"] },
+  { title: "Real Estate & Finance", desc: "Map property values, market trends, risk assessments, and investment opportunities across regions.", icon: "building" as const, color: rd, examples: ["Property price heatmaps", "Investment risk by region", "Rental yield analysis"] },
 ];
 
 export default function UseCasesPage() {
   return (
-    <>
-      <MarketingNav variant="solid" />
+    <div style={{ minHeight: "100vh", color: tx, fontFamily: "Georgia, 'Times New Roman', serif", background: `linear-gradient(180deg, ${c1} 0%, ${c2} 50%, ${c1} 100%)` }}>
+      <MarketingNav />
 
       {/* Hero */}
-      <section className="pt-24 pb-16 px-4 sm:px-8 text-center">
-        <span
-          className="font-geist-mono text-[10px] font-medium uppercase tracking-[0.14em] block mb-4"
-          style={{ color: "rgba(248,249,251,0.25)" }}
-        >
-          Use cases
-        </span>
-        <h1
-          className="font-display max-w-[600px] mx-auto"
-          style={{
-            fontSize: "clamp(32px, 5vw, 52px)",
-            fontWeight: 400,
-            lineHeight: 1.1,
-            letterSpacing: "-0.03em",
-            color: "rgba(248,249,251,0.90)",
-          }}
-        >
-          Maps for every discipline
+      <section className="s1" style={{ padding: "80px 36px 40px", textAlign: "center", maxWidth: 700, margin: "0 auto" }}>
+        <div style={{ ...mono, fontSize: 10, color: sage, letterSpacing: "0.2em", marginBottom: 20 }}>USE CASES</div>
+        <h1 style={{ fontSize: "clamp(2rem, 3.2vw, 2.8rem)", fontWeight: 400, lineHeight: 1.1, marginBottom: 16 }}>
+          Built for every kind of <span style={{ color: sage, fontStyle: "italic" }}>map maker</span>.
         </h1>
-        <p
-          className="font-geist text-[15px] mt-4 max-w-[480px] mx-auto"
-          style={{ color: "rgba(248,249,251,0.40)" }}
-        >
-          From academic research to newsroom storytelling, Atlas turns natural
-          language into publication-ready maps.
-        </p>
+        <p style={{ fontSize: 15, color: tx2, lineHeight: 1.7 }}>From academic research to enterprise dashboards, Atlas adapts to how you work.</p>
       </section>
 
       {/* Cards grid */}
-      <section className="pb-24 px-4 sm:px-8">
-        <div className="max-w-[1120px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {USE_CASES.map((uc) => (
-            <div
-              key={uc.title}
-              className="rounded-xl p-6 transition-[border-color,transform] duration-200 hover:-translate-y-[2px]"
-              style={{
-                border: "1px solid rgba(255,255,255,0.06)",
-                background: "#14181f",
-              }}
-            >
-              <div className="mb-4">{uc.icon}</div>
-              <h3
-                className="font-geist text-[16px] font-medium mb-2"
-                style={{ color: "rgba(248,249,251,0.85)" }}
-              >
-                {uc.title}
-              </h3>
-              <p
-                className="font-geist text-[14px] leading-relaxed"
-                style={{ color: "rgba(248,249,251,0.40)" }}
-              >
-                {uc.description}
-              </p>
-            </div>
+      <section style={{ padding: "40px 36px 80px", maxWidth: 1060, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {CASES.map((c, i) => (
+            <UseCaseCard key={c.title} {...c} stagger={i} />
           ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section
-        className="py-20 text-center px-4 sm:px-8"
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          background: "#0a0d14",
-        }}
-      >
-        <h2
-          className="font-display mb-4"
-          style={{
-            fontSize: "clamp(24px, 3vw, 40px)",
-            fontWeight: 400,
-            letterSpacing: "-0.02em",
-            color: "rgba(248,249,251,0.90)",
-          }}
-        >
-          Ready to try?
-        </h2>
-        <Link
-          href="/app"
-          className="inline-block font-geist text-sm font-medium text-white px-6 py-3 rounded-xl transition-colors duration-150"
-          style={{ background: "hsl(197,62%,38%)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "hsl(197,62%,44%)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "hsl(197,62%,38%)";
-          }}
-        >
-          Get started — free
-        </Link>
+      <section style={{ padding: "40px 36px 70px", textAlign: "center" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 400, marginBottom: 10 }}>Don&apos;t see your use case?</h2>
+        <p style={{ ...mono, fontSize: 11, color: tx3, marginBottom: 24 }}>Atlas is flexible enough for any data that has a geographic dimension.</p>
+        <a href="/app" style={{ display: "inline-block", background: gold, color: c1, border: "none", padding: "12px 32px", ...mono, fontSize: 11, fontWeight: 700, borderRadius: 6, textDecoration: "none" }}>Try it Free</a>
       </section>
 
       <MarketingFooter />
-    </>
+    </div>
+  );
+}
+
+function UseCaseCard({ title, desc, icon, color, examples, stagger }: typeof CASES[number] & { stagger: number }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      className={`s${Math.min(stagger, 4)}`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        border: `1px solid ${hover ? bd2 : bd}`,
+        borderRadius: 12,
+        padding: "28px 24px",
+        background: hover ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.008)",
+        transition: "all .25s",
+        cursor: "pointer",
+        transform: hover ? "translateY(-3px)" : "none",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <CaseIcon name={icon} color={color} hover={hover} />
+        <h3 style={{ fontSize: 16, fontWeight: 400, color: tx }}>{title}</h3>
+      </div>
+      <p style={{ fontSize: 13, color: tx2, lineHeight: 1.65, marginBottom: 18 }}>{desc}</p>
+      <div style={{ borderTop: `1px solid ${bd}`, paddingTop: 14 }}>
+        {examples.map((ex) => (
+          <div key={ex} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: color, opacity: hover ? 0.7 : 0.35, transition: "opacity .2s" }} />
+            <span style={{ ...mono, fontSize: 10, color: hover ? tx2 : tx3, transition: "color .2s" }}>{ex}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
