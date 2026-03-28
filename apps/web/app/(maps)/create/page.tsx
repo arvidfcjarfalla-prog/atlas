@@ -6,6 +6,7 @@ import {
   MapShell,
   useBasemapLayers,
   useManifestRenderer,
+  getBasemapLandColor,
 } from "@atlas/map-core";
 import type { CompiledLegendItem } from "@atlas/map-core";
 import { Legend, GradientLegend, ProportionalLegend } from "@atlas/map-modules";
@@ -74,7 +75,10 @@ function MapContent({
   data: GeoJSON.FeatureCollection | string;
   onLegendItems: (items: CompiledLegendItem[]) => void;
 }) {
-  useBasemapLayers({ basemap: manifest.basemap });
+  useBasemapLayers({
+    basemap: manifest.basemap,
+    landColor: getBasemapLandColor(manifest.basemap?.style),
+  });
 
   const layer = manifest.layers[0];
   const { legendItems } = useManifestRenderer({
@@ -100,7 +104,7 @@ export default function CreateMapPage() {
 }
 
 // /create is no longer a primary destination.
-// Redirect logged-in users to /dashboard, everyone else to /.
+// /create is legacy — redirect logged-in users to gallery, everyone else to landing.
 function CreateRedirect() {
   const router = useRouter();
 
@@ -108,7 +112,7 @@ function CreateRedirect() {
     const supabase = createClient();
     if (!supabase) { router.replace("/"); return; }
     supabase.auth.getUser().then(({ data }) => {
-      router.replace(data.user ? "/dashboard" : "/");
+      router.replace(data.user ? "/app/gallery" : "/");
     });
   }, [router]);
 
@@ -865,7 +869,7 @@ function CreateMapPageInner() {
           {/* Save map */}
           {saveState === "saved" && savedMapId ? (
             <a
-              href="/dashboard"
+              href="/app/gallery"
               className="w-full block text-center rounded-md px-3 py-2 text-body font-medium text-green-400 border border-green-500/30 bg-green-500/10 hover:bg-green-500/15 transition-colors duration-fast"
             >
               ✓ Sparad — Mina kartor →

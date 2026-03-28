@@ -38,14 +38,40 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const name = file.name.toLowerCase();
-    if (!name.endsWith(".csv") && !name.endsWith(".tsv") && !name.endsWith(".txt")) {
+    const isGeoJSON = name.endsWith(".geojson") || name.endsWith(".json");
+    if (!isGeoJSON && !name.endsWith(".csv") && !name.endsWith(".tsv") && !name.endsWith(".txt")) {
       return NextResponse.json(
-        { error: "Only CSV files are supported (.csv, .tsv, .txt)" },
+        { error: "Supported formats: .csv, .tsv, .txt, .geojson, .json" },
         { status: 400 },
       );
     }
 
     const text = await file.text();
+
+    // ── GeoJSON passthrough ─────────────────────────────────
+    if (isGeoJSON) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed?.type === "FeatureCollection" && Array.isArray(parsed.features)) {
+          const profile = profileDataset(parsed);
+          return NextResponse.json({
+            geojson: parsed,
+            profile,
+            warnings: [],
+            stats: { featureCount: parsed.features.length },
+          });
+        }
+        return NextResponse.json(
+          { error: "Invalid GeoJSON: expected a FeatureCollection" },
+          { status: 422 },
+        );
+      } catch {
+        return NextResponse.json(
+          { error: "Failed to parse JSON file" },
+          { status: 422 },
+        );
+      }
+    }
 
     // ── Tier 1: lat/lng → Point features ─────────────────────
     const result = csvToGeoJSON(text);

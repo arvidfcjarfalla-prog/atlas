@@ -295,14 +295,17 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
           style={{ borderColor: "rgba(255,255,255,0.05)" }}
         >
           <div className="flex items-center justify-between">
-            <div className="min-w-0">
+            <Link
+              href="/app/profile"
+              className="min-w-0 rounded-md px-1 -mx-1 transition-colors hover:bg-white/[0.04]"
+            >
               <div className="truncate text-sm" style={{ color: "#e4e0d8" }}>
                 {profile?.display_name || user.email?.split("@")[0]}
               </div>
               <div className="truncate text-xs" style={{ color: "#5a5752" }}>
                 {profile?.plan === "pro" ? "Pro" : "Free"}
               </div>
-            </div>
+            </Link>
             <button
               onClick={handleSignOut}
               className="rounded px-2 py-1 text-xs transition-colors hover:bg-white/[0.06]"

@@ -263,6 +263,15 @@ export function AuthModal({ open, onClose, onSuccess, reason = "för att fortsä
                 {mode === "login" ? "Skapa konto" : "Logga in"}
               </button>
             </p>
+
+            {/* Dismiss */}
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ display: "block", width: "100%", marginTop: 16, fontFamily: "'Geist', sans-serif", fontSize: 13, color: "rgba(248,249,251,0.25)", background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
+            >
+              Fortsätt utforska
+            </button>
           </>
         )}
       </div>

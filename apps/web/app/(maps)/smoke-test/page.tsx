@@ -5,6 +5,7 @@ import {
   MapShell,
   useBasemapLayers,
   useManifestRenderer,
+  getBasemapLandColor,
 } from "@atlas/map-core";
 import type { CompiledLegendItem } from "@atlas/map-core";
 import { Legend } from "@atlas/map-modules";
@@ -26,7 +27,10 @@ function SmokeTestContent({
 }) {
   const fixture = FIXTURES[family];
 
-  useBasemapLayers({ basemap: fixture.manifest.basemap });
+  useBasemapLayers({
+    basemap: fixture.manifest.basemap,
+    landColor: getBasemapLandColor(fixture.manifest.basemap?.style),
+  });
 
   const { legendItems } = useManifestRenderer({
     layer: fixture.manifest.layers[0],

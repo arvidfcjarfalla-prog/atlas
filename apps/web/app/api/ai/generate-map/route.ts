@@ -3,6 +3,7 @@ import { type ModelMessage } from "ai";
 import { MODELS, generateTextWithRetry } from "../../../../lib/ai/ai-client";
 import type { MapManifest } from "@atlas/data-models";
 import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
+import { classifyGenSkill } from "../../../../lib/ai/skills/router";
 import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
@@ -10,6 +11,7 @@ import { profileDataset } from "../../../../lib/ai/profiler";
 import { saveCase, findRelevantLessons, formatLessons } from "../../../../lib/ai/case-memory";
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
+import { applyGeometryGuards } from "../../../../lib/ai/geometry-guards";
 import { log } from "../../../../lib/logger";
 import { reportError } from "../../../../lib/error-reporter";
 
@@ -88,6 +90,7 @@ function buildUserMessage(
   profile: DatasetProfile | null,
   sourceUrl?: string,
   scopeHint?: { region: string; filterField: string },
+  preferences?: Record<string, string>,
 ): string {
   const parts: string[] = [];
   if (profile) {
@@ -104,6 +107,12 @@ function buildUserMessage(
     parts.push(
       `<scope-hint>The data source is global but the user asked about ${scopeHint.region} only. You MUST add a filter to the layer: ["==", ["get", "${scopeHint.filterField}"], "${scopeHint.region}"]. Also set defaultCenter and defaultZoom appropriate for ${scopeHint.region}.</scope-hint>`,
     );
+  }
+  if (preferences && Object.keys(preferences).length > 0) {
+    const entries = Object.entries(preferences)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
+    parts.push(`<user-preferences>\n${entries}\n</user-preferences>`);
   }
   parts.push(prompt.trim());
   return parts.join("\n\n");
@@ -161,8 +170,6 @@ export async function POST(request: Request) {
       );
     }
 
-    log("generate.start", { promptLength: prompt.length });
-
     // Resolve dataset profile: explicit > fetched > none
     const sourceUrl: string | undefined = body.sourceUrl ?? body.dataUrl;
     let profile: DatasetProfile | null = body.dataProfile ?? null;
@@ -173,6 +180,14 @@ export async function POST(request: Request) {
     // Read optional scope hint (e.g. { region: "Europe", filterField: "continent" })
     const scopeHint: { region: string; filterField: string } | undefined = body.scopeHint;
 
+    // Read optional user preferences from confirmation step
+    const preferences: Record<string, string> | undefined = body.preferences;
+
+    // Classify prompt into a generation skill for prompt trimming
+    const genSkill = classifyGenSkill(prompt, profile);
+
+    log("generate.start", { promptLength: prompt.length, genSkill });
+
     // Retrieve lessons from past cases (non-blocking — empty on first run)
     const geoType = profile?.geometryType;
     const lessons = await findRelevantLessons(prompt, geoType).catch(() => []);
@@ -180,7 +195,7 @@ export async function POST(request: Request) {
 
     // Self-correction loop: generate → validate → retry on errors
     const messages: ModelMessage[] = [
-      { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint) },
+      { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint, preferences) },
     ];
 
     let manifest: MapManifest | null = null;
@@ -194,7 +209,7 @@ export async function POST(request: Request) {
       const result = await generateTextWithRetry({
         model: MODELS.generation(),
         maxOutputTokens: MAX_TOKENS,
-        system: buildSystemPrompt(profile, lessonsBlock),
+        system: buildSystemPrompt(profile, lessonsBlock, genSkill),
         messages,
       });
 
@@ -236,14 +251,15 @@ export async function POST(request: Request) {
 
       validation = validateManifest(manifest, profile);
 
-      // Validation errors → retry with error feedback
+      // Validation errors → retry with error feedback + available fields
       if (validation.errors.length > 0) {
         if (attempts === MAX_ATTEMPTS) break;
+        const fieldList = profile?.attributes.map(a => a.name).join(", ") ?? "unknown";
         messages.push(
           { role: "assistant", content: responseText },
           {
             role: "user",
-            content: `The manifest has validation errors:\n${validation.errors.map((e) => `- ${e}`).join("\n")}\n\nFix these errors and return a corrected JSON manifest.`,
+            content: `Validation errors:\n${validation.errors.map((e) => `- ${e}`).join("\n")}\n\nAvailable fields: ${fieldList}\n\nFix and return corrected JSON.`,
           },
         );
         continue;
@@ -272,6 +288,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Geometry guards: auto-correct family↔geometry mismatches ──
+    if (profile) {
+      const guardWarnings = applyGeometryGuards(manifest, profile);
+      validation.warnings.push(...guardWarnings);
+    }
+
     manifest.validation = validation;
 
     // Score the final manifest if not already scored (e.g. validation errors on last attempt)
@@ -296,6 +318,7 @@ export async function POST(request: Request) {
       attempts,
       outcome: "accepted",
       refinements: [],
+      usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
     }).catch(() => {});
 
     log("generate.complete", {

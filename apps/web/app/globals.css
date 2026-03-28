@@ -29,3 +29,18 @@
 .maplibregl-ctrl-attrib a {
   color: inherit;
 }
+
+/* Marketing page stagger animations */
+@keyframes mkt-slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mkt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.s0 { animation: mkt-slide-up 0.7s ease 0s both; }
+.s1 { animation: mkt-slide-up 0.7s ease 0.1s both; }
+.s2 { animation: mkt-slide-up 0.7s ease 0.2s both; }
+.s3 { animation: mkt-slide-up 0.7s ease 0.3s both; }
+.s4 { animation: mkt-slide-up 0.7s ease 0.45s both; }

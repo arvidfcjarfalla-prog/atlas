@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
+import { MODELS } from "../../../../lib/ai/ai-client";
 
-const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 128;
 
 const SYSTEM_PROMPT = `You rewrite map prompts so Atlas (an AI map platform) understands them perfectly.
@@ -29,25 +29,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No prompt provided" }, { status: 400 });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
-    }
-
-    const client = new Anthropic({ apiKey });
-
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+    const { text } = await generateText({
+      model: MODELS.utility(),
+      maxOutputTokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const textBlock = response.content.find(
-      (b): b is Anthropic.TextBlock => b.type === "text",
-    );
-
-    const enhanced = textBlock?.text.trim() ?? prompt;
+    const enhanced = text.trim() || prompt;
 
     return NextResponse.json({ enhanced });
   } catch (err) {

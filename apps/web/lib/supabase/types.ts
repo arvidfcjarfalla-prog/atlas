@@ -147,6 +147,7 @@ export interface Database {
           thumbnail_url: string | null;
           is_public: boolean;
           slug: string | null;
+          chat_history: Json;
           created_at: string;
           updated_at: string;
         };
@@ -161,6 +162,7 @@ export interface Database {
           thumbnail_url?: string | null;
           is_public?: boolean;
           slug?: string | null;
+          chat_history?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -175,6 +177,7 @@ export interface Database {
           thumbnail_url?: string | null;
           is_public?: boolean;
           slug?: string | null;
+          chat_history?: Json;
           updated_at?: string;
         };
         Relationships: [];

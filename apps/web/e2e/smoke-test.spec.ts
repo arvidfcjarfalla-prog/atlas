@@ -8,6 +8,10 @@ const FAMILIES = [
   'proportional-symbol',
   'flow',
   'isochrone',
+  'hexbin',
+  'hexbin-3d',
+  'screen-grid',
+  'trip',
 ] as const;
 
 test.describe('Smoke Test Page', () => {

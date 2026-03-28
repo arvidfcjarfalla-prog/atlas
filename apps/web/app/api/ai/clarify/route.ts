@@ -17,7 +17,7 @@ import { resolveOfficialStatsSources, type ResolvedSource } from "../../../../li
 import { resolvePxWeb } from "../../../../lib/ai/tools/pxweb-resolution";
 import { getStatsAdapter } from "../../../../lib/ai/tools/pxweb-client";
 import { classifyPipelineResult, buildTabularFallbackResponse, type TabularStash } from "../../../../lib/ai/pipeline-decision";
-import { generateTabularSuggestions } from "../../../../lib/ai/tools/ai-suggestion-generator";
+import { generateTabularSuggestions, generateAlternativeSuggestions } from "../../../../lib/ai/tools/ai-suggestion-generator";
 import type { ClarifyResponse, DatasetProfile } from "../../../../lib/ai/types";
 import { normalizePrompt, getCachedClarify, storeClarifyResult, incrementCacheHit } from "../../../../lib/ai/clarify-cache";
 import { storeResolution, findSimilarResolutions } from "../../../../lib/ai/clarify-resolution-store";
@@ -830,18 +830,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     // ── Slow path: AI clarification with tool use ────────────
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      // No API key — return a basic response based on heuristics
+      // No API key — return suggestions for built-in datasets
       const response: ClarifyResponse = {
         ready: false,
         dataWarning:
-          "Atlas needs data to create your map. You can upload a CSV file with your data, or try a prompt that matches our built-in datasets (e.g. 'show earthquakes' or 'world population').",
-        questions: [
-          {
-            id: "data-source",
-            question: "Would you like to upload your own data or use a built-in dataset?",
-            options: ["Upload CSV", "Show earthquakes", "World countries", "World cities"],
-            aspect: "data-source",
-          },
+          "Atlas kunde inte hitta data för din sökning.",
+        suggestions: [
+          "Visa jordskalv senaste dygnet",
+          "BNP per capita i världens länder",
+          "Befolkningstäthet i Europa",
         ],
       };
       return NextResponse.json(response);
@@ -991,34 +988,38 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       }
 
-      // Return clarification questions
-      const response: ClarifyResponse = {
-        ready: parsed.ready ?? false,
-        resolvedPrompt: parsed.resolvedPrompt ?? undefined,
-        questions: parsed.questions?.map((q) => ({
-          id: q.id,
-          question: q.question,
-          options: q.options,
-          ...(q.recommended ? { recommended: q.recommended } : {}),
-          aspect: (q.aspect ?? "data-source") as "geography" | "metric" | "timeframe" | "data-source" | "visualization",
-        })),
-        dataWarning: parsed.dataWarning ?? undefined,
-      };
+      // Instead of showing clarification questions, generate alternative
+      // prompt suggestions that are close to what the user asked but
+      // that Atlas can actually resolve.
+      const warningText = parsed.dataWarning
+        ?? "Atlas kunde inte hitta data för din sökning.";
+      let suggestions: string[] = [];
+      if (process.env.ANTHROPIC_API_KEY) {
+        suggestions = await generateAlternativeSuggestions(
+          trimmedPrompt,
+          parsed.dataWarning,
+        );
+      }
 
-      log("clarify.complete", { source: "ai-clarify", ready: parsed.ready ?? false, latencyMs: Date.now() - t0 });
-      return NextResponse.json(response);
-    } catch {
-      // JSON parse failed — return generic clarification
       const response: ClarifyResponse = {
         ready: false,
-        questions: [
-          {
-            id: "intent",
-            question: "What kind of map would you like to create?",
-            options: ["Show locations on a map", "Compare regions", "Show density/heatmap", "Upload my own data"],
-            aspect: "visualization",
-          },
-        ],
+        resolvedPrompt: parsed.resolvedPrompt ?? undefined,
+        dataWarning: warningText,
+        suggestions,
+      };
+
+      log("clarify.complete", { source: "ai-clarify", ready: false, suggestions: suggestions.length, latencyMs: Date.now() - t0 });
+      return NextResponse.json(response);
+    } catch {
+      // JSON parse failed — generate alternative suggestions
+      let suggestions: string[] = [];
+      if (process.env.ANTHROPIC_API_KEY) {
+        suggestions = await generateAlternativeSuggestions(trimmedPrompt);
+      }
+      const response: ClarifyResponse = {
+        ready: false,
+        dataWarning: "Atlas kunde inte hitta data för din sökning.",
+        suggestions,
       };
       return NextResponse.json(response);
     }

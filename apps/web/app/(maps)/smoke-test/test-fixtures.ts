@@ -8,6 +8,10 @@ export const FAMILIES: MapFamily[] = [
   "proportional-symbol",
   "flow",
   "isochrone",
+  "hexbin",
+  "hexbin-3d",
+  "screen-grid",
+  "trip",
 ];
 
 export interface TestFixture {
@@ -422,6 +426,24 @@ const isochroneFixture: TestFixture = {
   ]),
 };
 
+// ─── Helpers: derive fixture with different family ──────────
+
+function withFamily(base: TestFixture, family: MapFamily, title: string): TestFixture {
+  return {
+    data: base.data,
+    manifest: {
+      ...base.manifest,
+      id: `smoke-${family}`,
+      title,
+      layers: base.manifest.layers.map((l) => ({
+        ...l,
+        id: `${family}-layer`,
+        style: { ...l.style, mapFamily: family },
+      })),
+    },
+  };
+}
+
 // ─── Export ─────────────────────────────────────────────────
 
 export const FIXTURES: Record<MapFamily, TestFixture> = {
@@ -432,4 +454,11 @@ export const FIXTURES: Record<MapFamily, TestFixture> = {
   "proportional-symbol": proportionalFixture,
   flow: flowFixture,
   isochrone: isochroneFixture,
+  extrusion: withFamily(choroplethFixture, "extrusion", "Extrusion — 3D Polygons"),
+  "animated-route": withFamily(flowFixture, "animated-route", "Animated Route"),
+  timeline: withFamily(choroplethFixture, "timeline", "Timeline — Time Series"),
+  hexbin: withFamily(pointFixture, "hexbin", "Hexbin — H3 Aggregation"),
+  "hexbin-3d": withFamily(pointFixture, "hexbin-3d", "Hexbin 3D — deck.gl"),
+  "screen-grid": withFamily(pointFixture, "screen-grid", "Screen Grid — deck.gl"),
+  trip: withFamily(flowFixture, "trip", "Trip — deck.gl Animated"),
 };

@@ -8,7 +8,6 @@ const nextConfig = {
   ],
   async redirects() {
     return [
-      { source: "/dashboard", destination: "/app/gallery", permanent: true },
       { source: "/login", destination: "/auth/login", permanent: true },
       { source: "/signup", destination: "/auth/signup", permanent: true },
       { source: "/maps/new", destination: "/app/map/new", permanent: true },

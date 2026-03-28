@@ -50,6 +50,7 @@ export async function PATCH(request: Request, { params }: Params) {
     is_public?: boolean;
     manifest?: Record<string, unknown>;
     geojson_url?: string | null;
+    chat_history?: Array<{ role: string; content: string }>;
   };
   try {
     body = await request.json();
@@ -63,6 +64,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (body.is_public !== undefined) patch.is_public = body.is_public;
   if (body.manifest !== undefined) patch.manifest = body.manifest as MapUpdate["manifest"];
   if (body.geojson_url !== undefined) patch.geojson_url = body.geojson_url;
+  if (body.chat_history !== undefined) patch.chat_history = body.chat_history as MapUpdate["chat_history"];
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

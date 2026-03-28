@@ -44,7 +44,7 @@ function checkRateLimit(ip: string): {
 // ---------------------------------------------------------------------------
 // Protected routes — redirect to /auth/login if no session
 // ---------------------------------------------------------------------------
-const PROTECTED = ["/app/gallery"];
+const PROTECTED = ["/app/gallery", "/app/profile"];
 
 export async function middleware(request: NextRequest) {
   // --- Rate-limit AI endpoints before anything else ---
