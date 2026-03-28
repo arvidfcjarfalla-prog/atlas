@@ -20,6 +20,18 @@ import { intersect } from "@turf/intersect";
 import type { Feature, Polygon, MultiPolygon } from "geojson";
 import { SOURCES, type GeometrySource } from "./geometry-sources.js";
 
+// Import auto-generated sources (if they exist)
+function loadGeneratedSources(): GeometrySource[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("./geometry-sources-generated").GENERATED_SOURCES ?? [];
+  } catch {
+    return [];
+  }
+}
+
+const ALL_SOURCES: GeometrySource[] = [...SOURCES, ...loadGeneratedSources()];
+
 // ═══════════════════════════════════════════════════════════════
 // Config
 // ═══════════════════════════════════════════════════════════════
@@ -302,11 +314,11 @@ async function processSource(source: GeometrySource): Promise<boolean> {
 
 async function main() {
   const { ids } = parseArgs();
-  const sources = SOURCES.filter((s) => matchesFilter(s.id, ids));
+  const sources = ALL_SOURCES.filter((s) => matchesFilter(s.id, ids));
 
   if (sources.length === 0) {
     console.error("No sources matched the filter.");
-    console.error(`Available: ${SOURCES.map((s) => s.id).join(", ")}`);
+    console.error(`Available: ${ALL_SOURCES.map((s) => s.id).join(", ")}`);
     process.exit(1);
   }
 

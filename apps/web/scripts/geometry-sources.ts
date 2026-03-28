@@ -214,6 +214,9 @@ export const SOURCES: GeometrySource[] = [
     propertyMap: GB_ADM2_PROPS,
     postProcess: "clip-sweden-land",
     expectedFeatures: 290,
+    // NOTE: geoBoundaries uses "Gothenburg" (English). Manually patched to
+    // "Göteborg" in the output file so SCB PxWeb label joins work.
+    // If re-running build:geo, re-apply the patch.
   },
 
   // ── Norway ─────────────────────────────────────────────────
