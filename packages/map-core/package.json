@@ -9,10 +9,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "maplibre-gl": "^5.19.0",
-    "lucide-react": "^0.462.0",
     "@atlas/data-models": "workspace:*",
-    "@atlas/ui": "workspace:*"
+    "@atlas/ui": "workspace:*",
+    "@turf/area": "^7.3.4",
+    "@turf/bbox": "^7.3.4",
+    "@turf/buffer": "^7.3.4",
+    "@turf/centroid": "^7.3.4",
+    "@turf/convex": "^7.3.4",
+    "@turf/dissolve": "^7.3.4",
+    "@turf/helpers": "^7.3.4",
+    "@turf/length": "^7.3.4",
+    "@turf/simplify": "^7.3.4",
+    "@turf/voronoi": "^7.3.4",
+    "h3-js": "^4.4.0",
+    "lucide-react": "^0.462.0",
+    "maplibre-contour": "^0.1.0",
+    "maplibre-gl": "^5.19.0"
   },
   "peerDependencies": {
     "react": "^18.0.0",

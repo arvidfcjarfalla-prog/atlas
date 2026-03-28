@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import maplibregl from "maplibre-gl";
 import type { MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
 import { useMap } from "./use-map";
@@ -10,6 +10,7 @@ import {
   type CompiledLayer,
   type CompiledLegendItem,
 } from "./manifest-compiler";
+import { useDeckOverlay } from "./use-deck-overlay";
 
 interface UseManifestRendererOptions {
   /** Layer manifest to render. */
@@ -24,8 +25,39 @@ interface UseManifestRendererOptions {
   onFeatureHover?: (properties: Record<string, unknown> | null) => void;
 }
 
+/** Image fill metadata shape exposed from compiled layer. */
+export interface ImageFillMetadata {
+  imageField: string;
+  imageMap: Record<string, string>;
+  fallbackUrl?: string;
+  opacity: number;
+  resolution: number;
+}
+
+/** Chart overlay metadata shape exposed from compiled layer. */
+export interface ChartOverlayMetadata {
+  config: import("@atlas/data-models").ChartOverlayConfig;
+  features: Array<{
+    centroid: [number, number];
+    values: number[];
+    label?: string;
+  }>;
+}
+
 interface UseManifestRendererResult {
   legendItems: CompiledLegendItem[];
+  /** Timeline metadata from compiled layer — present for timeline family maps. */
+  timelineMetadata: import("./manifest-compiler").TimelineMetadata | null;
+  /** Whether this layer supports route animation (animated-route family). */
+  animatable: boolean;
+  /** Image fill metadata — present when layer has imageFill config. */
+  imageFillMetadata: ImageFillMetadata | null;
+  /** Chart overlay metadata — present when layer has chartOverlay config. */
+  chartOverlayMetadata: ChartOverlayMetadata | null;
+  /** Compiler warnings (field mismatches, empty data, fallbacks). */
+  warnings: string[];
+  /** Error from adding sources/layers to MapLibre. */
+  renderError: string | null;
 }
 
 /**
@@ -48,15 +80,22 @@ export function useManifestRenderer({
   onClickRef.current = onFeatureClick;
   const onHoverRef = useRef(onFeatureHover);
   onHoverRef.current = onFeatureHover;
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   // Compile the layer specification
   const compiled: CompiledLayer | null = useMemo(() => {
     if (typeof data === "string") {
-      // URL — create a minimal FeatureCollection for compile, actual data loaded by MapLibre
-      return compileLayer(layer, { type: "FeatureCollection", features: [] });
+      // URL — compile with empty placeholder; MapLibre loads actual data from URL.
+      // Suppress warnings since they're based on the empty placeholder, not real data.
+      const result = compileLayer(layer, { type: "FeatureCollection", features: [] });
+      result.warnings = [];
+      return result;
     }
     return compileLayer(layer, data);
   }, [layer, data]);
+
+  // deck.gl overlay for families that output deckLayers
+  useDeckOverlay(compiled?.deckLayers);
 
   // Add source + layers
   useEffect(() => {
@@ -85,6 +124,7 @@ export function useManifestRenderer({
     if (addedRef.current) return;
 
     try {
+      setRenderError(null);
       const sourceConfig =
         typeof data === "string"
           ? { ...compiled.sourceConfig, data }
@@ -111,7 +151,10 @@ export function useManifestRenderer({
       }
 
       addedRef.current = true;
-    } catch {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to render layer";
+      console.error("[Atlas] Render error:", msg);
+      setRenderError(msg);
       // Clean up orphaned source
       if (
         map.getSource(compiled.sourceId) &&
@@ -406,5 +449,11 @@ export function useManifestRenderer({
 
   return {
     legendItems: compiled?.legendItems ?? [],
+    timelineMetadata: compiled?._timeline ?? null,
+    animatable: compiled?._animatable ?? false,
+    imageFillMetadata: (compiled?._imageFill as ImageFillMetadata | undefined) ?? null,
+    chartOverlayMetadata: (compiled?._chartOverlay as ChartOverlayMetadata | undefined) ?? null,
+    warnings: compiled?.warnings ?? [],
+    renderError,
   };
 }

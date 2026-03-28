@@ -43,6 +43,8 @@ export function classify(
       return { method, breaks: naturalBreaks(sorted, classes), min, max };
     case "manual":
       return { method, breaks: manualBreaks ?? [], min, max };
+    case "categorical":
+      return { method, breaks: [], min, max };
   }
 }
 

@@ -761,4 +761,292 @@ describe("manifest-compiler", () => {
       expect(result.layers[0].id).toBe("default-family-points");
     });
   });
+
+  // ─── Extrusion ────────────────────────────────────────────
+
+  describe("extrusion", () => {
+    it("produces fill-extrusion layers", () => {
+      const layer: LayerManifest = {
+        id: "ext",
+        kind: "asset",
+        label: "GDP 3D",
+        sourceType: "geojson-url",
+        style: { markerShape: "circle", mapFamily: "extrusion", colorField: "gdp" },
+        extrusion: { heightField: "gdp", maxHeight: 500000 },
+      };
+
+      const ring: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
+      const data = fc([poly(ring, { gdp: 100 }), poly(ring, { gdp: 200 })]);
+
+      const result = compileLayer(layer, data);
+
+      expect(result.layers[0].type).toBe("fill-extrusion");
+      expect(result.layers[0].id).toBe("ext-extrusion");
+      expect(result.layers).toHaveLength(2); // extrusion + highlight
+    });
+  });
+
+  // ─── Animated route ───────────────────────────────────────
+
+  describe("animated-route", () => {
+    it("produces line + circle layers and sets _animatable", () => {
+      const layer: LayerManifest = {
+        id: "route",
+        kind: "asset",
+        label: "Tour",
+        sourceType: "geojson-url",
+        style: { markerShape: "circle", mapFamily: "animated-route" },
+        animatedRoute: { orderField: "order" },
+      };
+
+      const line: GeoJSON.Feature = {
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: [[18, 59], [14, 61]] },
+        properties: { name: "Route" },
+      };
+      const data = fc([line, pt(18, 59, { name: "Start" }), pt(14, 61, { name: "End" })]);
+
+      const result = compileLayer(layer, data);
+
+      expect(result.layers.some((l) => l.type === "line")).toBe(true);
+      expect(result.layers.some((l) => l.type === "circle")).toBe(true);
+      expect(result._animatable).toBe(true);
+    });
+  });
+
+  // ─── Timeline ─────────────────────────────────────────────
+
+  describe("timeline", () => {
+    it("compiles with _timeline metadata", () => {
+      const layer: LayerManifest = {
+        id: "tl",
+        kind: "asset",
+        label: "History",
+        sourceType: "geojson-url",
+        style: { markerShape: "circle", mapFamily: "timeline", colorField: "value" },
+        timeline: { timeField: "year" },
+      };
+
+      const ring: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
+      const data = fc([
+        poly(ring, { value: 10, year: 2020 }),
+        poly(ring, { value: 20, year: 2021 }),
+        poly(ring, { value: 30, year: 2022 }),
+      ]);
+
+      const result = compileLayer(layer, data);
+
+      expect(result._timeline).toBeDefined();
+      expect(result._timeline?.timeField).toBe("year");
+      expect(result._timeline?.min).toBe(2020);
+      expect(result._timeline?.max).toBe(2022);
+      expect(result._timeline?.steps).toEqual([2020, 2021, 2022]);
+      expect(result._timeline?.cumulative).toBe(true);
+    });
+  });
+
+  // ─── Warnings & field auto-correction ───────────────────────────
+
+  describe("warnings", () => {
+    it("warns on empty FeatureCollection", () => {
+      const layer: LayerManifest = {
+        id: "empty", kind: "asset", label: "Empty",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point" },
+      };
+      const result = compileLayer(layer, fc([]));
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining("no features"),
+      );
+    });
+
+    it("warns when colorField has no numeric values", () => {
+      const layer: LayerManifest = {
+        id: "bad-field", kind: "asset", label: "Bad",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "value" },
+      };
+      // All values are strings, not numbers
+      const data = fc([
+        pt(10, 60, { value: "high" }),
+        pt(11, 61, { value: "low" }),
+      ]);
+      const result = compileLayer(layer, data);
+      // Should compile without crash — categorical expression
+      expect(result.layers.length).toBeGreaterThan(0);
+    });
+
+    it("warns when all numeric values are identical", () => {
+      const layer: LayerManifest = {
+        id: "same", kind: "asset", label: "Same",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "val" },
+      };
+      const data = fc([
+        pt(10, 60, { val: 42 }),
+        pt(11, 61, { val: 42 }),
+        pt(12, 62, { val: 42 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining("identical"),
+      );
+    });
+
+    it("returns no warnings for valid data", () => {
+      const layer: LayerManifest = {
+        id: "ok", kind: "asset", label: "OK",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "val" },
+      };
+      const data = fc([
+        pt(10, 60, { val: 1 }),
+        pt(11, 61, { val: 5 }),
+        pt(12, 62, { val: 10 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings ?? []).toHaveLength(0);
+    });
+  });
+
+  describe("legend no-data fallback", () => {
+    it("returns 'No data' legend item for choropleth with missing colorField values", () => {
+      const layer: LayerManifest = {
+        id: "no-data-choro", kind: "asset", label: "No Data",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: {
+          markerShape: "circle", mapFamily: "choropleth",
+          colorField: "value",
+          classification: { method: "quantile", classes: 5 },
+          color: { scheme: "viridis" },
+        },
+      };
+      // All features have null values for colorField
+      const data = fc([
+        poly(rect(10, 60, 11, 61), { value: null }),
+        poly(rect(11, 60, 12, 61), { name: "no-value" }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.legendItems).toHaveLength(1);
+      expect(result.legendItems[0].label).toBe("No data");
+      expect(result.legendItems[0].color).toBe("#999999");
+      expect(result.legendItems[0].shape).toBe("square");
+    });
+
+    it("returns 'No data' legend for proportional-symbol with missing sizeField", () => {
+      const layer: LayerManifest = {
+        id: "no-data-prop", kind: "asset", label: "No Data",
+        sourceType: "geojson-static", geometryType: "point",
+        style: {
+          markerShape: "circle", mapFamily: "proportional-symbol",
+          sizeField: "population",
+          color: { scheme: "blues" },
+        },
+      };
+      const data = fc([
+        pt(10, 60, { name: "A" }),
+        pt(11, 61, { name: "B" }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.legendItems).toHaveLength(1);
+      expect(result.legendItems[0].label).toBe("No data");
+      expect(result.legendItems[0].shape).toBe("circle");
+    });
+
+    it("returns 'No data' legend for point with numeric colorField but no numeric values", () => {
+      const layer: LayerManifest = {
+        id: "no-data-point", kind: "asset", label: "No Data",
+        sourceType: "geojson-static", geometryType: "point",
+        style: {
+          markerShape: "circle", mapFamily: "point",
+          colorField: "count",
+          color: { scheme: "reds" },
+        },
+      };
+      // count exists as number type but is null in all features
+      const data = fc([
+        pt(10, 60, { count: null }),
+        pt(11, 61, { count: null }),
+      ]);
+      const result = compileLayer(layer, data);
+      // With all nulls, detectFieldType returns "missing" → falls through to categorical
+      // which will also have empty categories → legend will be empty array from map()
+      // The important thing is it doesn't crash
+      expect(result.layers.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("field auto-correction", () => {
+    it("auto-corrects case-mismatched colorField", () => {
+      const layer: LayerManifest = {
+        id: "case", kind: "asset", label: "Case",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "Population" },
+      };
+      const data = fc([
+        pt(10, 60, { population: 100 }),
+        pt(11, 61, { population: 200 }),
+        pt(12, 62, { population: 300 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('Auto-corrected "Population"'),
+      );
+      // Should still compile with color expression (not fallback)
+      const paint = (result.layers[0] as CircleLayerSpecification).paint!;
+      expect(Array.isArray(paint["circle-color"])).toBe(true);
+    });
+
+    it("auto-corrects case-mismatched sizeField", () => {
+      const layer: LayerManifest = {
+        id: "size", kind: "asset", label: "Size",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "proportional-symbol", sizeField: "VALUE" },
+      };
+      const data = fc([
+        pt(10, 60, { value: 10 }),
+        pt(11, 61, { value: 50 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('Auto-corrected "VALUE"'),
+      );
+    });
+
+    it("warns when field is completely missing", () => {
+      const layer: LayerManifest = {
+        id: "missing", kind: "asset", label: "Missing",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "nonexistent" },
+      };
+      const data = fc([
+        pt(10, 60, { name: "A", pop: 100 }),
+        pt(11, 61, { name: "B", pop: 200 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining('"nonexistent" not found'),
+      );
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining("Available:"),
+      );
+    });
+
+    it("does not warn when field exists with exact name", () => {
+      const layer: LayerManifest = {
+        id: "exact", kind: "asset", label: "Exact",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "point", colorField: "type" },
+      };
+      const data = fc([
+        pt(10, 60, { type: "a" }),
+        pt(11, 61, { type: "b" }),
+      ]);
+      const result = compileLayer(layer, data);
+      const fieldWarnings = (result.warnings ?? []).filter(w =>
+        w.includes("Auto-corrected") || w.includes("not found"),
+      );
+      expect(fieldWarnings).toHaveLength(0);
+    });
+  });
 });

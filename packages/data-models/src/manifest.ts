@@ -16,7 +16,11 @@ export type MapFamily =
   | "isochrone"
   | "extrusion"
   | "animated-route"
-  | "timeline";
+  | "timeline"
+  | "hexbin"
+  | "hexbin-3d"
+  | "screen-grid"
+  | "trip";
 
 // ─── v2: Travel mode (for isochrone) ────────────────────────
 
@@ -91,6 +95,54 @@ export interface TimelineConfig {
   cumulative?: boolean;
   /** Auto-play speed in ms per step (default 1000). */
   playSpeed?: number;
+}
+
+// ─── v2: Transforms ─────────────────────────────────────────
+
+export type TransformType = "buffer" | "voronoi" | "convex-hull" | "centroid" | "simplify" | "dissolve";
+
+export interface BufferTransform { type: "buffer"; distance: number; units?: "kilometers" | "miles" | "meters"; }
+export interface VoronoiTransform { type: "voronoi"; bbox?: [number, number, number, number]; }
+export interface ConvexHullTransform { type: "convex-hull"; }
+export interface CentroidTransform { type: "centroid"; keepProperties?: boolean; }
+export interface SimplifyTransform { type: "simplify"; tolerance: number; }
+export interface DissolveTransform { type: "dissolve"; groupByField: string; }
+
+export type TransformConfig =
+  | BufferTransform
+  | VoronoiTransform
+  | ConvexHullTransform
+  | CentroidTransform
+  | SimplifyTransform
+  | DissolveTransform;
+
+// ─── v2: Hexbin config ──────────────────────────────────────
+
+export interface HexbinConfig {
+  resolution?: number;           // 3-9, default 6
+  aggregation?: "count" | "sum" | "mean" | "max" | "min";
+  aggregationField?: string;     // required when aggregation !== "count"
+}
+
+// ─── v2: deck.gl family configs ─────────────────────────────
+
+export interface Hexbin3DConfig {
+  resolution?: number;           // default 6
+  elevationScale?: number;       // default 10000
+  coverage?: number;             // 0-1, default 0.8
+  elevationField?: string;
+  colorField?: string;
+}
+
+export interface ScreenGridConfig {
+  cellSize?: number;             // pixels, default 50
+}
+
+export interface TripConfig {
+  timestampField: string;
+  trailLength?: number;          // default 50
+  speed?: number;                // default 1
+  widthPixels?: number;          // default 3
 }
 
 // ─── v2: Classification ──────────────────────────────────────
@@ -182,7 +234,11 @@ export interface AccessibilityConfig {
 
 // ─── v2: Basemap layers ──────────────────────────────────────
 
+export type BasemapStyle = "dark" | "paper" | "nord" | "sepia" | "stark" | "retro" | "ocean";
+
 export interface BasemapConfig {
+  /** Visual basemap preset. Defaults to "dark". */
+  style?: BasemapStyle;
   hillshade?: boolean;
   nightlights?: boolean;
   landMask?: boolean;
@@ -190,6 +246,42 @@ export interface BasemapConfig {
   tectonic?: boolean;
   /** Show basemap text labels (country names, city names, etc.). Defaults to true. */
   labelsVisible?: boolean;
+  /** Contour lines from DEM data. */
+  contourLines?: boolean | { interval?: number; majorInterval?: number; opacity?: number; };
+}
+
+// ─── v2: Image fill config ──────────────────────────────────
+
+export interface ImageFillConfig {
+  /** Property name containing the image URL per feature. */
+  imageField: string;
+  /** Fallback image URL when a feature's imageField is empty. */
+  fallbackUrl?: string;
+  /** Fill opacity (0–1). Default 0.85. */
+  opacity?: number;
+  /** Image resolution to scale to (px). Default 256. */
+  resolution?: number;
+}
+
+// ─── v2: Chart overlay config ───────────────────────────────
+
+export type ChartOverlayType = "bar" | "pie" | "sparkline";
+
+export interface ChartOverlayConfig {
+  /** Chart type. */
+  type: ChartOverlayType;
+  /** Property names whose values form the chart data. */
+  fields: string[];
+  /** Labels for each field (same order). */
+  labels?: string[];
+  /** Chart size in px (default 40). */
+  size?: number;
+  /** Minimum zoom to show charts (default 3). */
+  minZoom?: number;
+  /** Max visible charts at once (default 50). */
+  maxVisible?: number;
+  /** Property name for the chart label (e.g. country name). */
+  labelField?: string;
 }
 
 // ─── v2: AI intent tracking ──────────────────────────────────
@@ -240,6 +332,8 @@ export interface LayerStyle {
   labelField?: string;
   /** Format template using {field} placeholders (e.g. "{name}\n{value}"). */
   labelFormat?: string;
+  /** Image fill config for polygon layers. */
+  imageFill?: ImageFillConfig;
 }
 
 // ─── LayerManifest (extended) ────────────────────────────────
@@ -273,6 +367,18 @@ export interface LayerManifest {
   animatedRoute?: AnimatedRouteConfig;
   /** Timeline configuration. Required when mapFamily is "timeline". */
   timeline?: TimelineConfig;
+  /** Chart overlay configuration — mini charts at feature centroids. */
+  chartOverlay?: ChartOverlayConfig;
+  /** Data transform(s) applied to GeoJSON before rendering. */
+  transform?: TransformConfig | TransformConfig[];
+  /** Hexbin-specific configuration. Required when mapFamily is "hexbin". */
+  hexbin?: HexbinConfig;
+  /** Hexbin-3D configuration (deck.gl). */
+  hexbin3d?: Hexbin3DConfig;
+  /** Screen-grid configuration (deck.gl). */
+  screenGrid?: ScreenGridConfig;
+  /** Trip animation configuration (deck.gl). */
+  trip?: TripConfig;
 }
 
 // ─── MapManifest (extended) ──────────────────────────────────

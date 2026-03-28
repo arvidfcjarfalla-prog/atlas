@@ -21,7 +21,7 @@ const config: Config = {
         mono: ["JetBrains Mono", "monospace"],
         geist: ["Geist", "sans-serif"],
         "geist-mono": ["Geist Mono", "monospace"],
-        display: ["'Instrument Serif'", "Georgia", "serif"],
+        display: ["Georgia", "'Times New Roman'", "serif"],
       },
       fontSize: {
         heading: ["15px", { lineHeight: "1.33", fontWeight: "600", letterSpacing: "-0.01em" }],

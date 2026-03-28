@@ -6,11 +6,14 @@ import { useNightlights } from "./use-nightlights";
 import { useLandMask } from "./use-land-mask";
 import { useTerrain } from "./use-terrain";
 import { useTectonicLayers } from "./use-tectonic-layers";
+import { useContourLines } from "./use-contour-lines";
 
 interface UseBasemapLayersOptions {
   basemap?: BasemapConfig;
   /** Insert basemap layers before this layer ID. */
   beforeLayerId?: string;
+  /** Land color from the active basemap preset — passed to land mask. */
+  landColor?: string;
 }
 
 /**
@@ -26,8 +29,10 @@ interface UseBasemapLayersOptions {
 export function useBasemapLayers({
   basemap,
   beforeLayerId,
+  landColor,
 }: UseBasemapLayersOptions = {}) {
   useLandMask({
+    color: landColor,
     beforeLayerId,
   });
 
@@ -53,6 +58,14 @@ export function useBasemapLayers({
 
   useTectonicLayers({
     enabled: basemap?.tectonic ?? false,
+    beforeLayerId,
+  });
+
+  const contourEnabled = basemap?.contourLines != null && basemap.contourLines !== false;
+  const contourConfig = typeof basemap?.contourLines === "object" ? basemap.contourLines : undefined;
+  useContourLines({
+    enabled: contourEnabled,
+    config: contourConfig,
     beforeLayerId,
   });
 }

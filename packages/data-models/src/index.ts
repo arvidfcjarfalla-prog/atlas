@@ -35,6 +35,7 @@ export type {
   InteractionConfig,
   PerformanceConfig,
   AccessibilityConfig,
+  BasemapStyle,
   BasemapConfig,
   ManifestIntent,
   ManifestValidation,
@@ -44,6 +45,27 @@ export type {
   FlowConfig,
   IsochroneConfig,
   IsochroneUnit,
+  // v2: creative rendering
+  ImageFillConfig,
+  ChartOverlayConfig,
+  ChartOverlayType,
+  ExtrusionConfig,
+  AnimatedRouteConfig,
+  TimelineConfig,
+  // v2: hexbin + deck.gl families
+  HexbinConfig,
+  Hexbin3DConfig,
+  ScreenGridConfig,
+  TripConfig,
+  // v2: transforms
+  TransformType,
+  TransformConfig,
+  BufferTransform,
+  VoronoiTransform,
+  ConvexHullTransform,
+  CentroidTransform,
+  SimplifyTransform,
+  DissolveTransform,
 } from "./manifest";
 
 export { getAgeBracket, jitterCoordinates } from "./transforms";

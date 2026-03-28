@@ -177,8 +177,8 @@ const CATEGORICAL_SCHEMES = new Set<ColorScheme>(["set1", "set2", "paired"]);
  * - Sequential/diverging schemes: samples evenly across the ramp.
  */
 export function getColors(scheme: ColorScheme, count: number): string[] {
-  const palette = COLOR_PALETTES[scheme];
-  if (!palette || count <= 0) return [];
+  const palette = COLOR_PALETTES[scheme] ?? COLOR_PALETTES["viridis"];
+  if (count <= 0) return [];
 
   if (count >= palette.length) return palette.slice(0, count);
   if (count === 1) return [palette[Math.floor(palette.length / 2)]];

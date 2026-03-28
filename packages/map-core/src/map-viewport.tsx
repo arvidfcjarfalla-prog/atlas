@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo, useCallback } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./popup.css";
 import { MapContext } from "./use-map";
+import type { BasemapStyle } from "@atlas/data-models";
 import type { CameraPadding, MapManifest, MaplibreMap } from "./types";
 
 interface MapViewportProps {
@@ -21,27 +22,131 @@ interface MapViewportProps {
   onMapReady?: (map: MaplibreMap) => void;
 }
 
-const BASEMAP_STYLES: Record<string, string> = {
-  editorial: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-  explore: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  decision: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+// ─── Config-driven basemap presets ──────────────────────────
+
+const CARTO_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const CARTO_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+
+interface BasemapTransformConfig {
+  sourceUrl: string;
+  bg: string;
+  land: string;
+  water: string;
+  border: string;
+  landcover: string;
+  lineOpacityMultiplier: number;
+  textOpacity: number;
+  textColor: string;
+  textHaloColor: string;
+}
+
+const BASEMAP_CONFIGS: Record<BasemapStyle, BasemapTransformConfig> = {
+  dark: {
+    sourceUrl: CARTO_DARK,
+    bg: "#080e1a",
+    land: "#10141e",
+    water: "#060a14",
+    border: "#1e2838",
+    landcover: "#161c28",
+    lineOpacityMultiplier: 0.15,
+    textOpacity: 0.20,
+    textColor: "rgba(160, 175, 195, 1)",
+    textHaloColor: "rgba(0, 0, 0, 0.9)",
+  },
+  paper: {
+    sourceUrl: CARTO_LIGHT,
+    bg: "#f0ece4",
+    land: "#f5f1ea",
+    water: "#d8e4ec",
+    border: "#c8c0b4",
+    landcover: "#e8e4da",
+    lineOpacityMultiplier: 0.25,
+    textOpacity: 0.35,
+    textColor: "rgba(80, 70, 60, 1)",
+    textHaloColor: "rgba(245, 241, 234, 0.9)",
+  },
+  nord: {
+    sourceUrl: CARTO_DARK,
+    bg: "#2e3440",
+    land: "#3b4252",
+    water: "#1a2030",
+    border: "#4c566a",
+    landcover: "#434c5e",
+    lineOpacityMultiplier: 0.25,
+    textOpacity: 0.30,
+    textColor: "rgba(216, 222, 233, 1)",
+    textHaloColor: "rgba(46, 52, 64, 0.9)",
+  },
+  sepia: {
+    sourceUrl: CARTO_LIGHT,
+    bg: "#f2e8d5",
+    land: "#f5eed8",
+    water: "#c8d8c8",
+    border: "#c0b090",
+    landcover: "#e8e0c8",
+    lineOpacityMultiplier: 0.25,
+    textOpacity: 0.35,
+    textColor: "rgba(90, 75, 50, 1)",
+    textHaloColor: "rgba(242, 232, 213, 0.9)",
+  },
+  stark: {
+    sourceUrl: CARTO_DARK,
+    bg: "#000000",
+    land: "#0a0a0a",
+    water: "#000000",
+    border: "#1a1a1a",
+    landcover: "#0f0f0f",
+    lineOpacityMultiplier: 0.10,
+    textOpacity: 0.15,
+    textColor: "rgba(140, 140, 140, 1)",
+    textHaloColor: "rgba(0, 0, 0, 0.95)",
+  },
+  retro: {
+    sourceUrl: CARTO_LIGHT,
+    bg: "#e8dcc8",
+    land: "#ede2d0",
+    water: "#a8c8c0",
+    border: "#b8a890",
+    landcover: "#ddd4c0",
+    lineOpacityMultiplier: 0.30,
+    textOpacity: 0.40,
+    textColor: "rgba(100, 80, 55, 1)",
+    textHaloColor: "rgba(232, 220, 200, 0.9)",
+  },
+  ocean: {
+    sourceUrl: CARTO_DARK,
+    bg: "#04101e",
+    land: "#0a1828",
+    water: "#081420",
+    border: "#183050",
+    landcover: "#0e1e32",
+    lineOpacityMultiplier: 0.20,
+    textOpacity: 0.25,
+    textColor: "rgba(120, 170, 210, 1)",
+    textHaloColor: "rgba(4, 16, 30, 0.9)",
+  },
 };
 
-/**
- * Minimal inline style for choropleth maps — no external basemap tiles.
- * Just a dark background so the choropleth polygons are the only visual.
- */
-const MINIMAL_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": "#080e1a" },
-    },
-  ],
-};
+/** Get the land color for a basemap preset — used by land mask to match basemap. */
+export function getBasemapLandColor(style: BasemapStyle = "dark"): string {
+  return BASEMAP_CONFIGS[style].land;
+}
+
+/** Minimal inline style for choropleth maps — background color matches basemap preset. */
+function getMinimalStyle(basemapStyle: BasemapStyle = "dark"): maplibregl.StyleSpecification {
+  const cfg = BASEMAP_CONFIGS[basemapStyle];
+  return {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": cfg.bg },
+      },
+    ],
+  };
+}
 
 /** Check if every layer in the manifest is a filled-polygon family. */
 function isChoroplethOnly(manifest: MapManifest): boolean {
@@ -66,68 +171,48 @@ async function fetchStyleWithRetry(
   throw new Error(`Failed to fetch basemap style after ${retries + 1} attempts`);
 }
 
-/**
- * Mutate the CARTO Dark Matter style JSON before it reaches the Map constructor.
- *
- * CARTO Dark Matter structure:
- *   background  #0e0e0e  (near-black)
- *   land fills  #0e0e0e  (same as bg, uses zoom-stops)
- *   water fill  #2C353C  (blue-grey, lighter than land)
- *   56 line layers, 27 symbol layers
- *
- * This transform:
- *   - Shifts background + land toward blue-black (#080b10 / #10141a)
- *   - Makes water distinctly colder and deeper (#0c1520)
- *   - Quiets lines and labels so data layers dominate
- *   - Eliminates flash-of-unquieted-basemap (pre-constructor, not post-load)
- */
+/** Apply a BasemapTransformConfig to a CARTO style JSON. */
 function transformBasemapStyle(
   style: maplibregl.StyleSpecification,
+  config: BasemapTransformConfig,
   options?: { labelsVisible?: boolean },
 ): maplibregl.StyleSpecification {
   const hideLabels = options?.labelsVisible === false;
-  const LAND_COLOR = "#1a2030";
-  const WATER_COLOR = "#0a1020";
-  const BG_COLOR = "#080e1a";
-  const BORDER_COLOR = "#2a3548";
 
   const layers = style.layers.map((layer) => {
-    // Background — dark navy
     if (layer.type === "background") {
       return {
         ...layer,
-        paint: { ...layer.paint, "background-color": BG_COLOR },
+        paint: { ...layer.paint, "background-color": config.bg },
       };
     }
 
-    // Water fills — distinctly darker than land for clear contrast
     if (layer.type === "fill" && layer.id.includes("water")) {
       return {
         ...layer,
-        paint: { "fill-color": WATER_COLOR, "fill-opacity": 1 },
+        paint: { "fill-color": config.water, "fill-opacity": 1 },
       };
     }
 
-    // Landcover layers — subtle texture on land
     if (layer.type === "fill" && layer.id.includes("landcover")) {
       if (hideLabels) {
         return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
       }
       return {
         ...layer,
-        paint: { "fill-color": "#222a38", "fill-opacity": 0.5 },
+        paint: { "fill-color": config.landcover, "fill-opacity": 0.5 },
       };
     }
 
-    // All other fills — visible land color
     if (layer.type === "fill") {
+      // Replace entire paint to remove zoom-dependent stops from CARTO style
+      // that cause the map to lighten at higher zoom levels
       return {
         ...layer,
-        paint: { "fill-color": LAND_COLOR, "fill-opacity": 1 },
+        paint: { "fill-color": config.land, "fill-opacity": 1, "fill-antialias": true },
       };
     }
 
-    // Structural lines — visible borders between countries
     if (layer.type === "line") {
       if (hideLabels) {
         return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
@@ -140,13 +225,12 @@ function transformBasemapStyle(
         ...layer,
         paint: {
           ...paint,
-          "line-color": BORDER_COLOR,
-          "line-opacity": base * 0.4,
+          "line-color": config.border,
+          "line-opacity": base * config.lineOpacityMultiplier,
         },
       };
     }
 
-    // Labels — readable but not dominant
     if (layer.type === "symbol") {
       if (hideLabels) {
         return { ...layer, layout: { ...layer.layout, visibility: "none" as const } };
@@ -156,9 +240,9 @@ function transformBasemapStyle(
         ...layer,
         paint: {
           ...paint,
-          "text-opacity": 0.45,
-          "text-color": "rgba(180, 195, 210, 1)",
-          "text-halo-color": "rgba(0, 0, 0, 0.8)",
+          "text-opacity": config.textOpacity,
+          "text-color": config.textColor,
+          "text-halo-color": config.textHaloColor,
           "text-halo-width": 1.5,
           "text-halo-blur": 1,
         },
@@ -181,6 +265,7 @@ export function MapViewport({ manifest, children, cameraPadding, onMapReady }: M
     let cancelled = false;
     let mapRef: MaplibreMap | null = null;
 
+    const basemapStyle: BasemapStyle = manifest.basemap?.style ?? "dark";
     const useMinimal = isChoroplethOnly(manifest);
 
     const initMap = (style: maplibregl.StyleSpecification) => {
@@ -224,19 +309,18 @@ export function MapViewport({ manifest, children, cameraPadding, onMapReady }: M
     };
 
     if (useMinimal) {
-      initMap(MINIMAL_STYLE);
+      initMap(getMinimalStyle(basemapStyle));
     } else {
-      const styleUrl = BASEMAP_STYLES[manifest.theme] ?? BASEMAP_STYLES.explore;
-      fetchStyleWithRetry(styleUrl)
+      const config = BASEMAP_CONFIGS[basemapStyle];
+      fetchStyleWithRetry(config.sourceUrl)
         .then((styleJson) => {
-          initMap(
-            transformBasemapStyle(styleJson, {
-              labelsVisible: manifest.basemap?.labelsVisible,
-            }),
-          );
+          const transformed = transformBasemapStyle(styleJson, config, {
+            labelsVisible: manifest.basemap?.labelsVisible,
+          });
+          initMap(transformed);
         })
-        .catch(() => {
-          // Style fetch failed after retries — map won't render
+        .catch((err) => {
+          console.error("[Atlas] Failed to load basemap style:", err);
         });
     }
 
@@ -248,16 +332,15 @@ export function MapViewport({ manifest, children, cameraPadding, onMapReady }: M
   // cameraPadding intentionally excluded — it's consumed once at init inside
   // onReady via closure. Re-creating the map on padding change would be wrong.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manifest.theme]);
+  }, [manifest.theme, manifest.basemap?.style]);
 
-  const handleResize = useCallback(() => {
-    mapInstance?.resize();
-  }, [mapInstance]);
-
+  // Resize map when container size changes (window resize or sidebar drag)
   useEffect(() => {
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [handleResize]);
+    if (!mapInstance || !containerRef.current) return;
+    const ro = new ResizeObserver(() => mapInstance.resize());
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [mapInstance]);
 
   const contextValue = useMemo(
     () => ({ map: mapInstance, isReady: mapInstance !== null }),
