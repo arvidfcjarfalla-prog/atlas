@@ -219,8 +219,10 @@ const TIME_PATTERNS = ["tid", "time", "year", "month", "quarter", "period", "år
 const CONTENTS_PATTERNS = [
   "contentscode", "contents", "tabellinnehåll", "indhold",
   "indicator", "näitaja", "indikator", "kennzahl", "kazalnik",
-  // Finnish, Latvian, Swiss French/Italian, Slovenian
-  "indikaattori", "rādītājs", "indicateur", "indicatore", "kazalec",
+  // Finnish ("Tiedot" = Information/Contents — standard StatFin dimension name)
+  "tiedot", "indikaattori",
+  // Latvian, Swiss French/Italian, Slovenian
+  "rādītājs", "indicateur", "indicatore", "kazalec",
 ];
 
 /**

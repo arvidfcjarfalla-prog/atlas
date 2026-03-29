@@ -1140,25 +1140,37 @@ export const finlandPlugin: GeographyPlugin = {
   knownDimensions() {
     return [
       {
-        // English API dimension name for geographic area
+        // English API dimension name for geographic area (regions use MK codes → admin1)
+        // "Area" appears in both regional and municipal tables; matchCodes determines
+        // the actual level from MK vs KU prefix — keep confidence low so it doesn't
+        // override matchCodes.
         dimensionId: /^Area$/i,
-        level: "municipality" as GeographyLevel,
+        level: "admin1" as GeographyLevel,
         codeFamily: { family: "national" as const, namespace: "fi-stat" },
-        confidence: 0.6, // actual level determined by matchCodes (MK vs KU prefix)
+        confidence: 0.4,
       },
       {
-        // Finnish dimension name: "Alue"
+        // Finnish dimension name: "Alue" — used in regional (MK) tables.
+        // Municipal tables use "Kunta", not "Alue". Default to admin1 here.
         dimensionId: /^Alue$/i,
-        level: "municipality" as GeographyLevel,
-        codeFamily: { family: "national" as const, namespace: "fi-stat" },
-        confidence: 0.6,
-      },
-      {
-        // Swedish dimension name: "Område"
-        dimensionId: /^Område$/i,
-        level: "municipality" as GeographyLevel,
+        level: "admin1" as GeographyLevel,
         codeFamily: { family: "national" as const, namespace: "fi-stat" },
         confidence: 0.5,
+      },
+      {
+        // Finnish dimension name: "Kunta" — municipality (KU codes → municipality level)
+        dimensionId: /^Kunta$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.7,
+      },
+      {
+        // Swedish dimension name: "Område" — can be region or municipality;
+        // matchCodes will override level from MK/KU prefix.
+        dimensionId: /^Område$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.4,
       },
     ];
   },
