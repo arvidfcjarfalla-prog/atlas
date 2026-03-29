@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/use-auth";
@@ -21,14 +22,24 @@ const NAV_LINKS = [
 export function MarketingNav() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <nav
       className="s0 sticky top-0 z-30"
       style={{
-        background: "rgba(13,18,23,0.85)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
+        background: scrolled ? "rgba(13,18,23,0.92)" : "transparent",
+        backdropFilter: scrolled ? "blur(14px)" : "none",
+        WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
+        transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease",
       }}
     >
       <div className="flex items-center justify-between" style={{ padding: "16px 36px" }}>

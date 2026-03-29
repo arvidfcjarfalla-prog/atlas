@@ -18,12 +18,21 @@ const PROMPTS = [
 export function PromptInput() {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const [placeholder, setPlaceholder] = useState("");
+  const [placeholder, setPlaceholder] = useState("What do you want to map?");
   const [promptIndex, setPromptIndex] = useState(0);
+  const [cycling, setCycling] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Start typewriter cycling after a short initial delay
+  useEffect(() => {
+    const t = setTimeout(() => setCycling(true), 2400);
+    return () => clearTimeout(t);
+  }, []);
 
   // Typewriter cycling placeholder
   useEffect(() => {
+    if (!cycling) return;
     const text = PROMPTS[promptIndex];
     let i = 0;
     setPlaceholder("");
@@ -41,7 +50,15 @@ export function PromptInput() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [promptIndex]);
+  }, [promptIndex, cycling]);
+
+  // One-click prompt adoption: click on empty input → fill with current placeholder
+  const handleClick = useCallback(() => {
+    if (value === "" && placeholder && placeholder !== "What do you want to map?") {
+      setValue(placeholder);
+      setTimeout(() => inputRef.current?.select(), 0);
+    }
+  }, [value, placeholder]);
 
   const submit = useCallback(() => {
     const trimmed = value.trim();
@@ -62,8 +79,10 @@ export function PromptInput() {
         }}
       >
         <input
+          ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onClick={handleClick}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

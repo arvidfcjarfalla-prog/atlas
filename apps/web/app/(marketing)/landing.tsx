@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapCarousel } from "@/components/marketing/MapCarousel";
+import { GraticuleCanvas } from "@/components/marketing/GraticuleCanvas";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { PromptInput } from "@/components/marketing/PromptInput";
@@ -29,13 +29,20 @@ const P3 = "Which grew fastest since 2020?";
 const R3 = "Denmark \u2014 +4.2 GW, North Sea offshore expansion.";
 const GEN_STEPS = ["Matched \u2192 Eurostat \u00b7 nrg_ind_ren", "Generating MapManifest", "Compiling GL layers \u00b7 quantile", "Rendering"];
 
-// Use case gallery — drop screenshots into public/marketing/
-const gallery = [
-  { id: 1, title: "Forest area globally", img: "/marketing/uc-1.jpg" },
-  { id: 2, title: "GDP per capita Africa", img: "/marketing/uc-2.jpg" },
-  { id: 3, title: "Renewable energy EU", img: "/marketing/uc-3.jpg" },
-  { id: 4, title: "Coffee shops Tokyo", img: "/marketing/uc-4.jpg" },
-  { id: 5, title: "Trade as % of GDP Asia", img: "/marketing/uc-5.jpg" },
+// Prompt Wall — clickable prompt cards with procedural SVG glyphs
+const PROMPTS: { prompt: string; glyph: "choropleth" | "dots" | "hex" | "flow" | "bars" }[] = [
+  { prompt: "Wind energy by EU region", glyph: "choropleth" },
+  { prompt: "Coffee shops in Tokyo", glyph: "dots" },
+  { prompt: "US unemployment by county", glyph: "hex" },
+  { prompt: "Trade routes from Shanghai", glyph: "flow" },
+  { prompt: "Forest cover globally", glyph: "choropleth" },
+  { prompt: "Housing prices in Stockholm", glyph: "bars" },
+  { prompt: "Earthquake risk Pacific Rim", glyph: "dots" },
+  { prompt: "GDP per capita in Africa", glyph: "choropleth" },
+  { prompt: "Air quality European cities", glyph: "hex" },
+  { prompt: "Migration flows in the EU", glyph: "flow" },
+  { prompt: "Rainfall patterns in India", glyph: "choropleth" },
+  { prompt: "Bike lanes in Copenhagen", glyph: "dots" },
 ];
 
 // US grid map for editor mock
@@ -60,7 +67,7 @@ const themes: Record<string, { name: string; colors: string[] }> = {
 };
 
 type DemoPhase = "idle" | "typing" | "gen" | "map" | "t2" | "t3" | "r3" | "done";
-const bkStyle: React.CSSProperties = { borderRight: `1.5px solid ${sage}66`, marginLeft: 1, animation: "blink .7s step-end infinite", display: "inline-block", width: 0, height: "1em" };
+const bkStyle: React.CSSProperties = { borderRight: `1.5px solid ${sage}66`, marginLeft: 1, animation: "mkt-blink .7s step-end infinite", display: "inline-block", width: 0, height: "1em" };
 
 export default function LandingClient() {
   // Demo animation state
@@ -73,9 +80,6 @@ export default function LandingClient() {
   const [d2, setD2] = useState(0);   // typed chars for P2
   const [d3, setD3] = useState(0);   // typed chars for P3
   const [dr, setDr] = useState(0);   // typed chars for R3
-
-  // Gallery hover
-  const [ucHover, setUcHover] = useState<number | null>(null);
 
   // IntersectionObserver to trigger demo
   useEffect(() => {
@@ -137,8 +141,8 @@ export default function LandingClient() {
 
       {/* ═══ HERO ═══ */}
       <div style={{ position: "relative", minHeight: "calc(100vh - 50px)", overflow: "hidden" }}>
-        <MapCarousel />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(13,18,23,0.88) 0%, rgba(13,18,23,0.55) 40%, rgba(13,18,23,0.35) 65%, rgba(13,18,23,0.6) 100%)", pointerEvents: "none", zIndex: 2 }} />
+        <GraticuleCanvas />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(13,18,23,0.82) 0%, rgba(13,18,23,0.5) 40%, rgba(13,18,23,0.3) 65%, rgba(13,18,23,0.55) 100%)", pointerEvents: "none", zIndex: 2 }} />
 
         <section style={{ position: "relative", zIndex: 5, display: "flex", alignItems: "center", minHeight: "calc(100vh - 50px)", padding: "0 36px", maxWidth: 1060, margin: "0 auto" }}>
           <div style={{ maxWidth: 480 }}>
@@ -151,13 +155,58 @@ export default function LandingClient() {
             </p>
             <div className="s4">
               <PromptInput />
+              <a
+                href="#demo"
+                onClick={(e) => { e.preventDefault(); document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" }); }}
+                style={{ ...mono, fontSize: 10, color: tx3, display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, textDecoration: "none", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = tx2; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = tx3; }}
+              >
+                See it work <span style={{ fontSize: 12 }}>&darr;</span>
+              </a>
             </div>
           </div>
         </section>
       </div>
 
+      {/* ═══ DATA SOURCE TICKER ═══ */}
+      <section style={{ padding: "48px 0 12px", overflow: "hidden" }}>
+        <p style={{ ...mono, fontSize: 10, textAlign: "center", color: tx3, letterSpacing: "0.15em", marginBottom: 16 }}>
+          CONNECTED TO 70+ OFFICIAL DATA SOURCES
+        </p>
+        <div style={{ position: "relative", maskImage: "linear-gradient(90deg, transparent, black 12%, black 88%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 12%, black 88%, transparent)" }}>
+          <div className="mkt-ticker" style={{ display: "flex", gap: 36, whiteSpace: "nowrap", width: "max-content" }}>
+            {[...Array(2)].map((_, copy) => (
+              <div key={copy} style={{ display: "flex", gap: 36, alignItems: "center" }}>
+                {["Eurostat", "World Bank", "Statistics Sweden", "FRED", "US Census", "Statistics Norway", "Statistics Finland", "Statistics Iceland", "Statistics Denmark", "Statistics Estonia", "Statistics Latvia", "Statistics Slovenia", "Statistics Switzerland", "OpenStreetMap", "Data Commons"].map((src) => (
+                  <span key={`${copy}-${src}`} style={{ ...mono, fontSize: 10, color: tx3, opacity: 0.7 }}>{src}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ HOW IT WORKS ═══ */}
+      <section style={{ padding: "48px 36px 20px", maxWidth: 940, margin: "0 auto" }}>
+        <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 400, marginBottom: 32 }}>How it works</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
+          {[
+            { step: "01", title: "Describe", text: "Type what you want to see in plain English. No GIS knowledge needed." },
+            { step: "02", title: "Data", text: "Atlas searches 70+ official sources and picks the right dataset automatically." },
+            { step: "03", title: "Map", text: "An interactive map appears — refine it with follow-up prompts, then share or export." },
+          ].map((s) => (
+            <div key={s.step} style={{ textAlign: "center" }}>
+              <div style={{ ...mono, fontSize: 10, color: sage, letterSpacing: "0.2em", marginBottom: 8 }}>{s.step}</div>
+              <h3 style={{ fontSize: 18, fontWeight: 400, marginBottom: 6, color: tx }}>{s.title}</h3>
+              <p style={{ ...mono, fontSize: 10, color: tx2, lineHeight: 1.7 }}>{s.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ═══ DEMO ═══ */}
-      <section ref={demoRef} style={{ padding: "60px 36px 70px" }}>
+      <section id="demo" ref={demoRef} style={{ padding: "60px 36px 70px", scrollMarginTop: 80 }}>
         <div style={{ maxWidth: 940, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <h2 style={{ fontSize: 26, fontWeight: 400, marginBottom: 8 }}>Describe, refine, share.</h2>
@@ -289,34 +338,14 @@ export default function LandingClient() {
         </div>
       </section>
 
-      {/* ═══ USE CASES MINI ═══ */}
+      {/* ═══ PROMPT WALL ═══ */}
       <section style={{ padding: "40px 36px 60px", maxWidth: 940, margin: "0 auto" }}>
-        <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 400, marginBottom: 28 }}>Real use cases</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
-          {gallery.map((m) => {
-            const h = ucHover === m.id;
-            return (
-              <div key={m.id} onMouseEnter={() => setUcHover(m.id)} onMouseLeave={() => setUcHover(null)}
-                style={{ textAlign: "center", cursor: "pointer", transform: h ? "translateY(-3px)" : "none", transition: "transform .2s" }}>
-                <div style={{ height: 80, borderRadius: 6, overflow: "hidden", border: `1px solid ${h ? bd2 : bd}`, marginBottom: 6, background: c1 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.img}
-                    alt={m.title}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      opacity: h ? 1 : 0.75,
-                      transition: "opacity .2s, transform .2s",
-                      transform: h ? "scale(1.04)" : "scale(1)",
-                    }}
-                  />
-                </div>
-                <p style={{ ...mono, fontSize: 9, color: h ? tx : tx2 }}>{m.title}</p>
-              </div>
-            );
-          })}
+        <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 400, marginBottom: 8 }}>What will you map?</h2>
+        <p style={{ ...mono, fontSize: 10, color: tx3, textAlign: "center", marginBottom: 28 }}>Click any prompt to try it.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {PROMPTS.map((p) => (
+            <PromptCard key={p.prompt} {...p} />
+          ))}
         </div>
       </section>
 
@@ -342,8 +371,10 @@ export default function LandingClient() {
 
       <MarketingFooter />
       <style>{`
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes mkt-blink{0%,100%{opacity:1}50%{opacity:0}}
         @keyframes demoMapReveal{0%{opacity:0;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+        @keyframes mkt-ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        .mkt-ticker{animation:mkt-ticker-scroll 40s linear infinite}
       `}</style>
     </div>
   );
@@ -476,5 +507,87 @@ function HeroEditorMock() {
         </div>
       </div>
     </div>
+  );
+}
+
+// SVG minimap glyphs for Prompt Wall cards
+function MiniGlyph({ type }: { type: "choropleth" | "dots" | "hex" | "flow" | "bars" }) {
+  const s = sage;
+  const t = bl;
+  if (type === "choropleth") {
+    return (
+      <svg width="48" height="32" viewBox="0 0 48 32" fill="none">
+        {[0, 12, 24, 36].map((x, i) => (
+          <rect key={x} x={x} y={0} width="11" height="32" rx={1} fill={s} opacity={0.1 + i * 0.08} />
+        ))}
+      </svg>
+    );
+  }
+  if (type === "dots") {
+    return (
+      <svg width="48" height="32" viewBox="0 0 48 32" fill="none">
+        {[[8, 8], [20, 14], [32, 6], [14, 24], [38, 22], [26, 28], [42, 12], [6, 18]].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r={2} fill={s} opacity={0.15 + (i % 4) * 0.08} />
+        ))}
+      </svg>
+    );
+  }
+  if (type === "hex") {
+    return (
+      <svg width="48" height="32" viewBox="0 0 48 32" fill="none">
+        {[[8, 8], [22, 8], [36, 8], [15, 20], [29, 20], [43, 20]].map(([cx, cy], i) => (
+          <polygon key={i} points={`${cx},${cy - 6} ${cx + 5},${cy - 3} ${cx + 5},${cy + 3} ${cx},${cy + 6} ${cx - 5},${cy + 3} ${cx - 5},${cy - 3}`} fill={t} opacity={0.1 + i * 0.06} />
+        ))}
+      </svg>
+    );
+  }
+  if (type === "flow") {
+    return (
+      <svg width="48" height="32" viewBox="0 0 48 32" fill="none">
+        <path d="M4 24 Q16 10 28 16 Q36 20 44 8" stroke={s} strokeWidth="1" fill="none" opacity="0.25" />
+        <path d="M4 28 Q20 14 32 20 Q40 24 44 14" stroke={s} strokeWidth="0.7" fill="none" opacity="0.15" />
+        <circle cx="4" cy="24" r="2" fill={s} opacity="0.3" />
+        <circle cx="44" cy="8" r="1.5" fill={s} opacity="0.3" />
+      </svg>
+    );
+  }
+  // bars
+  return (
+    <svg width="48" height="32" viewBox="0 0 48 32" fill="none">
+      {[4, 12, 20, 28, 36].map((x, i) => {
+        const h = [18, 26, 14, 22, 10][i];
+        return <rect key={x} x={x} y={32 - h} width="6" height={h} rx={1} fill={s} opacity={0.12 + i * 0.05} />;
+      })}
+    </svg>
+  );
+}
+
+function PromptCard({ prompt, glyph }: { prompt: string; glyph: "choropleth" | "dots" | "hex" | "flow" | "bars" }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <a
+      href={`/app/map/new?prompt=${encodeURIComponent(prompt)}`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+        padding: "14px 10px",
+        border: `1px solid ${hover ? bd2 : bd}`,
+        borderRadius: 8,
+        background: hover ? "rgba(255,255,255,0.02)" : "transparent",
+        cursor: "pointer",
+        textDecoration: "none",
+        transition: "all .2s",
+        transform: hover ? "translateY(-2px)" : "none",
+      }}
+    >
+      <MiniGlyph type={glyph} />
+      <p style={{ ...srf, fontSize: 12, fontStyle: "italic", color: hover ? tx : tx2, textAlign: "center", lineHeight: 1.4 }}>
+        {prompt}
+      </p>
+    </a>
   );
 }
