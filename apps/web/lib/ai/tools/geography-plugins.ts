@@ -1158,6 +1158,13 @@ export const finlandPlugin: GeographyPlugin = {
         confidence: 0.5,
       },
       {
+        // Finnish dimension name: "Maakunta" — explicitly regional (MK codes).
+        dimensionId: /^Maakunta$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.7,
+      },
+      {
         // Finnish dimension name: "Kunta" — municipality (KU codes → municipality level)
         dimensionId: /^Kunta$/i,
         level: "municipality" as GeographyLevel,

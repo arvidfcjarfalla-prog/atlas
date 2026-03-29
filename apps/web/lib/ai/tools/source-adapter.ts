@@ -200,6 +200,10 @@ export function inferPxGeographyHints(
     hints.push("county");
   } else if (idLower.includes("kommune") || labelLower.includes("kommune")) {
     hints.push("municipality");
+  } else if (idLower.includes("maakunta") || labelLower.includes("maakunta")) {
+    hints.push("admin1");
+  } else if (idLower === "kunta" || labelLower === "kunta") {
+    hints.push("municipality");
   }
 
   // If no label hints, infer from code length for known countries
