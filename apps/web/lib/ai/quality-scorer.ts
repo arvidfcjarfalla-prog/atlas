@@ -209,7 +209,7 @@ export function scoreManifest(
       // Skip penalty if the colorField name suggests the data is already
       // a rate, index, percentage, or per-capita value (not a raw count).
       const cf = (layer?.style?.colorField ?? "").toLowerCase();
-      const isAlreadyNormalized = /rate|pct|percent|index|wage|salary|expectancy|coefficient|median|average|per_capita|per_hab|gini|hdi|fertility|literacy/.test(cf);
+      const isAlreadyNormalized = /rate|pct|percent|index|wage|salary|expectancy|coefficient|median|average|per_capita|per_hab|gini|hdi|fertility|literacy|_atlas_value/.test(cf);
       if (!isAlreadyNormalized) {
         normalization = 0;
         deductions.push("Choropleth without normalization — raw counts may be misleading");

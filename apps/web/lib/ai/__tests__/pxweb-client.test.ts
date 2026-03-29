@@ -716,10 +716,11 @@ describe("selectDimensionsWithAmbiguity", () => {
     expect(result.contentsDimensionId).toBe("ContentsCode");
   });
 
-  it("not ambiguous when keyword matches a contents value", () => {
+  it("always ambiguous when 2+ contents values exist (delegates to AI)", () => {
     const result = selectDimensionsWithAmbiguity(baseMetadata, "folkmängd i kommuner");
-    expect(result.contentsAmbiguous).toBe(false);
-    expect(result.contentsValues).toBeUndefined();
+    expect(result.contentsAmbiguous).toBe(true);
+    expect(result.contentsValues).toHaveLength(3);
+    expect(result.contentsDimensionId).toBe("ContentsCode");
   });
 
   it("not ambiguous when only one contents value exists", () => {

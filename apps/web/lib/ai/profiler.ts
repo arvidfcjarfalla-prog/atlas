@@ -109,7 +109,15 @@ function profileAttributes(
     }
   }
 
-  const names = [...nameSet];
+  // When joined data includes _atlas_data_fields, only profile those fields
+  // (plus "name" for display). This prevents geometry-derived properties
+  // like AREA or iso_a3 from leaking into the AI's attribute list.
+  const dataFieldsArr = features
+    .map(f => f.properties?._atlas_data_fields as string[] | undefined)
+    .find(f => Array.isArray(f) && f.length > 0);
+  const names = dataFieldsArr
+    ? [...nameSet].filter(n => dataFieldsArr.includes(n) || n === "name")
+    : [...nameSet];
   const profiles: AttributeProfile[] = [];
 
   for (const name of names) {

@@ -255,6 +255,8 @@ export function executeJoin(
     const firstRow = codeRows[0];
 
     // Clone the feature and attach data properties
+    const dimensionValues = firstRow.dimensionValues ?? {};
+    const dataFields = ["_atlas_value", ...Object.keys(dimensionValues)];
     const joinedFeature: GeoJSON.Feature = {
       type: "Feature",
       geometry: feature.geometry,
@@ -263,7 +265,8 @@ export function executeJoin(
         _atlas_value: resolvedValue,
         _atlas_geo_code: firstRow.geoCode,
         _atlas_matched: true,
-        ...firstRow.dimensionValues,
+        _atlas_data_fields: dataFields,
+        ...dimensionValues,
       },
     };
 

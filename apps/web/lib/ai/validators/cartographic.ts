@@ -58,7 +58,7 @@ export function validateCartographic(
     // and fields that are already rates/indices)
     if (family === "choropleth" && !layer.style?.normalization && !isCategoricalChoropleth(layer)) {
       const cf = (layer.style?.colorField ?? "").toLowerCase();
-      const isAlreadyNormalized = /rate|pct|percent|index|wage|salary|expectancy|coefficient|median|average|per_capita|per_hab|gini|hdi|fertility|literacy/.test(cf);
+      const isAlreadyNormalized = /rate|pct|percent|index|wage|salary|expectancy|coefficient|median|average|per_capita|per_hab|gini|hdi|fertility|literacy|_atlas_value/.test(cf);
       if (!isAlreadyNormalized) {
         warnings.push(
           `Layer "${id}": choropleth without normalization — raw counts may be misleading`,

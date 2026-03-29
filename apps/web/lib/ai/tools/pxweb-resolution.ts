@@ -444,12 +444,12 @@ async function resolveOneTable(
     return resolvePxWebPure(normalized);
   }
 
-  if (!contentsDim || !timeDim) {
+  if (!timeDim) {
     return {
       status: "unsupported",
       confidence: 0,
-      reasons: ["table missing required dimension types (contents or time)"],
-      error: "Missing contents or time dimension",
+      reasons: ["table missing required time dimension"],
+      error: "Missing time dimension",
     };
   }
 
@@ -471,7 +471,7 @@ async function resolveOneTable(
       prompt,
       dimResult.contentsValues,
       table.label,
-    );
+    ).catch(() => null);
     if (aiCode) {
       const idx = selections.findIndex(
         (s) => s.dimensionId === dimResult.contentsDimensionId,
@@ -496,7 +496,7 @@ async function resolveOneTable(
   }
 
   // ── Parse records ──────────────────────────────────────────
-  const records = jsonStat2ToRecords(data, geoDim.id, contentsDim.id, timeDim.id);
+  const records = jsonStat2ToRecords(data, geoDim.id, contentsDim?.id ?? null, timeDim.id, table.label);
   if (records.length === 0) {
     return {
       status: "unsupported",
@@ -512,7 +512,7 @@ async function resolveOneTable(
     records,
     selections,
     geoDimId: geoDim.id,
-    contentsDimId: contentsDim.id,
+    contentsDimId: contentsDim?.id ?? "_single",
     timeDimId: timeDim.id,
     sourceId: source.id,
     sourceName: source.agencyName,
@@ -535,7 +535,7 @@ async function resolveOneTable(
   if (normalized.adapterStatus === "ok" && records.length > 0) {
     const metricLabel =
       records[0].metricLabel ||
-      contentsDim.values[0]?.label ||
+      contentsDim?.values[0]?.label ||
       table.label;
 
     // When join succeeded, cache the joined features (real polygon geometry
@@ -546,6 +546,16 @@ async function resolveOneTable(
       result.joinExecution?.features &&
       result.joinExecution.features.length > 0
     ) {
+      // Stamp metric label on features so the AI can use it for legend/title
+      for (const f of result.joinExecution.features) {
+        if (f.properties) {
+          f.properties._atlas_metric_label = metricLabel;
+          const df = f.properties._atlas_data_fields;
+          if (Array.isArray(df) && !df.includes("_atlas_metric_label")) {
+            df.push("_atlas_metric_label");
+          }
+        }
+      }
       fc = { type: "FeatureCollection", features: result.joinExecution.features };
     } else {
       fc = recordsToGeoJSON(records, metricLabel);
@@ -565,9 +575,9 @@ async function resolveOneTable(
         result.status === "map_ready" ? "map_ready" : "tabular_only",
     };
 
-    await setCache(tableKey, cacheEntry);
+    await setCache(tableKey, cacheEntry).catch(() => {});
     if (searchCacheKey !== tableKey) {
-      await setCache(searchCacheKey, cacheEntry);
+      await setCache(searchCacheKey, cacheEntry).catch(() => {});
     }
 
     // Learn from success — store the recipe for future similar prompts

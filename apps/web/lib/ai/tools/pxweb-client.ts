@@ -12,7 +12,6 @@ import { profileDataset } from "../profiler";
 import {
   setCache,
   getCachedData,
-  type CacheEntry,
   type DataSearchResult,
 } from "./data-search";
 import type { OfficialStatsSource } from "./global-stats-registry";
@@ -201,9 +200,28 @@ const TOTAL_LABEL_PATTERNS = [
 const GEO_PATTERNS = [
   "region", "kommun", "kommune", "fylke", "county", "län",
   "municipality", "area", "geo", "område",
+  // Estonian
+  "maakond", "omavalitsus",
+  // Icelandic
+  "landshluti", "sveitarfélag",
+  // Finnish
+  "alue", "maakunta", "kunta",
+  // Latvian
+  "teritori",
+  // Swiss (de/fr/it)
+  "kanton", "canton", "cantone", "gemeinde", "commune",
+  // Slovenian
+  "regija", "občin",
+  // Georgian
+  "მხარე",
 ];
 const TIME_PATTERNS = ["tid", "time", "year", "month", "quarter", "period", "år"];
-const CONTENTS_PATTERNS = ["contentscode", "contents", "tabellinnehåll", "indhold"];
+const CONTENTS_PATTERNS = [
+  "contentscode", "contents", "tabellinnehåll", "indhold",
+  "indicator", "näitaja", "indikator", "kennzahl", "kazalnik",
+  // Finnish, Latvian, Swiss French/Italian, Slovenian
+  "indikaattori", "rādītājs", "indicateur", "indicatore", "kazalec",
+];
 
 /**
  * Multi-word English → Swedish compound phrases.
@@ -540,7 +558,7 @@ export function classifyDimension(
   const lower = id.toLowerCase();
   const labelLower = label.toLowerCase();
 
-  if (CONTENTS_PATTERNS.some((p) => lower.includes(p))) return "contents";
+  if (CONTENTS_PATTERNS.some((p) => lower.includes(p) || labelLower.includes(p))) return "contents";
   if (TIME_PATTERNS.some((p) => lower.includes(p) || labelLower.includes(p))) return "time";
   if (GEO_PATTERNS.some((p) => lower.includes(p) || labelLower.includes(p))) return "geo";
   return "regular";
@@ -742,12 +760,10 @@ export function selectDimensions(
  */
 export function selectDimensionsWithAmbiguity(
   metadata: PxTableMetadata,
-  prompt: string,
+  _prompt: string,
   geoLevelHint?: string | null,
 ): DimensionSelectionResult {
   const selections: PxDimensionSelection[] = [];
-  const promptLower = prompt.toLowerCase();
-  const promptKeywords = promptLower.split(/\s+/).filter((w) => w.length > 2);
 
   let geoDimIndex = -1;
   let contentsAmbiguous = false;
@@ -789,30 +805,14 @@ export function selectDimensionsWithAmbiguity(
       }
 
       case "contents": {
-        if (dim.values.length === 1) {
-          selections.push({ dimensionId: dim.id, valueCodes: [dim.values[0].code] });
-        } else {
-          let bestCode = dim.values[0].code;
-          let bestScore = 0;
-          for (const v of dim.values) {
-            const labelLower = v.label.toLowerCase();
-            let score = 0;
-            for (const kw of promptKeywords) {
-              if (labelLower.includes(kw)) score++;
-            }
-            if (score > bestScore) {
-              bestScore = score;
-              bestCode = v.code;
-            }
-          }
-          selections.push({ dimensionId: dim.id, valueCodes: [bestCode] });
-
-          // Flag ambiguity when keyword matching scored 0 with multiple values
-          if (bestScore === 0 && dim.values.length >= 2) {
-            contentsAmbiguous = true;
-            contentsValues = dim.values;
-            contentsDimensionId = dim.id;
-          }
+        // Default to first value; AI fallback will override for 2+ values
+        selections.push({ dimensionId: dim.id, valueCodes: [dim.values[0].code] });
+        if (dim.values.length >= 2) {
+          // Always delegate to AI for multi-value contents — keyword heuristics
+          // are too brittle across languages (Estonian, Icelandic, Finnish, etc.)
+          contentsAmbiguous = true;
+          contentsValues = dim.values;
+          contentsDimensionId = dim.id;
         }
         break;
       }
@@ -855,8 +855,9 @@ export function selectDimensionsWithAmbiguity(
 export function jsonStat2ToRecords(
   response: PxJsonStat2Response,
   geoDimId: string,
-  contentsDimId: string,
+  contentsDimId: string | null,
   timeDimId: string,
+  fallbackMetricLabel?: string,
 ): PxDataRecord[] {
   const records: PxDataRecord[] = [];
 
@@ -876,10 +877,11 @@ export function jsonStat2ToRecords(
 
   // Find dimension indices
   const geoIdx = dimIds.indexOf(geoDimId);
-  const contIdx = dimIds.indexOf(contentsDimId);
+  const contIdx = contentsDimId ? dimIds.indexOf(contentsDimId) : -1;
   const timeIdx = dimIds.indexOf(timeDimId);
 
-  if (geoIdx === -1 || contIdx === -1 || timeIdx === -1) {
+  // Geo and time are required; contents is optional (single-measure tables)
+  if (geoIdx === -1 || timeIdx === -1) {
     return records;
   }
 
@@ -905,14 +907,16 @@ export function jsonStat2ToRecords(
     }
 
     const geoCode = dimMeta[geoIdx].codes[indices[geoIdx]];
-    const contCode = dimMeta[contIdx].codes[indices[contIdx]];
+    const contCode = contIdx >= 0 ? dimMeta[contIdx].codes[indices[contIdx]] : "_single";
     const timeCode = dimMeta[timeIdx].codes[indices[timeIdx]];
 
     records.push({
       regionCode: geoCode,
       regionLabel: dimMeta[geoIdx].labels[geoCode] ?? geoCode,
       metricCode: contCode,
-      metricLabel: dimMeta[contIdx].labels[contCode] ?? contCode,
+      metricLabel: contIdx >= 0
+        ? (dimMeta[contIdx].labels[contCode] ?? contCode)
+        : (fallbackMetricLabel ?? "Value"),
       timePeriod: timeCode,
       value: val,
     });

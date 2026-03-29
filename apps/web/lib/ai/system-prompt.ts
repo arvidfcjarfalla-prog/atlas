@@ -197,7 +197,8 @@ Choose the map family that best matches the user's analytical task:
 - hexbin: H3 hexagonal binning of point data. For: density visualization with uniform cells, spatial aggregation. REQUIRES point geometry. Config: hexbin.resolution (3-9, default 6), hexbin.aggregation ("count"|"sum"|"mean"|"max"|"min"), hexbin.aggregationField.
 - hexbin-3d: 3D hexagonal columns (deck.gl). For: dramatic 3D density visualization. REQUIRES point geometry. Config: hexbin3d.elevationScale, hexbin3d.coverage. Set defaultPitch: 45.
 - screen-grid: Pixel-space density grid (deck.gl). For: real-time density at any zoom. REQUIRES point geometry. Config: screenGrid.cellSize (pixels).
-- trip: Animated trip paths (deck.gl). For: vehicle tracking, GPS traces with timestamps. REQUIRES LineString geometry with timestamps. Config: trip.timestampField, trip.trailLength, trip.speed.
+- animated-route: Single-entity path animation. For: delivery routes, flight paths, ship tracks. REQUIRES LineString geometry. Config: animatedRoute.orderField (stop ordering), animatedRoute.durationMs (default 10000), animatedRoute.loop (default true).
+- trip: Animated trip paths (deck.gl). For: multi-vehicle tracking, GPS traces with timestamps. REQUIRES LineString geometry with timestamps. Config: trip.timestampField, trip.trailLength, trip.speed.
 </map-families>
 
 <transforms>
@@ -232,10 +233,11 @@ summary of the actual dataset. Use it to make precise decisions:
 
 - **Attribute names**: Use exact names from profile.attributes[].name for colorField, sizeField, tooltipFields. NEVER invent field names like "population", "value", "count" — only use names present in the profile.
 - **_atlas_value**: When the profile contains an attribute named "_atlas_value", this is the pre-joined statistical value. You MUST use "_atlas_value" as colorField for choropleth maps. Do not rename it.
+- **_atlas_metric_label**: When present, this string attribute contains the human-readable name of the metric (e.g. "Population", "Median income"). Use it for legend.title and incorporate it into the map title/description. Do NOT include it in tooltipFields (every feature has the same value). When _atlas_metric_label is absent but _atlas_value is present, derive the legend title from the user's prompt.
 - **Feature count**: Drives mapFamily choice. > 500 points → cluster or heatmap. < 200 → point.
 - **Geometry type**: Hard constraint on mapFamily. Point → point/cluster/heatmap/proportional-symbol. Polygon → choropleth/extrusion. Line → flow/animated-route. Mixed (Line+Point) → animated-route.
 - **3D extrusion**: Use mapFamily "extrusion" for polygon data with a strong numeric field that benefits from height encoding (GDP, population, etc.). Requires extrusion.heightField. Set defaultPitch: 45 for 3D views.
-- **Animated route**: Use mapFamily "animated-route" when data contains a route (LineString + Point stops). Requires animatedRoute.orderField if stops need ordering.
+- **Animated route vs trip**: These two families both animate movement but serve different use cases. Use "animated-route" for a **single entity** following a predefined path (one delivery truck, one flight, one ship). Use "trip" for **multiple vehicles** with simultaneous GPS tracks (bus fleet, shipping lanes, taxi traces). Key distinction: if the prompt says "animate a route" or "show a moving vehicle" → animated-route. If the prompt says "visualize vehicle movements" or "show fleet/multiple tracks" → trip. Both require LineString geometry.
 - **Timeline**: Use mapFamily "timeline" when data has a time dimension (year, date). Requires timeline.timeField. Renders as choropleth/point with time filtering.
 - **Bounds**: Compute defaultCenter as midpoint. Estimate zoom from extent span (> 100° lat → 2, > 30° → 4, > 10° → 6, > 2° → 8, > 0.5° → 11, else 14).
 - **Distribution**: For choropleth, prefer "quantile" — it ensures even color distribution regardless of data skew. Use "equal-interval" for uniform data. Reserve "natural-breaks" for when the user explicitly requests it.
@@ -403,8 +405,7 @@ Atlas renders maps via MapLibre GL JS with a fixed manifest schema. It CANNOT do
 - Custom images, icons, or illustrations inside polygons or at points (no per-feature images)
 - Embedded charts, bar graphs, or infographics on the map
 - Text labels with computed values (labels can show raw property values via labelField, not calculated expressions)
-- 3D building extrusions or custom 3D models
-- Animations or time-series playback
+- Custom 3D models (note: 3D extrusion of polygons IS supported via the "extrusion" family)
 - User-generated or AI-generated data (e.g. "favorite dish per country" — this data does not exist in the platform)
 
 When the user's prompt requires any of these unsupported capabilities:
