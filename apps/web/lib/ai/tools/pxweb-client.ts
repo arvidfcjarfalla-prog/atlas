@@ -971,7 +971,10 @@ export async function searchTables(
     const res = await fetch(url, {
       signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`[pxweb] searchTables HTTP ${res.status} for ${baseUrl} query="${query}"`);
+      return [];
+    }
 
     const json = await res.json();
     const tables: PxTableInfo[] = (json.tables ?? json ?? []).map(
@@ -986,7 +989,8 @@ export async function searchTables(
       }),
     );
     return tables;
-  } catch {
+  } catch (err) {
+    console.warn(`[pxweb] searchTables failed for ${baseUrl} query="${query}":`, err instanceof Error ? err.message : err);
     return [];
   }
 }
@@ -1004,7 +1008,10 @@ export async function fetchMetadata(
     const res = await fetch(url, {
       signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[pxweb] fetchMetadata HTTP ${res.status} for ${baseUrl} table=${tableId}`);
+      return null;
+    }
 
     const json = await res.json();
 
@@ -1065,6 +1072,7 @@ export async function fetchMetadata(
         });
       }
     } else {
+      console.warn(`[pxweb] fetchMetadata: unknown schema for ${baseUrl} table=${tableId}`);
       return null;
     }
 
@@ -1074,7 +1082,8 @@ export async function fetchMetadata(
       source: json.source ?? "",
       dimensions,
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[pxweb] fetchMetadata failed for ${baseUrl} table=${tableId}:`, err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -1108,13 +1117,20 @@ export async function fetchData(
     const res = await fetch(url, {
       signal: AbortSignal.timeout(DATA_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[pxweb] fetchData HTTP ${res.status} for ${baseUrl} table=${tableId} (URL length: ${url.length})`);
+      return null;
+    }
 
     const json = (await res.json()) as PxJsonStat2Response;
-    if (!json.value || !json.id || !json.size) return null;
+    if (!json.value || !json.id || !json.size) {
+      console.warn(`[pxweb] fetchData: incomplete response for ${baseUrl} table=${tableId}`);
+      return null;
+    }
 
     return json;
-  } catch {
+  } catch (err) {
+    console.warn(`[pxweb] fetchData failed for ${baseUrl} table=${tableId}:`, err instanceof Error ? err.message : err);
     return null;
   }
 }

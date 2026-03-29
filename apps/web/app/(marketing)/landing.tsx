@@ -102,8 +102,9 @@ export default function LandingClient() {
     }
     if (dp === "gen") {
       setDg(0);
-      [0, 600, 1100, 1600].forEach((d, i) => setTimeout(() => setDg(i), d));
-      setTimeout(() => setDp("map"), 2200);
+      const timers = [0, 600, 1100, 1600].map((d, i) => setTimeout(() => setDg(i), d));
+      const done = setTimeout(() => setDp("map"), 2200);
+      return () => { timers.forEach(clearTimeout); clearTimeout(done); };
     }
     if (dp === "map") {
       const t = setTimeout(() => setDp("t2"), 1500);

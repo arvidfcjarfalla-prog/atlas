@@ -58,5 +58,105 @@
     "id": "isochrone-driving",
     "prompt": "Show 15 and 30 minute driving isochrones from Gothenburg airport.",
     "expectedFamily": "isochrone"
+  },
+  {
+    "id": "extrusion-buildings",
+    "prompt": "Show building heights in Manhattan as 3D extruded polygons. Color by height using a viridis palette.",
+    "expectedFamily": "extrusion"
+  },
+  {
+    "id": "extrusion-population",
+    "prompt": "Create a 3D bar map of population by county in Sweden. Extrude polygons by population count, color by density.",
+    "expectedFamily": "extrusion"
+  },
+  {
+    "id": "animated-route-delivery",
+    "prompt": "Animate a delivery truck route through central London. Show the vehicle moving along the path with a trail effect.",
+    "expectedFamily": "animated-route"
+  },
+  {
+    "id": "animated-route-flight",
+    "prompt": "Show an animated flight path from Stockholm to Tokyo with a moving aircraft icon along a great circle arc.",
+    "expectedFamily": "animated-route"
+  },
+  {
+    "id": "timeline-earthquakes",
+    "prompt": "Show earthquake events over the past decade on a timeline. Allow scrubbing through years to see how seismic activity shifted.",
+    "expectedFamily": "timeline"
+  },
+  {
+    "id": "timeline-urbanization",
+    "prompt": "Visualize urban growth in Stockholm over the last 50 years as a timeline animation showing building footprints appearing by construction year.",
+    "expectedFamily": "timeline"
+  },
+  {
+    "id": "hexbin-taxi",
+    "prompt": "Aggregate NYC taxi pickup locations into hexagonal bins. Color by ride count, use a plasma palette.",
+    "expectedFamily": "hexbin"
+  },
+  {
+    "id": "hexbin-3d-density",
+    "prompt": "Show restaurant density in Tokyo as 3D hexagonal columns. Height represents count, color represents average rating.",
+    "expectedFamily": "hexbin-3d"
+  },
+  {
+    "id": "screen-grid-tweets",
+    "prompt": "Visualize geotagged tweet density across Europe as a screen-space grid that updates with zoom level.",
+    "expectedFamily": "screen-grid"
+  },
+  {
+    "id": "screen-grid-accidents",
+    "prompt": "Show traffic accident density in Los Angeles as a screen grid heatmap. Color intensity by accident count per cell.",
+    "expectedFamily": "screen-grid"
+  },
+  {
+    "id": "trip-bus",
+    "prompt": "Animate bus routes in Gothenburg showing multiple vehicles moving along their routes simultaneously with colored trails.",
+    "expectedFamily": "trip"
+  },
+  {
+    "id": "trip-shipping",
+    "prompt": "Visualize container ship movements through the Suez Canal over one week. Animate vessels along their GPS tracks.",
+    "expectedFamily": "trip"
+  },
+  {
+    "id": "poi-restaurants",
+    "prompt": "Show all restaurants in central Stockholm.",
+    "expectedFamily": "point"
+  },
+  {
+    "id": "poi-parks",
+    "prompt": "Map parks and green spaces in Berlin.",
+    "expectedFamily": "point"
+  },
+  {
+    "id": "poi-cycleway",
+    "prompt": "Bike lanes in Copenhagen.",
+    "expectedFamily": "point"
+  },
+  {
+    "id": "poi-metro",
+    "prompt": "Show metro stations in Paris.",
+    "expectedFamily": "point"
+  },
+  {
+    "id": "comparative-gdp",
+    "prompt": "Compare GDP per capita between Sweden and Finland by municipality.",
+    "expectedFamily": "choropleth"
+  },
+  {
+    "id": "threshold-income",
+    "prompt": "Show Swedish municipalities where median income is above the national average.",
+    "expectedFamily": "choropleth"
+  },
+  {
+    "id": "temporal-unemployment",
+    "prompt": "Show how unemployment in EU countries changed from 2015 to 2023.",
+    "expectedFamily": "timeline"
+  },
+  {
+    "id": "ambiguous-short",
+    "prompt": "Crime in Sweden",
+    "expectedFamily": "choropleth"
   }
 ]

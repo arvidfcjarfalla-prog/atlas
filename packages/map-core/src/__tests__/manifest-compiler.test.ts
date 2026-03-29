@@ -1049,4 +1049,153 @@ describe("manifest-compiler", () => {
       expect(fieldWarnings).toHaveLength(0);
     });
   });
+
+  // ─── Geometry robustness ─────────────────────────────────────
+
+  describe("geometry robustness", () => {
+    const multiPoly: GeoJSON.Feature = {
+      type: "Feature",
+      geometry: {
+        type: "MultiPolygon",
+        coordinates: [
+          [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]],
+          [[[2, 2], [3, 2], [3, 3], [2, 3], [2, 2]]],
+        ],
+      },
+      properties: { name: "Islands", value: 42 },
+    };
+
+    it("choropleth handles MultiPolygon data", () => {
+      const layer: LayerManifest = {
+        id: "multi", kind: "asset", label: "Multi",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "quantile", classes: 3 } },
+      };
+      const result = compileLayer(layer, fc([multiPoly]));
+      const fills = result.layers.filter(l => l.type === "fill");
+      expect(fills.length).toBeGreaterThan(0);
+    });
+
+    it("choropleth falls back to circles for Point-only data", () => {
+      const layer: LayerManifest = {
+        id: "pt-choro", kind: "asset", label: "Pts",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "quantile", classes: 3 } },
+      };
+      const data = fc([
+        pt(0, 0, { value: 10 }), pt(1, 1, { value: 20 }),
+        pt(2, 2, { value: 30 }), pt(3, 3, { value: 40 }),
+      ]);
+      const result = compileLayer(layer, data);
+      const circles = result.layers.filter(l => l.type === "circle");
+      expect(circles.length).toBeGreaterThan(0);
+      expect(result.warnings?.some(w => w.includes("Point data"))).toBe(true);
+    });
+
+    it("choropleth falls back to lines for LineString-only data", () => {
+      const layer: LayerManifest = {
+        id: "line-choro", kind: "asset", label: "Lines",
+        sourceType: "geojson-static", geometryType: "line",
+        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "quantile", classes: 3 } },
+      };
+      const data = fc([
+        line([[0, 0], [1, 1]], { value: 10 }),
+        line([[2, 2], [3, 3]], { value: 20 }),
+        line([[4, 4], [5, 5]], { value: 30 }),
+        line([[6, 6], [7, 7]], { value: 40 }),
+      ]);
+      const result = compileLayer(layer, data);
+      const lines = result.layers.filter(l => l.type === "line");
+      expect(lines.length).toBeGreaterThan(0);
+      expect(result.warnings?.some(w => w.includes("LineString data"))).toBe(true);
+    });
+
+    it("point handles LineString data with line sublayer", () => {
+      const layer: LayerManifest = {
+        id: "line-pt", kind: "asset", label: "Lines",
+        sourceType: "geojson-static", geometryType: "line",
+        style: { markerShape: "circle", mapFamily: "point" },
+      };
+      const data = fc([line([[0, 0], [1, 1]], { name: "path" })]);
+      const result = compileLayer(layer, data);
+      const lines = result.layers.filter(l => l.type === "line");
+      expect(lines.length).toBeGreaterThan(0);
+    });
+
+    it("point handles Polygon data with fill sublayer", () => {
+      const layer: LayerManifest = {
+        id: "poly-pt", kind: "asset", label: "Polys",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: { markerShape: "circle", mapFamily: "point" },
+      };
+      const data = fc([poly(rect(0, 0, 1, 1), { name: "area" })]);
+      const result = compileLayer(layer, data);
+      const fills = result.layers.filter(l => l.type === "fill");
+      expect(fills.length).toBeGreaterThan(0);
+      expect(result.warnings?.some(w => w.includes("Polygon data"))).toBe(true);
+    });
+
+    it("point does not emit circle layers for polygon-only data", () => {
+      const layer: LayerManifest = {
+        id: "poly-only", kind: "asset", label: "PolyOnly",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: { markerShape: "circle", mapFamily: "point" },
+      };
+      const data = fc([poly(rect(0, 0, 1, 1), { name: "area" })]);
+      const result = compileLayer(layer, data);
+      const circles = result.layers.filter(l => l.type === "circle");
+      expect(circles).toHaveLength(0);
+    });
+
+    it("timeline does not crash on null geometry features", () => {
+      const layer: LayerManifest = {
+        id: "tl-null", kind: "asset", label: "Timeline",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: { markerShape: "circle", mapFamily: "timeline", colorField: "value", color: { scheme: "viridis" }, classification: { method: "quantile", classes: 3 } },
+        timeline: { timeField: "year" },
+      };
+      const data = fc([
+        poly(rect(0, 0, 1, 1), { value: 10, year: "2020" }),
+        { type: "Feature", geometry: null as unknown as GeoJSON.Geometry, properties: { value: 20, year: "2021" } },
+      ]);
+      expect(() => compileLayer(layer, data)).not.toThrow();
+    });
+
+    it("heatmap weight domain uses actual data range", () => {
+      const layer: LayerManifest = {
+        id: "heat", kind: "asset", label: "Heat",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "heatmap", sizeField: "magnitude" },
+      };
+      const data = fc([
+        pt(0, 0, { magnitude: 4.5 }),
+        pt(1, 1, { magnitude: 7.2 }),
+        pt(2, 2, { magnitude: 9.0 }),
+      ]);
+      const result = compileLayer(layer, data);
+      const heatLayer = result.layers.find(l => l.type === "heatmap");
+      expect(heatLayer).toBeTruthy();
+      const paint = (heatLayer as HeatmapLayerSpecification).paint!;
+      const weight = paint["heatmap-weight"] as unknown[];
+      // Should interpolate from min (4.5) to max (9.0), not 0 to 10
+      expect(weight).toContain(4.5);
+      expect(weight).not.toContain(10);
+    });
+
+    it("natural-breaks classification emits a warning", () => {
+      const layer: LayerManifest = {
+        id: "nb", kind: "asset", label: "NB",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "natural-breaks" as "quantile", classes: 3 } },
+      };
+      const data = fc([
+        poly(rect(0, 0, 1, 1), { value: 10 }),
+        poly(rect(1, 0, 2, 1), { value: 50 }),
+        poly(rect(2, 0, 3, 1), { value: 90 }),
+        poly(rect(3, 0, 4, 1), { value: 100 }),
+      ]);
+      const result = compileLayer(layer, data);
+      expect(result.warnings?.some(w => w.includes("not yet implemented"))).toBe(true);
+    });
+  });
 });

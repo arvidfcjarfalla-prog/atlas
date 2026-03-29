@@ -25,13 +25,13 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
   const features = geojson.features ?? [];
   const featureCount = features.length;
 
-  // Geometry type detection
-  const geomTypes = new Set<string>();
+  // Geometry type detection — count per type to find dominant
+  const geomCounts = new Map<string, number>();
   let south = Infinity, west = Infinity, north = -Infinity, east = -Infinity;
 
   for (const f of features) {
     if (!f.geometry) continue;
-    geomTypes.add(f.geometry.type);
+    geomCounts.set(f.geometry.type, (geomCounts.get(f.geometry.type) ?? 0) + 1);
     extractBounds(f.geometry.coordinates, (lng, lat) => {
       if (lat < south) south = lat;
       if (lat > north) north = lat;
@@ -44,7 +44,7 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
     south = 0; west = 0; north = 0; east = 0;
   }
 
-  const geometryType = resolveGeometryType(geomTypes);
+  const geometryType = resolveGeometryType(geomCounts);
 
   // Attribute profiling — sample up to 5000 features for speed
   const sampleSize = Math.min(features.length, 5000);
@@ -63,16 +63,30 @@ export function profileDataset(geojson: GeoJSONFeatureCollection): DatasetProfil
   };
 }
 
-function resolveGeometryType(types: Set<string>): ProfileGeometryType {
-  if (types.size === 0) return "Mixed";
-  if (types.size === 1) {
-    const t = [...types][0];
+function resolveGeometryType(counts: Map<string, number>): ProfileGeometryType {
+  if (counts.size === 0) return "Mixed";
+  if (counts.size === 1) {
+    const t = [...counts.keys()][0];
     if (t === "Point" || t === "MultiPoint") return t as ProfileGeometryType;
     if (t === "LineString" || t === "MultiLineString") return t as ProfileGeometryType;
     if (t === "Polygon") return "Polygon";
     if (t === "MultiPolygon") return "MultiPolygon";
   }
-  return "Mixed";
+  // Multiple types — return the dominant one so the AI gets a useful signal
+  let dominant = "Mixed";
+  let maxCount = 0;
+  for (const [type, count] of counts) {
+    if (count > maxCount) {
+      maxCount = count;
+      dominant = type;
+    }
+  }
+  const known: Record<string, ProfileGeometryType> = {
+    Point: "Point", MultiPoint: "MultiPoint",
+    LineString: "LineString", MultiLineString: "MultiLineString",
+    Polygon: "Polygon", MultiPolygon: "MultiPolygon",
+  };
+  return known[dominant] ?? "Mixed";
 }
 
 /**

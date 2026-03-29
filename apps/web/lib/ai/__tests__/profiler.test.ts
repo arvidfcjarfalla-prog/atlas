@@ -78,12 +78,15 @@ describe("profileDataset", () => {
       expect(profile.geometryType).toBe("MultiPolygon");
     });
 
-    it("returns Mixed for Point + Polygon", () => {
+    it("returns dominant geometry type for mixed data", () => {
       const profile = profileDataset(fc([
         pt(10, 20, {}),
+        pt(11, 21, {}),
+        pt(12, 22, {}),
         polyFeature([[0, 0], [5, 0], [5, 5], [0, 5], [0, 0]], {}),
       ]));
-      expect(profile.geometryType).toBe("Mixed");
+      // 3 Points vs 1 Polygon → dominant is Point
+      expect(profile.geometryType).toBe("Point");
     });
 
     it("skips null geometry for type detection", () => {
