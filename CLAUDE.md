@@ -41,11 +41,31 @@ Each has a dedicated compiler in `packages/map-core/src/manifest-compiler.ts`.
 - `apps/web/app/api/ai/generate-map/route.ts` — AI generation endpoint
 - `apps/web/scripts/eval-runner.ts` — Offline/online eval runner
 - `apps/web/public/geo/se/municipalities.geojson` — Swedish municipalities with SCB 4-digit codes
-- `apps/web/lib/ai/geography-registry.ts` — Geometry registry (geometry-plugins.ts: Sweden SCB plugin with knownTables)
-- `apps/web/lib/ai/pxweb-resolution.ts` — PxWeb table resolution (skip Haiku selection when plugin provides known tables)
-- `apps/web/lib/ai/pxweb-client.ts` — PxWeb client (wildcard threshold: URL string length >1500 chars instead of fixed count)
-- `apps/web/app/api/clarify/route.ts` — Agency hint UX (short-circuit web search for unconnected sources, <5s response)
-- `apps/web/lib/ai/official-stats-resolver.ts` — Global stats registry with crime/justice topic tags
+- `apps/web/lib/ai/tools/geometry-registry.ts` — Geometry registry (resolves country/admin geometries)
+- `apps/web/lib/ai/tools/geography-plugins.ts` — 13 per-country geography plugins (SE, NO, IS, DK, FI, EE, SI, LV, CH, Eurostat NUTS, US FIPS, PxWeb generic, country admin fallback)
+- `apps/web/lib/ai/tools/pxweb-resolution.ts` — PxWeb table resolution (skip Haiku selection when plugin provides known tables)
+- `apps/web/lib/ai/tools/pxweb-client.ts` — PxWeb client (wildcard threshold: URL string length >1500 chars instead of fixed count)
+- `apps/web/app/api/ai/clarify/route.ts` — Agency hint UX (short-circuit web search for unconnected sources, <5s response)
+- `apps/web/lib/ai/tools/official-stats-resolver.ts` — Global stats registry with crime/justice topic tags
+
+## AI Tools (`apps/web/lib/ai/tools/`)
+
+| Category | Tools |
+|---|---|
+| **Data search** | `data-search`, `data-commons`, `eurostat`, `pxweb-client`, `pxweb-resolution`, `worldbank-client`, `sdmx-client`, `web-dataset-search`, `web-research` |
+| **Geography** | `geometry-registry`, `geometry-loader`, `geometry-join`, `geography-plugins`, `geography-detector`, `join-planner` |
+| **Stats** | `official-stats-resolver`, `global-stats-registry`, `normalized-result`, `ai-metric-matcher` |
+| **Routing** | `intent-classifier`, `source-adapter`, `dataset-registry`, `resolution-memory` |
+| **Utilities** | `url-fetcher`, `overpass`, `route-snapper`, `ai-suggestion-generator` |
+
+## Evaluation System
+
+Two eval modes, both use `quality-scorer.ts` (0–100) as the metric:
+
+- **Offline** (`pnpm eval`): Validate + compile + score pre-built fixtures in `test-data/eval-fixtures.json`. Deterministic, no API key. Use for scorer/validator testing only — never for `/auto-research` (offline eval does not call the AI or read `example-bank.ts`).
+- **Online** (`pnpm eval:online`): Generate manifests from prompts in `test-data/eval-prompts.json` via the live API. Costs tokens. Use for regression testing after model/prompt changes.
+
+Reports written to `test-data/eval-report.json`. Quality scorer dimensions: schema (20), family (20), color (20), classification (15), normalization (10), legend (5), runtime (10).
 
 ## Commands
 
@@ -63,6 +83,13 @@ pnpm e2e:ui       # Playwright with interactive UI
 # Eval runner (from apps/web)
 pnpm eval         # Offline mode — fixture-based, no API key
 pnpm eval:online  # Online mode — requires ANTHROPIC_API_KEY + dev server
+
+# Auto-research (Karpathy loop)
+/auto-research    # Mutate example-bank.ts → eval → keep if better, revert if worse
+
+# Task execution
+/subagent-tasks   # Dispatch one subagent per task with two-stage review
+/debug            # Structured 4-phase debugging (root cause first)
 ```
 
 ## Verification
@@ -74,8 +101,8 @@ pnpm typecheck && pnpm test
 
 ## Testing
 
-- Unit tests: Vitest (v4.1+), 158 tests across 9 files in 3 packages
-- E2E tests: Playwright (Chromium), 8 tests covering all 7 map families
+- Unit tests: Vitest (v4.1+), 43 test files across 3 packages
+- E2E tests: Playwright (Chromium), 12 tests covering 11 map families
 - Unit test files live next to source: `src/__tests__/` or `lib/ai/__tests__/`
 - E2E test files: `apps/web/e2e/`
 - Path alias `@/` in `apps/web` resolves to project root (not `src/`)
@@ -95,6 +122,9 @@ import { compileLayer } from "../../../packages/map-core/src/manifest-compiler.j
 - Read relevant files before changing code. Identify the smallest change with highest ROI.
 - Preserve backward compatibility unless explicitly asked to break it.
 - Solve problems we have, not problems we might have.
+- **Geography plugins:** admin1 geometry has `iso_3166_2` (reliable join key, use `direct_code`). Admin2/municipality files lack numeric codes — use `alias_crosswalk` via labels. Always include a label cleanup normalizer for bilingual/parenthetical suffixes.
+- **Data source workflow:** Use `/connect-datasource` for new sources, `/connect-geography` for join plugins. Dispatch geography plugins one-per-country as parallel agents (genuinely independent work).
+- **Eval modes:** Offline (`pnpm eval`) scores fixtures — never reads example-bank.ts. Online (`pnpm eval:online`) calls the AI pipeline. Only online mode tests prompt/example changes.
 
 ## Tech Stack
 
@@ -104,7 +134,7 @@ import { compileLayer } from "../../../packages/map-core/src/manifest-compiler.j
 - MapLibre GL JS 5.19
 - React 18.3
 - Tailwind CSS 3.4
-- AI: Anthropic Claude Sonnet 4 (`@anthropic-ai/sdk`)
+- AI: Anthropic Claude Sonnet 4.5 (primary), Opus 4.5 (fallback on low quality score < 60), Haiku 4.5 (utility)
 
 ---
 
@@ -158,6 +188,19 @@ Rules are added when:
 - Self-annealing reveals a pattern
 
 Format: `[CATEGORY] NEVER/ALWAYS X because Y`
+
+### Learned-rules → CLAUDE.md compilation
+
+When `learned-rules.md` reaches **10+ rules**, trigger a compilation cycle:
+
+1. Read all rules in `learned-rules.md`
+2. Group by category — identify patterns (3+ rules in the same category = a pattern)
+3. Distill each pattern into a single high-density bullet for CLAUDE.md (e.g., 3 PXWEB rules → one "PxWeb" bullet under Key Files or Development Rules)
+4. Add the distilled bullets to the appropriate CLAUDE.md section
+5. Keep the original rules in `learned-rules.md` (they have the detailed rationale)
+6. Mark compiled rules with `[COMPILED]` suffix so they aren't re-compiled
+
+This prevents rule loss during context compression — CLAUDE.md is always loaded, learned-rules.md may be truncated.
 
 ### 10x Rule
 

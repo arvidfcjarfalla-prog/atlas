@@ -12,9 +12,9 @@ user prompt → dataset profiling → Claude → MapManifest JSON
 
 The manifest is the single source of truth. The renderer never interprets intent — it applies compiled MapLibre specs. This separation is the core architectural constraint.
 
-**Current state:** All 7 map families have schema types, validators, compiler functions, and pattern templates. The AI pipeline (prompt → Claude → validation → self-correction) exists as API routes. The manifest compiler produces MapLibre layer specs. Basemap hooks, legends, and the renderer hook are implemented.
+**Current state:** All 14 map families have schema types, validators, compiler functions, and pattern templates. The AI pipeline (prompt → Claude → validation → self-correction) exists as API routes. The manifest compiler produces MapLibre layer specs. Basemap hooks, legends, and the renderer hook are implemented.
 
-**What's missing:** Nothing has been tested end-to-end. There is no UI for the AI flow. Two families (flow, isochrone) have deferred rendering features. The platform spec is outdated.
+**What's missing:** All 5 phases below are implemented. Remaining gaps: platform spec (`docs/map-platform-spec.md`) is outdated and does not reflect v2 architecture.
 
 These 5 phases address the gaps in dependency order — each phase builds on the previous.
 
@@ -73,7 +73,7 @@ We have ~850 lines of compiler code producing MapLibre expressions that have nev
 - `useManifestRenderer` mounts layers on `load` — race condition if map isn't ready. The hook already guards with `isReady`.
 
 ### Definition of done
-- [ ] `/smoke-test` renders all 7 families without console errors
+- [ ] `/smoke-test` renders all 14 families without console errors
 - [ ] Each family shows correct layer type (circle/fill/line/heatmap)
 - [ ] Legends render with correct colors and labels
 - [ ] Hover highlight works on at least point, choropleth, and flow
@@ -264,7 +264,7 @@ Isochrone maps currently require pre-computed polygon data. The AI generates man
 Update `docs/map-platform-spec.md` to reflect the current architecture, including the AI pipeline, manifest v2 schema, compiler, validation system, and pattern templates.
 
 ### Why this matters now
-The spec is the canonical reference for building on Atlas. It currently describes v1 (manual manifests, 8 point layers, severity-based markers) but not v2 (7 map families, AI generation, classification, color schemes, flow/isochrone). Any new contributor or AI agent working from the spec will produce incorrect code.
+The spec is the canonical reference for building on Atlas. It currently describes v1 (manual manifests, 8 point layers, severity-based markers) but not v2 (14 map families, AI generation, classification, color schemes, flow/isochrone/extrusion/animated-route/timeline/hexbin/screen-grid/trip). Any new contributor or AI agent working from the spec will produce incorrect code.
 
 ### Files/modules involved
 | File | Role |
@@ -275,7 +275,7 @@ The spec is the canonical reference for building on Atlas. It currently describe
 
 1. **Add new sections:**
    - **AI Pipeline** — prompt → profiler → Claude → validation → self-correction → manifest
-   - **Map Families** — the 7 families with their geometry requirements and compiler behavior
+   - **Map Families** — the 14 families with their geometry requirements and compiler behavior
    - **Manifest v2 Schema** — full LayerManifest with flow, isochrone, classification, color, normalization
    - **Compiler Architecture** — `compileLayer()` entry point, per-family compilation, legend generation
    - **Validation System** — two-pass validation (schema + cartographic), error vs warning levels
@@ -298,7 +298,7 @@ The spec is the canonical reference for building on Atlas. It currently describe
 
 ### Definition of done
 - [ ] Spec accurately describes the AI pipeline end-to-end
-- [ ] All 7 map families documented with geometry requirements
+- [ ] All 14 map families documented with geometry requirements
 - [ ] Manifest v2 schema documented with all new fields
 - [ ] Compiler and validation architecture explained
 - [ ] "How to Add a New Map" includes the AI flow
@@ -328,8 +328,10 @@ Phase 5 (Spec update)            ← last, after implementation stabilizes
 - **Phases 1 and 2** are strictly sequential — Phase 2 assumes the compiler output is verified by Phase 1.
 
 ### What stays deferred
-- **3D extrusion rendering** — not in any map family schema, no current use case.
 - **PMTiles / vector tile sources** — `sourceType: "pmtiles"` exists in the schema but has no compiler support. Add when needed for large datasets.
 - **Real-time data streaming** — `refreshIntervalMs` exists but no WebSocket or SSE infrastructure.
-- **Multi-layer manifests** — the compiler handles one layer at a time. Multi-layer composition (e.g. choropleth + proportional symbol overlay) needs design work.
-- **User authentication / saved maps** — no auth system exists. Required before maps can be persisted.
+
+### Completed since roadmap was written
+- **3D extrusion rendering** — now a supported map family with compiler, validator, and eval prompts.
+- **Multi-layer manifests** — the compiler handles arrays of layers. Multi-layer composition works.
+- **User authentication / saved maps** — Supabase auth (magic link, OAuth), map persistence (CRUD, auto-save, versions, sharing).

@@ -1082,6 +1082,197 @@ export const denmarkDstPlugin: GeographyPlugin = {
 };
 
 /**
+ * Finland Statistics Finland (stat.fi) PxWeb plugin.
+ *
+ * Statistics Finland (Tilastokeskus) publishes data via PxWeb at
+ * pxdata.stat.fi. Geographic dimensions use two prefixed code formats:
+ *   - MK prefix: maakunta (region/admin1), codes MK01–MK21 (19 regions)
+ *   - KU prefix: kunta (municipality), codes KU003–KU992 (304 municipalities)
+ *
+ * GeoJSON admin1 file has iso_3166_2 (FI-XX) and name properties.
+ * GeoJSON municipalities file has name-only (no numeric codes).
+ *
+ * Join strategy:
+ *   - Admin1: alias_crosswalk via name — MK codes are mapped to English region
+ *     names, then matched against GeoJSON name property.
+ *   - Municipality: alias_crosswalk via name — dimension label used directly
+ *     (KU prefix is stripped; name comes from PxWeb label text).
+ */
+export const finlandPlugin: GeographyPlugin = {
+  id: "fi-stat",
+  name: "Finland Statistics Finland / Tilastokeskus (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("fi-stat") || sid.includes("tilastokeskus") ||
+      sid.includes("stat.fi") || source.countryHints.includes("FI");
+  },
+
+  matchCodes(codes, _dimension) {
+    // Stat.fi maakunta (region) codes: "MK" prefix + 2-digit number 01–21
+    const mkMatch = codes.filter((c) => /^MK(0[1-9]|1[0-9]|2[01])$/.test(c));
+    if (mkMatch.length / codes.length >= 0.7 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "fi-stat" },
+        level: "admin1",
+        confidence: 0.85,
+        reason: `${mkMatch.length}/${codes.length} match Stat.fi maakunta code pattern (MK01–MK21)`,
+      };
+    }
+
+    // Stat.fi kunta (municipality) codes: "KU" prefix + 3-digit number
+    // ~304 municipalities, codes are non-contiguous (KU005–KU992)
+    const kuMatch = codes.filter((c) => /^KU\d{3}$/.test(c));
+    if (kuMatch.length / codes.length >= 0.7 && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "fi-stat" },
+        level: "municipality",
+        confidence: 0.85,
+        reason: `${kuMatch.length}/${codes.length} match Stat.fi kunta code pattern (KU + 3 digits)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // English API dimension name for geographic area
+        dimensionId: /^Area$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.6, // actual level determined by matchCodes (MK vs KU prefix)
+      },
+      {
+        // Finnish dimension name: "Alue"
+        dimensionId: /^Alue$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.6,
+      },
+      {
+        // Swedish dimension name: "Område"
+        dimensionId: /^Område$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "fi-stat" },
+        confidence: 0.5,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Admin1: MK codes → GeoJSON name property via alias crosswalk normalizer
+        sourceFamily: { family: "national" as const, namespace: "fi-stat" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.85,
+        description: "Stat.fi MK region codes → GeoJSON region names via alias crosswalk",
+      },
+      {
+        // Municipality: KU label → GeoJSON name property via label crosswalk
+        sourceFamily: { family: "national" as const, namespace: "fi-stat" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.8,
+        description: "Stat.fi KU municipality codes → GeoJSON municipality names via alias crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // MK (maakunta) codes → English GeoJSON name property values.
+    // GeoJSON uses Natural Earth English names which differ from PxWeb English labels
+    // (e.g. PxWeb "Southwest Finland" vs GeoJSON "Finland Proper").
+    const MK_TO_NAME: Record<string, string> = {
+      MK01: "Uusimaa",
+      MK02: "Finland Proper",       // PxWeb: "Southwest Finland"
+      MK04: "Satakunta",
+      MK05: "Kanta-Häme",
+      MK06: "Pirkanmaa",
+      MK07: "Päijät-Häme",
+      MK08: "Kymenlaakso",
+      MK09: "South Karelia",
+      MK10: "Southern Savonia",     // PxWeb: "South Savo"
+      MK11: "Northern Savonia",     // PxWeb: "North Savo"
+      MK12: "North Karelia",
+      MK13: "Central Finland",
+      MK14: "South Ostrobothnia",
+      MK15: "Ostrobothnia",
+      MK16: "Central Ostrobothnia",
+      MK17: "North Ostrobothnia",
+      MK18: "Kainuu",
+      MK19: "Lapland",
+      MK21: "Åland",
+    };
+    return [
+      {
+        // Map MK region codes to GeoJSON English names
+        name: "fi-stat-mk-to-name",
+        normalizer: (code: string) => MK_TO_NAME[code] ?? null,
+      },
+      {
+        // Label cleanup: strip bilingual suffixes and parenthetical date ranges.
+        // Finnish PxWeb labels can have Finnish/Swedish appended qualifiers.
+        // e.g. "Helsinki - Helsingfors" → "Helsinki"
+        //      "Uusimaa (2021-)" → "Uusimaa"
+        name: "fi-stat-label-cleanup",
+        normalizer: (label: string) => {
+          const cleaned = label
+            .replace(/\s*[-–]\s*\S.*$/, "")   // strip " - Helsingfors" suffix
+            .replace(/\s*\(\d{4}.*\)$/, "")    // strip "(2021-)" suffix
+            .trim();
+          return cleaned !== label ? cleaned : null;
+        },
+      },
+    ];
+  },
+
+  knownTables() {
+    // Stat.fi database IDs for common topics.
+    // Base URL: pxdata.stat.fi/PXWeb/api/v1/en/StatFin/{db}/
+    return {
+      // Population structure by area (key figures, age, sex)
+      population: ["statfin_vaerak_pxt_11ra.px", "statfin_vaerak_pxt_11re.px"],
+      // Employment statistics by area and activity
+      employment: ["statfin_tyokay_pxt_115b.px", "statfin_tyokay_pxt_115x.px"],
+      // Educational structure of population
+      education: ["vkour"],
+      // Migration (internal + international)
+      immigration: ["muutl"],
+    };
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          level: "admin1" as GeographyLevel,
+          minUnits: 15,
+          maxUnits: 21,
+        },
+        reason: "Stat.fi region data with 15–21 units — matches Finland's 19 maakunnat",
+      },
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          level: "municipality" as GeographyLevel,
+          minUnits: 100,
+        },
+        reason: "Stat.fi municipality data with ≥100 municipalities — high confidence",
+      },
+    ];
+  },
+};
+
+/**
  * Eurostat NUTS plugin.
  *
  * Recognizes NUTS codes (2 letter prefix + 1–3 alphanumeric suffix)
@@ -1248,6 +1439,183 @@ export const usFipsPlugin: GeographyPlugin = {
 };
 
 /**
+ * Iceland Statistics Iceland (Hagstofa Íslands) PxWeb plugin.
+ *
+ * Recognizes Hagstofa region codes (1-digit "1"–"8", matching IS-1 through IS-8)
+ * and municipality-level data (74 municipalities, name-only geometry).
+ *
+ * Geometry properties:
+ *   admin1: iso_3166_2 (IS-1…IS-8), name (English region name)
+ *   admin2: name only (Icelandic municipality name — no numeric codes)
+ *
+ * At region level, codes join via iso_3166_2; at municipality level,
+ * dimension labels (Icelandic names) join to geometry names via crosswalk.
+ */
+export const icelandPlugin: GeographyPlugin = {
+  id: "pxweb-is-statice",
+  name: "Iceland Statistics Iceland / Hagstofa (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return sid.includes("is-statice") || sid.includes("hagstofa") ||
+      source.countryHints.includes("IS");
+  },
+
+  matchCodes(codes, _dimension) {
+    // Hagstofa region codes: single digit "1"–"8" (matching IS-1 to IS-8)
+    const regionMatch = codes.filter((c) => /^[1-8]$/.test(c));
+    if (regionMatch.length / codes.length >= 0.8 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "3166-2" },
+        level: "admin1",
+        confidence: 0.75,
+        reason: `${regionMatch.length}/${codes.length} match Hagstofa region code pattern (single digit 1–8)`,
+      };
+    }
+
+    // Zero-padded region codes: "01"–"08" (alternative Hagstofa encoding)
+    const paddedRegionMatch = codes.filter((c) => /^0[1-8]$/.test(c));
+    if (paddedRegionMatch.length / codes.length >= 0.8 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "3166-2" },
+        level: "admin1",
+        confidence: 0.7,
+        reason: `${paddedRegionMatch.length}/${codes.length} match Hagstofa zero-padded region code pattern (01–08)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // English API uses "Region" for admin1 regions
+        dimensionId: /^Region$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "iso" as const, namespace: "3166-2" },
+        confidence: 0.75,
+      },
+      {
+        // English API uses "Municipality" for sveitarfélag
+        dimensionId: /^Municipality$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "name" as const },
+        confidence: 0.8,
+      },
+      {
+        // Icelandic dimension name for municipality
+        dimensionId: /^Sveitarfélag$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "name" as const },
+        confidence: 0.8,
+      },
+      {
+        // Icelandic dimension name for region
+        dimensionId: /^Landshluti$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "iso" as const, namespace: "3166-2" },
+        confidence: 0.75,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Region level: Hagstofa 1-digit codes → iso_3166_2 property via normalizer
+        sourceFamily: { family: "iso" as const, namespace: "3166-2" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.85,
+        description: "Hagstofa region codes → GeoJSON iso_3166_2 (IS-1 through IS-8)",
+      },
+      {
+        // Municipality level: name-only geometry → label crosswalk
+        sourceFamily: { family: "name" as const },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.75,
+        description: "Hagstofa municipality labels → GeoJSON name property via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // Hagstofa 1-digit region codes → ISO 3166-2 (IS-1 through IS-8)
+    const HAGSTOFA_TO_ISO: Record<string, string> = {
+      "1": "IS-1",  // Capital Region (Höfuðborgarsvæðið)
+      "2": "IS-2",  // Southern Peninsula (Suðurnes)
+      "3": "IS-3",  // Western Region (Vesturland)
+      "4": "IS-4",  // Westfjords (Vestfirðir)
+      "5": "IS-5",  // Northwestern Region (Norðurland vestra)
+      "6": "IS-6",  // Northeastern Region (Norðurland eystra)
+      "7": "IS-7",  // Eastern Region (Austurland)
+      "8": "IS-8",  // Southern Region (Suðurland)
+    };
+    return [
+      {
+        name: "hagstofa-region-to-iso",
+        normalizer: (code: string) => {
+          // Map single-digit or zero-padded region code → IS-N format
+          const trimmed = code.replace(/^0+/, "") || "0";
+          return HAGSTOFA_TO_ISO[trimmed] ?? null;
+        },
+      },
+      {
+        name: "hagstofa-region-zero-pad",
+        normalizer: (code: string) => {
+          // Normalize zero-padded "01"–"08" → single digit "1"–"8"
+          if (/^0[1-8]$/.test(code)) return code.replace(/^0/, "");
+          return null;
+        },
+      },
+    ];
+  },
+
+  knownTables() {
+    // Hagstofa table IDs for common topics.
+    // Tables confirmed under: px.hagstofa.is/pxen/api/v1/en/Ibuar/mannfjoldi/2_byggdir/sveitarfelog/
+    return {
+      // Population by municipality, age and sex (current division)
+      population: ["MAN02005", "MAN02008"],
+      mannfjoldi: ["MAN02005", "MAN02008"],
+      ibuar: ["MAN02005"],
+      // Population with sex and citizenship
+      citizenship: ["MAN10001"],
+    };
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "is-statice",
+          level: "admin1" as GeographyLevel,
+          minUnits: 6,
+          maxUnits: 10,
+        },
+        reason: "Hagstofa region data with 6–10 units — matches Iceland's 8 regions",
+      },
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "is-statice",
+          level: "municipality" as GeographyLevel,
+          minUnits: 50,
+        },
+        reason: "Hagstofa municipality data with ≥50 municipalities — high confidence",
+      },
+    ];
+  },
+};
+
+/**
  * Generic PxWeb v2 plugin.
  *
  * Applies to ALL PxWeb v2 sources regardless of country.
@@ -1280,6 +1648,373 @@ export const pxwebGenericPlugin: GeographyPlugin = {
         strategy: "alias_crosswalk" as JoinStrategy,
         confidence: 0.7,
         description: "PxWeb national codes → geometry names via dimension labels",
+      },
+    ];
+  },
+};
+
+/**
+ * Slovenia SiStat plugin.
+ *
+ * Statistical Office of Slovenia (SURS) publishes regional data via PxWeb
+ * at https://pxweb.stat.si/SiStatData/api/v1/en/Data.
+ *
+ * Geography levels:
+ *   - Cohesion regions (2): NUTS1 codes SI03/SI04 — match admin1 iso_3166_2
+ *   - Statistical regions (12): NUTS3 codes SI011–SI044 — label crosswalk
+ *   - Municipalities (212): Slovenian municipality names — label crosswalk
+ *     (admin2 geometry has only `name` property, no numeric codes)
+ *
+ * PxWeb dimension names (English endpoint):
+ *   - "Cohesion region" → cohesion_region level (NUTS1, 2 units)
+ *   - "Statistical region" → admin1 level (NUTS3, 12 units)
+ *   - "Municipality" → municipality level (212 units)
+ */
+export const sloveniaPlugin: GeographyPlugin = {
+  id: "pxweb-si-sistat",
+  name: "Slovenia SiStat (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return (
+      sid.includes("si-stat") ||
+      sid.includes("sistat") ||
+      sid.includes("stat.si") ||
+      source.countryHints.includes("SI")
+    );
+  },
+
+  matchCodes(codes, _dimension) {
+    // NUTS1 cohesion region codes: SI03, SI04
+    const nuts1Match = codes.filter((c) => /^SI0[34]$/.test(c));
+    if (nuts1Match.length / codes.length >= 0.8 && codes.length >= 2) {
+      return {
+        codeFamily: { family: "iso", namespace: "3166-2" },
+        level: "admin1",
+        confidence: 0.9,
+        reason: `${nuts1Match.length}/${codes.length} match Slovenia NUTS1 cohesion region codes (SI03/SI04)`,
+      };
+    }
+
+    // NUTS3 statistical region codes: SI011–SI044
+    const nuts3Match = codes.filter((c) => /^SI0[1-4][1-4]$/.test(c));
+    if (nuts3Match.length / codes.length >= 0.7 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "eurostat", namespace: "nuts" },
+        level: "admin1",
+        confidence: 0.85,
+        reason: `${nuts3Match.length}/${codes.length} match Slovenia NUTS3 statistical region codes (SI0xx)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // English PxWeb endpoint dimension label
+        dimensionId: /^(Cohesion region|Kohezijska regija)$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "iso" as const, namespace: "3166-2" },
+        confidence: 0.9,
+      },
+      {
+        // Statistical regions (12 NUTS3 regions)
+        dimensionId: /^(Statistical region|Statistična regija)$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "eurostat" as const, namespace: "nuts" },
+        confidence: 0.85,
+      },
+      {
+        // Municipalities (212 units, name-keyed geometry)
+        dimensionId: /^(Municipality|Občina)$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "si-sistat" },
+        confidence: 0.8,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Cohesion regions: ISO 3166-2 codes (SI03/SI04) match admin1 iso_3166_2 directly
+        sourceFamily: { family: "iso" as const, namespace: "3166-2" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.9,
+        description: "Slovenia NUTS1 ISO 3166-2 codes → admin1 iso_3166_2 property",
+      },
+      {
+        // Statistical regions: NUTS3 codes → names via label crosswalk
+        sourceFamily: { family: "eurostat" as const, namespace: "nuts" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.8,
+        description: "Slovenia NUTS3 codes → statistical region names via label crosswalk",
+      },
+      {
+        // Municipalities: SiStat national codes → admin2 names via label crosswalk
+        // (admin2 geometry has only `name` property — no numeric codes)
+        sourceFamily: { family: "national" as const, namespace: "si-sistat" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.75,
+        description: "SiStat municipality codes → admin2 municipality names via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // NUTS3 statistical region codes → Slovenian region names.
+    // Names match the Slovenian government's official English labels.
+    const NUTS3_TO_NAME: Record<string, string> = {
+      SI011: "Pomurska",
+      SI012: "Podravska",
+      SI013: "Koroška",
+      SI014: "Savinjska",
+      SI015: "Zasavska",
+      SI016: "Posavska",
+      SI017: "Jugovzhodna Slovenija",
+      SI018: "Primorsko-notranjska",
+      SI021: "Osrednjeslovenska",
+      SI022: "Gorenjska",
+      SI023: "Goriška",
+      SI024: "Obalno-kraška",
+    };
+
+    // NUTS1 cohesion region code → admin1 name (fallback if direct code fails)
+    const NUTS1_TO_NAME: Record<string, string> = {
+      SI03: "Vzhodna",
+      SI04: "Zahodna Slovenija",
+    };
+
+    return [
+      {
+        // NUTS3 codes → statistical region names
+        name: "si-nuts3-to-name",
+        normalizer: (code: string) => NUTS3_TO_NAME[code.toUpperCase()] ?? null,
+      },
+      {
+        // NUTS1 codes → cohesion region names (backup for label_match)
+        name: "si-nuts1-to-name",
+        normalizer: (code: string) => NUTS1_TO_NAME[code.toUpperCase()] ?? null,
+      },
+      {
+        // Strip parenthetical suffixes from municipality labels:
+        // "Koper/Capodistria" → "Koper", "Nova Gorica (Mestna občina)" → "Nova Gorica"
+        name: "si-label-cleanup",
+        normalizer: (label: string) => {
+          const cleaned = label
+            .replace(/\s*\/.*$/, "")                 // strip "/Capodistria" Italian suffix
+            .replace(/\s*\(.*\)$/, "")               // strip "(Mestna občina)" suffix
+            .trim();
+          return cleaned !== label ? cleaned : null;
+        },
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "si-sistat",
+          level: "municipality" as GeographyLevel,
+          minUnits: 100,
+        },
+        reason: "SiStat municipality data with ≥100 municipalities — high confidence",
+      },
+      {
+        target: "detection" as const,
+        delta: 0.15,
+        condition: {
+          sourceId: "si-sistat",
+          level: "admin1" as GeographyLevel,
+          minUnits: 10,
+          maxUnits: 14,
+        },
+        reason: "SiStat statistical region data with 10–14 units — matches Slovenia NUTS3 count",
+      },
+    ];
+  },
+
+  knownTables() {
+    // SiStat table IDs for common topics.
+    // Source: https://pxweb.stat.si/SiStatData/api/v1/en/Data listing
+    return {
+      // Territorial units / administrative geography
+      territory: ["0214809S.px", "0214819S.px"],
+      municipalities: ["0214809S.px"],
+      regions: ["0214819S.px"],
+    };
+  },
+};
+
+/**
+ * Estonia Statistics Estonia plugin.
+ *
+ * Recognizes EHAK county codes (2–3 digit, 37–87) used in the
+ * Statistics Estonia PxWeb API (andmed.stat.ee).
+ *
+ * County dimension is `Maakond` (code) / `County` (text).
+ * The GeoJSON admin1 features use ISO 3166-2 (EE-37…EE-86) whose numeric
+ * suffix differs from the EHAK code — e.g. EHAK 45 = Ida-Viru = ISO EE-44.
+ * The alias normalizer maps EHAK codes to ISO 3166-2 strings via a hardcoded
+ * crosswalk derived from matching county names across both systems.
+ *
+ * Municipality dimension is `Omavalitsus` (code) / `Municipality` (text).
+ * admin2 GeoJSON has only a `name` property — municipalities are joined by
+ * name via the auto-injected source-code-to-label normalizer.
+ */
+export const estoniaPlugin: GeographyPlugin = {
+  id: "pxweb-ee-stat",
+  name: "Estonia Statistics Estonia (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return (
+      sid.includes("ee-stat") ||
+      sid.includes("andmed.stat.ee") ||
+      sid.includes("stat.ee") ||
+      source.countryHints.includes("EE")
+    );
+  },
+
+  matchCodes(codes, _dimension) {
+    // Statistics Estonia EHAK county codes: 2–3 digit numeric, values 37–87.
+    // Skip aggregates: "00" (whole country), "unk", and sub-codes "784"/"793".
+    const countyCodes = new Set(["37","39","45","50","52","56","60","64","68","71","74","79","81","84","87"]);
+    const realCodes = codes.filter((c) => /^\d{2,3}$/.test(c) && c !== "00" && c !== "784" && c !== "793");
+    const countyMatch = realCodes.filter((c) => countyCodes.has(c));
+    if (countyMatch.length / Math.max(realCodes.length, 1) >= 0.6 && countyMatch.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "ee-stat" },
+        level: "admin1",
+        confidence: 0.8,
+        reason: `${countyMatch.length}/${realCodes.length} match Estonian EHAK county codes`,
+      };
+    }
+
+    // Municipality-level EHAK codes are 4-digit numeric.
+    const munMatch = codes.filter((c) => /^\d{4}$/.test(c));
+    if (munMatch.length / codes.length >= 0.7 && codes.length >= 20) {
+      return {
+        codeFamily: { family: "national", namespace: "ee-stat" },
+        level: "municipality",
+        confidence: 0.65,
+        reason: `${munMatch.length}/${codes.length} match Estonian municipality code pattern (4-digit)`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // County-level tables: dimension code "Maakond", text "County"
+        dimensionId: "Maakond",
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "ee-stat" },
+        confidence: 0.9,
+      },
+      {
+        // Municipality tables: dimension code "Omavalitsus", text "Municipality"
+        dimensionId: /^Omavalitsus$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "ee-stat" },
+        confidence: 0.85,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // County: EHAK code → ISO 3166-2 (EE-XX) via alias crosswalk
+        sourceFamily: { family: "national" as const, namespace: "ee-stat" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.9,
+        description: "Estonian EHAK county codes → ISO 3166-2 (EE-XX) via crosswalk",
+      },
+      {
+        // Municipality: codes → admin2 geometry names via label crosswalk
+        sourceFamily: { family: "national" as const, namespace: "ee-stat" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.75,
+        description: "Estonian municipality codes → geometry names via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // EHAK county code → ISO 3166-2 mapping.
+    //
+    // Statistics Estonia EHAK numeric codes differ from the ISO 3166-2 numeric
+    // suffix used in the GeoJSON admin1 features (e.g. EHAK 45 = Ida-Viru county
+    // but GeoJSON uses EE-44). Crosswalk derived by matching county names.
+    const EHAK_TO_ISO: Record<string, string> = {
+      "37": "EE-37", // Harju
+      "39": "EE-39", // Hiiu
+      "45": "EE-44", // Ida-Viru
+      "50": "EE-49", // Jõgeva
+      "52": "EE-51", // Järva
+      "56": "EE-57", // Lääne
+      "60": "EE-59", // Lääne-Viru
+      "64": "EE-65", // Põlva
+      "68": "EE-67", // Pärnu
+      "71": "EE-70", // Rapla
+      "74": "EE-74", // Saare
+      "79": "EE-78", // Tartu
+      "81": "EE-82", // Valga
+      "84": "EE-84", // Viljandi
+      "87": "EE-86", // Võru
+    };
+
+    return [
+      {
+        name: "ee-ehak-county-to-iso",
+        normalizer: (code: string) => EHAK_TO_ISO[code] ?? null,
+      },
+    ];
+  },
+
+  knownTables() {
+    // Statistics Estonia PxWeb table IDs for common topics.
+    // API root: https://andmed.stat.ee/api/v1/en/stat
+    return {
+      // Population by county — RV0222U contains the Maakond dimension
+      population: ["RV0222U", "RV0213U"],
+      rahvaarv: ["RV0222U"],
+      // Population density and area
+      density: ["RV0291U"],
+      // Mean annual population
+      "mean population": ["RV028U"],
+    };
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "ee-stat",
+          level: "admin1" as GeographyLevel,
+          minUnits: 10,
+          maxUnits: 18,
+        },
+        reason: "Estonian county data with 10–18 units — matches 15-county structure",
       },
     ];
   },
@@ -1341,3 +2076,523 @@ export const countryAdminPlugin: GeographyPlugin = {
     ];
   },
 };
+
+/**
+ * Switzerland FSO (Federal Statistical Office / BFS) plugin.
+ *
+ * STAT-TAB is the FSO's PxWeb instance at pxweb.bfs.admin.ch.
+ * Geographic dimensions are multilingual — the same dimension appears as
+ * "Kanton" (DE), "Canton" (FR/EN), "Cantone" (IT). Values use BFS numeric
+ * canton codes (01 = Zürich, 26 = Jura), short ISO abbreviations (ZH, BE, …),
+ * or full ISO 3166-2 strings (CH-ZH, CH-BE, …).
+ *
+ * Admin1 geometry (26 cantons): has `iso_3166_2` property → direct_code join.
+ * Admin2 geometry (169 districts): has only `name` property → alias_crosswalk.
+ *
+ * BFS also uses a 4-digit municipality number (Gemeindenummer, e.g. 0261 for
+ * Zürich) for commune-level tables — matched by 4-digit code pattern.
+ */
+export const switzerlandFsoPlugin: GeographyPlugin = {
+  id: "ch-fso",
+  name: "Switzerland FSO / STAT-TAB (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return (
+      sid.includes("ch-fso") ||
+      sid.includes("bfs.admin.ch") ||
+      sid.includes("stat-tab") ||
+      source.countryHints.includes("CH")
+    );
+  },
+
+  matchCodes(codes, _dimension) {
+    // Full ISO 3166-2 strings: "CH-ZH", "CH-BE", …
+    const isoFullMatch = codes.filter((c) => /^CH-[A-Z]{2}$/.test(c));
+    if (isoFullMatch.length / codes.length >= 0.7 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "3166-2" },
+        level: "admin1",
+        confidence: 0.95,
+        reason: `${isoFullMatch.length}/${codes.length} match Swiss ISO 3166-2 canton codes (CH-XX)`,
+      };
+    }
+
+    // 2-letter canton abbreviations: ZH, BE, LU, UR, SZ, OW, NW, GL, ZG, FR,
+    // SO, BS, BL, SH, AR, AI, SG, GR, AG, TG, TI, VD, VS, NE, GE, JU
+    const CANTON_ABBR = new Set([
+      "ZH","BE","LU","UR","SZ","OW","NW","GL","ZG","FR",
+      "SO","BS","BL","SH","AR","AI","SG","GR","AG","TG",
+      "TI","VD","VS","NE","GE","JU",
+    ]);
+    const abbrMatch = codes.filter((c) => CANTON_ABBR.has(c.toUpperCase()));
+    if (abbrMatch.length / codes.length >= 0.7 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "iso", namespace: "3166-2" },
+        level: "admin1",
+        confidence: 0.9,
+        reason: `${abbrMatch.length}/${codes.length} match Swiss 2-letter canton abbreviations`,
+      };
+    }
+
+    // BFS numeric canton codes: 2-digit "01"–"26" (Zürich=01, Jura=26)
+    const bfsCantonMatch = codes.filter(
+      (c) => /^\d{2}$/.test(c) && Number(c) >= 1 && Number(c) <= 26
+    );
+    if (bfsCantonMatch.length / codes.length >= 0.7 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "ch-fso" },
+        level: "admin1",
+        confidence: 0.8,
+        reason: `${bfsCantonMatch.length}/${codes.length} match BFS 2-digit canton codes (01–26)`,
+      };
+    }
+
+    // BFS municipality (Gemeindenummer): 4-digit "0001"–"6999"
+    const bfsMunMatch = codes.filter((c) => /^\d{4}$/.test(c));
+    const munRatioOk = bfsMunMatch.length / codes.length >= 0.8;
+    const munCountOk = bfsMunMatch.length >= 100;
+    if ((munRatioOk || munCountOk) && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "ch-fso" },
+        level: "municipality",
+        confidence: munRatioOk ? 0.7 : 0.6,
+        reason: `${bfsMunMatch.length}/${codes.length} match BFS 4-digit municipality code pattern`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // Swiss cantons — all four official languages + English
+        dimensionId: /^(Kanton|Canton|Cantone|Chantun)$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "iso" as const, namespace: "3166-2" },
+        confidence: 0.9,
+      },
+      {
+        // NUTS2 macro-regions ("Grossregion" / "Grande région")
+        dimensionId: /^(Grossregion|Grande r[ée]gion|Grandi regioni)$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "eurostat" as const, namespace: "nuts" },
+        confidence: 0.8,
+      },
+      {
+        // BFS districts
+        dimensionId: /^(Bezirk|District|Distretto|District\/Bezirk)$/i,
+        level: "admin2" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "ch-fso" },
+        confidence: 0.8,
+      },
+      {
+        // BFS municipalities (Gemeinde)
+        dimensionId: /^(Gemeinde|Commune|Gemeinden|Communes|Municipality)$/i,
+        level: "municipality" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "ch-fso" },
+        confidence: 0.8,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Canton ISO 3166-2 codes → admin1 iso_3166_2 property (direct match)
+        sourceFamily: { family: "iso" as const, namespace: "3166-2" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "direct_code" as JoinStrategy,
+        confidence: 0.95,
+        description: "Swiss ISO 3166-2 canton codes → admin1 iso_3166_2 property (direct)",
+      },
+      {
+        // BFS numeric canton codes → admin1 names via alias crosswalk
+        sourceFamily: { family: "national" as const, namespace: "ch-fso" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.85,
+        description: "BFS canton codes → admin1 canton names via crosswalk",
+      },
+      {
+        // BFS district codes → admin2 names via label crosswalk
+        // (admin2 geometry has only `name` — no numeric codes)
+        sourceFamily: { family: "national" as const, namespace: "ch-fso" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.75,
+        description: "BFS district codes/labels → admin2 district names via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // BFS numeric canton codes → ISO 3166-2 abbreviation (used as-is in geometry iso_3166_2).
+    // Source: https://www.bfs.admin.ch/bfs/en/home/basics/swiss-official-commune-register.html
+    // BFS number = official Swiss Federal Statistical Office canton numbering.
+    const BFS_TO_ISO: Record<string, string> = {
+      "01": "CH-ZH", // Zürich
+      "02": "CH-BE", // Bern
+      "03": "CH-LU", // Luzern
+      "04": "CH-UR", // Uri
+      "05": "CH-SZ", // Schwyz
+      "06": "CH-OW", // Obwalden
+      "07": "CH-NW", // Nidwalden
+      "08": "CH-GL", // Glarus
+      "09": "CH-ZG", // Zug
+      "10": "CH-FR", // Fribourg
+      "11": "CH-SO", // Solothurn
+      "12": "CH-BS", // Basel-Stadt
+      "13": "CH-BL", // Basel-Landschaft
+      "14": "CH-SH", // Schaffhausen
+      "15": "CH-AR", // Appenzell Ausserrhoden
+      "16": "CH-AI", // Appenzell Innerrhoden
+      "17": "CH-SG", // St. Gallen
+      "18": "CH-GR", // Graubünden
+      "19": "CH-AG", // Aargau
+      "20": "CH-TG", // Thurgau
+      "21": "CH-TI", // Ticino
+      "22": "CH-VD", // Vaud
+      "23": "CH-VS", // Valais
+      "24": "CH-NE", // Neuchâtel
+      "25": "CH-GE", // Genève
+      "26": "CH-JU", // Jura
+    };
+
+    // 2-letter canton abbreviation → full ISO 3166-2 string.
+    // FSO tables sometimes emit bare abbreviations ("ZH") without the "CH-" prefix.
+    const ABBR_TO_ISO: Record<string, string> = {
+      ZH: "CH-ZH", BE: "CH-BE", LU: "CH-LU", UR: "CH-UR",
+      SZ: "CH-SZ", OW: "CH-OW", NW: "CH-NW", GL: "CH-GL",
+      ZG: "CH-ZG", FR: "CH-FR", SO: "CH-SO", BS: "CH-BS",
+      BL: "CH-BL", SH: "CH-SH", AR: "CH-AR", AI: "CH-AI",
+      SG: "CH-SG", GR: "CH-GR", AG: "CH-AG", TG: "CH-TG",
+      TI: "CH-TI", VD: "CH-VD", VS: "CH-VS", NE: "CH-NE",
+      GE: "CH-GE", JU: "CH-JU",
+    };
+
+    return [
+      {
+        // BFS 2-digit code → ISO 3166-2 string (with or without leading zero)
+        name: "fso-canton-bfs-to-iso",
+        normalizer: (code: string) => {
+          const padded = code.padStart(2, "0");
+          return BFS_TO_ISO[padded] ?? null;
+        },
+      },
+      {
+        // 2-letter abbreviation → ISO 3166-2 string
+        name: "fso-canton-abbr-to-iso",
+        normalizer: (code: string) => ABBR_TO_ISO[code.toUpperCase()] ?? null,
+      },
+      {
+        // Label cleanup for multilingual FSO dimension values.
+        // Examples:
+        //   "Bern / Berne"          → "Bern"  (bilingual slash suffix)
+        //   "Graubünden / Grigioni / Grischun" → "Graubünden"
+        //   "Basel-Stadt (BS)"      → "Basel-Stadt" (code in parens)
+        //   "Valais/Wallis"         → "Valais"
+        name: "fso-label-cleanup",
+        normalizer: (label: string) => {
+          const cleaned = label
+            .replace(/\s*\/\s*[^\s].*$/, "")   // strip " / Berne" or "/Wallis" suffix
+            .replace(/\s*\([^)]+\)$/, "")       // strip "(BS)" or other parens suffix
+            .trim();
+          return cleaned !== label ? cleaned : null;
+        },
+      },
+    ];
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.15,
+        condition: {
+          sourceId: "ch-fso",
+          level: "admin1" as GeographyLevel,
+          minUnits: 20,
+          maxUnits: 28,
+        },
+        reason: "FSO canton data with 20–28 units — matches Switzerland's 26 cantons",
+      },
+    ];
+  },
+
+  knownTables() {
+    // STAT-TAB table IDs for common topics at canton level.
+    // Database IDs follow the pattern px-x-{topic-code}_{version}.
+    // Source: https://www.pxweb.bfs.admin.ch
+    return {
+      // Population by canton (permanent resident population)
+      population: ["px-x-0102010000_101", "px-x-0102010000_102"],
+      // Employment / jobs
+      employment: ["px-x-0602050000_101", "px-x-0602050000_102"],
+      // Gross domestic product by canton
+      gdp: ["px-x-0401010000_101"],
+      // Poverty / social assistance
+      social: ["px-x-1302020000_101"],
+      // Education levels
+      education: ["px-x-1502020100_101"],
+      // Housing / buildings
+      housing: ["px-x-0902010000_101"],
+      // Health
+      health: ["px-x-1401010000_101"],
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Latvia CSB plugin
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Latvia Central Statistical Bureau (CSB) plugin.
+ *
+ * API base: https://data.stat.gov.lv/api/v1/en/OSP_PUB
+ *
+ * Territorial codes follow the pattern "LV" + 7 digits:
+ *   - Statistical region codes: LV00A, LV006, LV00C, LV00B, LV009, LV005 (5–6 chars)
+ *   - Municipality/city codes: LV0001000–LV0056000 (9 chars, ending in "000")
+ *   - Sub-municipality codes (towns, pagasti): 9 chars, NOT ending in "000"
+ *
+ * admin1 GeoJSON has `iso_3166_2` (e.g. "LV-007", "LV-RIX") — used as join key.
+ * admin2 GeoJSON has only `name` — joined via alias_crosswalk using dimension labels.
+ *
+ * Note: GeoJSON has a known duplicate LV-073 (used for both Preiļu novads and
+ * Rēzeknes novads). Both CSB municipality codes map to the same ISO code.
+ */
+export const latviaCsbPlugin: GeographyPlugin = {
+  id: "pxweb-lv-csb",
+  name: "Latvia CSB (PxWeb)",
+  family: "pxweb_country",
+  priority: 10,
+
+  appliesTo(source) {
+    const sid = source.sourceMetadata.sourceId.toLowerCase();
+    return (
+      sid.includes("lv-csb") ||
+      sid.includes("data.stat.gov.lv") ||
+      sid.includes("stat.gov.lv") ||
+      source.countryHints.includes("LV")
+    );
+  },
+
+  matchCodes(codes, _dimension) {
+    // CSB municipality/city codes: exactly 9 chars, "LV" + 7 digits, ending in "000"
+    // e.g. LV0001000 (Riga), LV0021000 (Alūksne municipality)
+    const munMatch = codes.filter((c) => /^LV\d{7}$/.test(c) && c.endsWith("000"));
+    if (munMatch.length / codes.length >= 0.6 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "lv-csb" },
+        level: "admin1",
+        confidence: 0.8,
+        reason: `${munMatch.length}/${codes.length} match Latvia CSB municipality code pattern (LVxxxxxxx)`,
+      };
+    }
+
+    // CSB statistical region codes: 5–6 chars, "LV" + 3–4 alphanum
+    // e.g. LV00A, LV006, LV00C, LV00B, LV009, LV005
+    const regionMatch = codes.filter((c) => /^LV[0-9A-Z]{3,4}$/.test(c) && c.length <= 6);
+    if (regionMatch.length / codes.length >= 0.6 && codes.length >= 3) {
+      return {
+        codeFamily: { family: "national", namespace: "lv-csb" },
+        level: "admin1",
+        confidence: 0.65,
+        reason: `${regionMatch.length}/${codes.length} match Latvia CSB statistical region code pattern`,
+      };
+    }
+
+    // Sub-municipality codes: 9 chars, "LV" + 7 digits, NOT ending in "000"
+    // e.g. LV0020200 (Aizkraukle town within Aizkraukle municipality)
+    const subMunMatch = codes.filter((c) => /^LV\d{7}$/.test(c) && !c.endsWith("000"));
+    if (subMunMatch.length / codes.length >= 0.6 && codes.length >= 10) {
+      return {
+        codeFamily: { family: "national", namespace: "lv-csb" },
+        level: "municipality",
+        confidence: 0.6,
+        reason: `${subMunMatch.length}/${codes.length} match Latvia CSB sub-municipality code pattern`,
+      };
+    }
+
+    return null;
+  },
+
+  knownDimensions() {
+    return [
+      {
+        // CSB tables use "Territorial unit" for both regions and municipalities
+        dimensionId: /^Territorial unit$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "lv-csb" },
+        confidence: 0.8,
+      },
+      {
+        // Latvian-language variant: "Teritoriālā vienība"
+        dimensionId: /^Teritoriālā vienība$/i,
+        level: "admin1" as GeographyLevel,
+        codeFamily: { family: "national" as const, namespace: "lv-csb" },
+        confidence: 0.8,
+      },
+    ];
+  },
+
+  joinKeyFamilies() {
+    return [
+      {
+        // Municipality/city codes → ISO 3166-2 (LV-XXX) via alias crosswalk
+        // admin1 GeoJSON uses iso_3166_2 as the authoritative join key
+        sourceFamily: { family: "national" as const, namespace: "lv-csb" },
+        targetFamily: { family: "iso" as const, namespace: "3166-2" },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.9,
+        description: "Latvia CSB territorial codes → ISO 3166-2 (LV-XXX) via crosswalk",
+      },
+      {
+        // Sub-municipality (pagasts/towns) — name-based join against admin2 geometry
+        sourceFamily: { family: "national" as const, namespace: "lv-csb" },
+        targetFamily: { family: "name" as const },
+        strategy: "alias_crosswalk" as JoinStrategy,
+        confidence: 0.7,
+        description: "Latvia CSB sub-municipality codes → admin2 geometry names via label crosswalk",
+      },
+    ];
+  },
+
+  aliasNormalizers() {
+    // CSB territorial code → ISO 3166-2.
+    //
+    // Latvia has 43 administrative units (36 municipalities + 7 state cities).
+    // The CSB uses a 9-character code: "LV" + 7 digits where the last 3 are "000"
+    // for top-level units. ISO 3166-2 uses "LV-" + 3 alphanumeric chars.
+    //
+    // Note: LV-073 appears twice in the GeoJSON (Preiļu novads and Rēzeknes novads)
+    // due to a data quirk. Both CSB codes map to the same ISO — the render engine
+    // will match whichever feature appears first.
+    const CSB_TO_ISO: Record<string, string> = {
+      // State cities (7 republican cities)
+      "LV0001000": "LV-RIX", // Rīga
+      "LV0002000": "LV-DGV", // Daugavpils
+      "LV0003000": "LV-JEL", // Jelgava
+      "LV0004000": "LV-JUR", // Jūrmala
+      "LV0005000": "LV-LPX", // Liepāja
+      "LV0006000": "LV-REZ", // Rēzekne
+      "LV0007000": "LV-VEN", // Ventspils
+      // Municipalities (novadi) — 36 units post-2021 administrative reform
+      "LV0020000": "LV-002", // Aizkraukles novads
+      "LV0021000": "LV-007", // Alūksnes novads
+      "LV0022000": "LV-111", // Augšdaugavas novads
+      "LV0023000": "LV-011", // Ādažu novads
+      "LV0024000": "LV-015", // Balvu novads
+      "LV0025000": "LV-016", // Bauskas novads
+      "LV0026000": "LV-022", // Cēsu novads
+      "LV0027000": "LV-112", // Dienvidkurzemes novads
+      "LV0028000": "LV-026", // Dobeles novads
+      "LV0029000": "LV-033", // Gulbenes novads
+      "LV0030000": "LV-041", // Jelgavas novads
+      "LV0031000": "LV-042", // Jēkabpils novads
+      "LV0032000": "LV-047", // Krāslavas novads
+      "LV0033000": "LV-050", // Kuldīgas novads
+      "LV0034000": "LV-052", // Ķekavas novads
+      "LV0035000": "LV-054", // Limbažu novads
+      "LV0036000": "LV-056", // Līvānu novads
+      "LV0037000": "LV-058", // Ludzas novads
+      "LV0038000": "LV-059", // Madonas novads
+      "LV0038001": "LV-059", // Madonas novads (boundary update 01.07.2025, same unit)
+      "LV0039000": "LV-062", // Mārupes novads
+      "LV0040000": "LV-067", // Ogres novads
+      "LV0041000": "LV-068", // Olaines novads
+      "LV0042000": "LV-073", // Preiļu novads (LV-073 shared with Rēzeknes novads in GeoJSON)
+      "LV0043000": "LV-073", // Rēzeknes novads (GeoJSON duplicate — same ISO code)
+      "LV0044000": "LV-080", // Ropažu novads
+      "LV0045000": "LV-087", // Salaspils novads
+      "LV0046000": "LV-088", // Saldus novads
+      "LV0047000": "LV-089", // Saulkrastu novads
+      "LV0048000": "LV-091", // Siguldas novads
+      "LV0049000": "LV-094", // Smiltenes novads
+      "LV0051000": "LV-097", // Talsu novads
+      "LV0052000": "LV-099", // Tukums novads
+      "LV0053000": "LV-101", // Valkas novads
+      "LV0054000": "LV-113", // Valmieras novads
+      "LV0055000": "LV-102", // Varakļānu novads
+      "LV0056000": "LV-106", // Ventspils novads
+    };
+
+    return [
+      {
+        name: "lv-csb-code-to-iso",
+        normalizer: (code: string) => CSB_TO_ISO[code] ?? null,
+      },
+      {
+        // Strip trailing whitespace and date qualifiers from CSB dimension labels.
+        // API values sometimes have trailing spaces and parenthetical date ranges:
+        // "Riga statistical region (Riga) (before 01.01.2024.)  " → "Riga statistical region (Riga)"
+        name: "lv-csb-label-cleanup",
+        normalizer: (label: string) => {
+          const cleaned = label
+            .replace(/\s*\((?:from|before)\s+\d{2}\.\d{2}\.\d{4}\.?\)\s*$/, "")
+            .trim();
+          return cleaned !== label ? cleaned : null;
+        },
+      },
+    ];
+  },
+
+  knownTables() {
+    // Latvia CSB PxWeb table IDs for common topics.
+    // API root: https://data.stat.gov.lv/api/v1/en/OSP_PUB
+    return {
+      // Population by region/municipality — IRS031 contains the "Territorial unit" dimension
+      population: ["IRS031", "IRS051"],
+      // Causes of population change by region
+      "population change": ["IRS031"],
+      // Urban/rural population split by municipality
+      "urban rural": ["IRS051"],
+    };
+  },
+
+  confidenceHints() {
+    return [
+      {
+        target: "detection" as const,
+        delta: 0.1,
+        condition: {
+          sourceId: "lv-csb",
+          level: "admin1" as GeographyLevel,
+          minUnits: 36,
+          maxUnits: 43,
+        },
+        reason: "Latvia admin data with 36–43 units matches municipality+city structure",
+      },
+    ];
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ALL_PLUGINS — canonical list for module consumers
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * All built-in plugins in priority order.
+ * Import this array instead of the individual exports when you need the
+ * full set (e.g. for registration, testing, or serialisation).
+ */
+export const ALL_PLUGINS: GeographyPlugin[] = [
+  swedenScbPlugin,
+  norwaySsbPlugin,
+  icelandPlugin,
+  denmarkDstPlugin,
+  finlandPlugin,
+  sloveniaPlugin,
+  estoniaPlugin,
+  latviaCsbPlugin,
+  switzerlandFsoPlugin,
+  eurostatNutsPlugin,
+  usFipsPlugin,
+  pxwebGenericPlugin,
+  countryAdminPlugin,
+];

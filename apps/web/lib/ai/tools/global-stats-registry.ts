@@ -5,7 +5,7 @@
  * Used by the official stats resolver to locate authoritative statistical
  * datasets and enrich web search queries with known source context.
  *
- * 57 sources across 6 continents + international organizations.
+ * 72 sources across 6 continents + international organizations.
  * Verified against official documentation as of 2025-06.
  */
 
@@ -27,6 +27,13 @@ export type AccessLevel =
 
 export type AuthType = "none" | "api_key" | "oauth" | "unknown";
 
+export interface CanaryQuery {
+  /** A known-good table/indicator ID for this source. */
+  table: string;
+  /** A search term that should return results. */
+  query: string;
+}
+
 export interface OfficialStatsSource {
   id: string;
   countryCode: string | null;
@@ -44,6 +51,8 @@ export interface OfficialStatsSource {
   verificationStatus: VerificationStatus;
   notes?: string;
   priority: number;
+  /** Known-good query for verification. Used by canary runner to detect API drift. */
+  canaryQuery?: CanaryQuery;
 }
 
 export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
@@ -65,6 +74,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     verificationStatus: "verified",
     priority: 100,
     notes: "PxWebApi 2 / official open statistics API.",
+    canaryQuery: { table: "TAB638", query: "population municipality" },
   },
   {
     id: "se-bra",
@@ -118,6 +128,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "county", "municipality"],
     verificationStatus: "verified",
     priority: 100,
+    canaryQuery: { table: "07459", query: "population municipality" },
   },
   {
     id: "dk-dst",
@@ -135,6 +146,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "municipality"],
     verificationStatus: "verified",
     priority: 100,
+    canaryQuery: { table: "FOLK1A", query: "population" },
   },
   {
     id: "fi-stat",
@@ -152,6 +164,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "municipality"],
     verificationStatus: "verified",
     priority: 100,
+    canaryQuery: { table: "11ra", query: "population municipality" },
   },
   {
     id: "is-statice",
@@ -167,8 +180,10 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     languages: ["is", "en"],
     coverageTags: ["population", "economy", "labor", "prices"],
     geographyLevels: ["country", "region", "municipality"],
-    verificationStatus: "provisional",
+    verificationStatus: "verified",
     priority: 92,
+    canaryQuery: { table: "MAN01000", query: "population" },
+    notes: "PxWeb v1 API. Verified 2026-03-29: table list returns JSON.",
   },
 
   // ===== European Union & UK =====
@@ -188,6 +203,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["eu", "country", "region"],
     verificationStatus: "verified",
     priority: 99,
+    canaryQuery: { table: "demo_pjan", query: "population" },
   },
   {
     id: "gb-ons",
@@ -408,8 +424,10 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     languages: ["et", "en"],
     coverageTags: ["population", "economy", "labor", "regions"],
     geographyLevels: ["country", "county", "municipality"],
-    verificationStatus: "provisional",
+    verificationStatus: "verified",
     priority: 90,
+    canaryQuery: { table: "RV0222U", query: "population" },
+    notes: "PxWeb v1 API. Verified 2026-03-29: table list returns JSON (71ms).",
   },
   {
     id: "at-stat",
@@ -443,8 +461,10 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     languages: ["sl", "en"],
     coverageTags: ["population", "economy", "labor", "environment", "regions"],
     geographyLevels: ["country", "region", "municipality"],
-    verificationStatus: "provisional",
+    verificationStatus: "verified",
     priority: 90,
+    canaryQuery: { table: "0156101S", query: "temperature" },
+    notes: "PxWeb v1 API. Verified 2026-03-29: table list returns JSON (287ms).",
   },
   {
     id: "cy-cystat",
@@ -530,6 +550,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "community"],
     verificationStatus: "provisional",
     priority: 89,
+    notes: "Audit 2026-03-29: HTTP 500 server error. PxWeb instance may be intermittent.",
   },
   {
     id: "lt-stat",
@@ -547,7 +568,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "county", "municipality"],
     verificationStatus: "needs_review",
     priority: 82,
-    notes: "Official portal present; verify direct API path before crawler use.",
+    notes: "Audit 2026-03-29: HTTP 403 Forbidden. Portal may require browser session. No direct API found.",
   },
   {
     id: "jo-dos",
@@ -565,6 +586,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "governorate"],
     verificationStatus: "provisional",
     priority: 84,
+    notes: "Audit 2026-03-29: Timeout after 10s. Portal unreachable.",
   },
 
   // ===== Americas =====
@@ -585,6 +607,102 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     verificationStatus: "verified",
     priority: 100,
     notes: "API key recommended but not required for low-volume usage.",
+    canaryQuery: { table: "acs/acs5", query: "population" },
+  },
+  {
+    id: "us-bls",
+    countryCode: "US",
+    countryName: "United States",
+    agencyName: "Bureau of Labor Statistics (BLS)",
+    baseUrl: "https://api.bls.gov/publicAPI/v2",
+    docsUrl: "https://www.bls.gov/developers/home.htm",
+    apiType: "rest",
+    accessLevel: "official_api",
+    auth: "api_key",
+    formats: ["json"],
+    languages: ["en"],
+    coverageTags: ["labor", "employment", "prices", "wages"],
+    geographyLevels: ["country", "state", "metro"],
+    verificationStatus: "verified",
+    priority: 96,
+    notes: "Verified 2026-03-29: POST /timeseries/data returns data. Free tier: 25 queries/day without key, 500/day with key.",
+    canaryQuery: { table: "LAUCN040010000000005", query: "unemployment rate" },
+  },
+  {
+    id: "us-bea",
+    countryCode: "US",
+    countryName: "United States",
+    agencyName: "Bureau of Economic Analysis (BEA)",
+    baseUrl: "https://apps.bea.gov/api/data",
+    docsUrl: "https://apps.bea.gov/api/_pdf/bea_web_service_api_user_guide.pdf",
+    apiType: "rest",
+    accessLevel: "official_api",
+    auth: "api_key",
+    formats: ["json", "xml"],
+    languages: ["en"],
+    coverageTags: ["economy", "trade", "prices"],
+    geographyLevels: ["country", "state", "metro", "county"],
+    verificationStatus: "verified",
+    priority: 96,
+    notes: "Verified 2026-03-29: endpoint responds (200). Free API key required for data queries.",
+    canaryQuery: { table: "SAGDP1", query: "gdp state" },
+  },
+  {
+    id: "us-fred",
+    countryCode: "US",
+    countryName: "United States",
+    agencyName: "Federal Reserve Economic Data (FRED)",
+    baseUrl: "https://api.stlouisfed.org/fred",
+    docsUrl: "https://fred.stlouisfed.org/docs/api/fred/",
+    apiType: "rest",
+    accessLevel: "official_api",
+    auth: "api_key",
+    formats: ["json", "xml"],
+    languages: ["en"],
+    coverageTags: ["economy", "finance", "prices", "labor", "housing"],
+    geographyLevels: ["country", "state", "metro", "county"],
+    verificationStatus: "provisional",
+    priority: 98,
+    notes: "Audit 2026-03-29: endpoint responds (400 without key). 800k+ time series. Free API key required.",
+    canaryQuery: { table: "GDP", query: "gross domestic product" },
+  },
+  {
+    id: "us-cdc",
+    countryCode: "US",
+    countryName: "United States",
+    agencyName: "Centers for Disease Control and Prevention (CDC)",
+    baseUrl: "https://data.cdc.gov/resource",
+    docsUrl: "https://dev.socrata.com/foundry/data.cdc.gov/",
+    apiType: "rest",
+    accessLevel: "official_api",
+    auth: "none",
+    formats: ["json", "csv"],
+    languages: ["en"],
+    coverageTags: ["health", "mortality", "disease"],
+    geographyLevels: ["country", "state", "county"],
+    verificationStatus: "verified",
+    priority: 92,
+    notes: "Verified 2026-03-29: SODA API returns JSON. No key required for low-volume.",
+    canaryQuery: { table: "bi63-dtpu", query: "mortality" },
+  },
+  {
+    id: "us-fbi-ucr",
+    countryCode: "US",
+    countryName: "United States",
+    agencyName: "FBI Crime Data Explorer",
+    baseUrl: "https://api.usa.gov/crime/fbi/cde",
+    docsUrl: "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi",
+    apiType: "rest",
+    accessLevel: "official_api",
+    auth: "api_key",
+    formats: ["json"],
+    languages: ["en"],
+    coverageTags: ["crime", "justice"],
+    geographyLevels: ["country", "state", "agency"],
+    verificationStatus: "provisional",
+    priority: 90,
+    notes: "Audit 2026-03-29: endpoint responds (400 format error). Uniform Crime Reporting. Free API key via api.data.gov.",
+    canaryQuery: { table: "summarized/state/CA/violent-crime", query: "violent crime" },
   },
   {
     id: "ca-statcan",
@@ -661,7 +779,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     agencyName: "INE Chile",
     baseUrl: "https://api.ine.cl/",
     docsUrl: "https://www.ine.gob.cl/",
-    apiType: "rest",
+    apiType: "portal",
     accessLevel: "official_portal",
     auth: "unknown",
     formats: ["json"],
@@ -670,7 +788,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "commune"],
     verificationStatus: "needs_review",
     priority: 80,
-    notes: "Validate current public API path/auth before implementation.",
+    notes: "Audit 2026-03-29: ENOTFOUND — DNS does not resolve. API URL is dead. Demoted to portal.",
   },
   {
     id: "co-dane",
@@ -679,7 +797,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     agencyName: "DANE",
     baseUrl: "https://api.dane.gov.co/",
     docsUrl: "https://www.dane.gov.co/",
-    apiType: "rest",
+    apiType: "portal",
     accessLevel: "official_portal",
     auth: "unknown",
     formats: ["json"],
@@ -688,7 +806,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "department", "municipality"],
     verificationStatus: "needs_review",
     priority: 80,
-    notes: "Keep as candidate until current API access is confirmed.",
+    notes: "Audit 2026-03-29: ENOTFOUND — DNS does not resolve. API URL is dead. Demoted to portal.",
   },
   {
     id: "pe-inei",
@@ -697,7 +815,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     agencyName: "INEI",
     baseUrl: "https://api.inei.gob.pe/",
     docsUrl: "https://www.inei.gob.pe/",
-    apiType: "rest",
+    apiType: "portal",
     accessLevel: "official_portal",
     auth: "unknown",
     formats: ["json"],
@@ -706,7 +824,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "province", "district"],
     verificationStatus: "needs_review",
     priority: 80,
-    notes: "Keep as candidate until current public API/docs are validated.",
+    notes: "Audit 2026-03-29: Timeout after 10s. API URL unreachable. Demoted to portal.",
   },
 
   // ===== Asia =====
@@ -811,7 +929,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "province"],
     verificationStatus: "provisional",
     priority: 84,
-    notes: "Metadata registry visible; validate public data endpoints/auth.",
+    notes: "Audit 2026-03-29: base URL responds (200 HTML) but /rest/dataflow returns 404. SDMX endpoint path unclear.",
   },
   {
     id: "kr-kostat",
@@ -829,7 +947,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "province", "city"],
     verificationStatus: "provisional",
     priority: 84,
-    notes: "Official open API page exists; verify specific dataset endpoints.",
+    notes: "Audit 2026-03-29: ECONNRESET — connection refused. May block non-Korean IPs.",
   },
   {
     id: "ph-psa",
@@ -847,7 +965,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "province", "municipality"],
     verificationStatus: "provisional",
     priority: 82,
-    notes: "Direct API path still needs validation.",
+    notes: "Audit 2026-03-29: HTTP 403 Forbidden. Portal blocks automated access.",
   },
   {
     id: "np-nso",
@@ -865,7 +983,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "province", "district"],
     verificationStatus: "provisional",
     priority: 80,
-    notes: "Endpoint conventions vary by dataset.",
+    notes: "Audit 2026-03-29: CERT_HAS_EXPIRED — SSL certificate expired. Portal inaccessible.",
   },
 
   // ===== Africa =====
@@ -903,6 +1021,67 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["country", "region", "district"],
     verificationStatus: "verified",
     priority: 90,
+  },
+
+  // ===== Nordic Territories =====
+  {
+    id: "gl-stat",
+    countryCode: "GL",
+    countryName: "Greenland",
+    agencyName: "Statistics Greenland (Grønlands Statistik)",
+    baseUrl: "https://bank.stat.gl/api/v1/en/Greenland",
+    docsUrl: "https://bank.stat.gl/pxweb/en/Greenland/",
+    apiType: "pxweb",
+    accessLevel: "official_api",
+    auth: "none",
+    formats: ["json", "json-stat", "csv", "px"],
+    languages: ["kl", "da", "en"],
+    coverageTags: ["population", "economy", "labor", "fisheries", "environment"],
+    geographyLevels: ["country", "municipality"],
+    verificationStatus: "verified",
+    priority: 80,
+    notes: "Verified 2026-03-29: PxWeb v1 API returns JSON table list (409ms). Danish realm autonomous territory.",
+    canaryQuery: { table: "BEXBBX1", query: "population" },
+  },
+  {
+    id: "fo-hagstova",
+    countryCode: "FO",
+    countryName: "Faroe Islands",
+    agencyName: "Statistics Faroe Islands (Hagstova Føroya)",
+    baseUrl: "https://statbank.hagstova.fo/pxweb/api/v1/en/H2",
+    docsUrl: "https://statbank.hagstova.fo/pxweb/en/H2/",
+    apiType: "pxweb",
+    accessLevel: "official_api",
+    auth: "none",
+    formats: ["json", "json-stat", "csv", "px"],
+    languages: ["fo", "en"],
+    coverageTags: ["population", "economy", "labor", "fisheries", "trade"],
+    geographyLevels: ["country", "municipality"],
+    verificationStatus: "provisional",
+    priority: 78,
+    notes: "Audit 2026-03-29: HTTP 500 — PxWeb instance may be intermittent. Danish realm autonomous territory.",
+    canaryQuery: { table: "MAN01000", query: "population" },
+  },
+
+  // ===== Caucasus =====
+  {
+    id: "ge-geostat",
+    countryCode: "GE",
+    countryName: "Georgia",
+    agencyName: "National Statistics Office of Georgia (Geostat)",
+    baseUrl: "https://pc-axis.geostat.ge/PXWeb/api/v1/en/Database",
+    docsUrl: "https://www.geostat.ge/en/modules/categories/396/open-data",
+    apiType: "pxweb",
+    accessLevel: "official_api",
+    auth: "none",
+    formats: ["json", "json-stat", "csv", "px"],
+    languages: ["ka", "en"],
+    coverageTags: ["population", "economy", "labor", "prices", "agriculture"],
+    geographyLevels: ["country", "region", "municipality"],
+    verificationStatus: "verified",
+    priority: 85,
+    notes: "Verified 2026-03-29: PxWeb v1 API returns JSON table list (673ms). Only PxWeb-enabled Caucasian stats office.",
+    canaryQuery: { table: "Demo_01", query: "population" },
   },
 
   // ===== Oceania =====
@@ -958,6 +1137,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["global", "country"],
     verificationStatus: "verified",
     priority: 98,
+    canaryQuery: { table: "NY.GDP.PCAP.CD", query: "gdp per capita" },
   },
   {
     id: "intl-imf",
@@ -992,6 +1172,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     geographyLevels: ["global", "country", "region"],
     verificationStatus: "verified",
     priority: 98,
+    canaryQuery: { table: "QNA", query: "gdp quarterly" },
   },
   {
     id: "intl-unsdg",

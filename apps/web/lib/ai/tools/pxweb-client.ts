@@ -1142,6 +1142,7 @@ export function getStatsAdapter(source: OfficialStatsSource): StatsApiAdapter | 
   if (source.apiType === "pxweb" && source.baseUrl.includes("/v1")) return pxwebV1Adapter;
   if (source.id === "dk-dst") return dstAdapter;
   if (source.id === "intl-worldbank") return worldBankAdapter;
+  if (source.id === "us-fred") return fredAdapter;
   if (source.apiType === "sdmx" && SDMX_CONFIGS[source.id]) return createSdmxAdapter(SDMX_CONFIGS[source.id]);
   return null;
 }
@@ -1511,6 +1512,294 @@ export const pxwebV1Adapter: StatsApiAdapter = {
   searchTables: searchTablesV1,
   fetchMetadata: fetchMetadataV1,
   fetchData: fetchDataV1,
+};
+
+// ─── FRED (Federal Reserve Economic Data) API ───────────────
+
+/** FRED API response types (inline, no separate file). */
+interface FredSeries {
+  id: string;
+  title: string;
+  observation_start: string;
+  observation_end: string;
+  frequency_short: string;
+  units: string;
+  seasonal_adjustment_short: string;
+  notes: string;
+}
+
+interface FredSearchResponse {
+  seriess: FredSeries[];
+}
+
+interface FredSeriesResponse {
+  seriess: FredSeries[];
+}
+
+interface FredObservation {
+  date: string;
+  value: string;
+}
+
+interface FredObservationsResponse {
+  observations: FredObservation[];
+}
+
+/** Common term → well-known FRED series ID. Checked before API search. */
+const FRED_KEYWORDS: Record<string, string> = {
+  // English
+  gdp: "GDP",
+  "gross domestic product": "GDP",
+  unemployment: "UNRATE",
+  "unemployment rate": "UNRATE",
+  inflation: "CPIAUCSL",
+  "consumer price index": "CPIAUCSL",
+  cpi: "CPIAUCSL",
+  "federal funds rate": "FEDFUNDS",
+  "fed funds rate": "FEDFUNDS",
+  "interest rate": "FEDFUNDS",
+  housing: "HOUST",
+  "housing starts": "HOUST",
+  "consumer confidence": "UMCSENT",
+  "consumer sentiment": "UMCSENT",
+  "industrial production": "INDPRO",
+  "retail sales": "RSAFS",
+  "personal income": "PI",
+  "personal consumption": "PCE",
+  "trade balance": "BOPGSTB",
+  "nonfarm payroll": "PAYEMS",
+  payroll: "PAYEMS",
+  employment: "PAYEMS",
+  "10-year treasury": "GS10",
+  "treasury yield": "GS10",
+  mortgage: "MORTGAGE30US",
+  "mortgage rate": "MORTGAGE30US",
+  "money supply": "M2SL",
+  m2: "M2SL",
+  // Swedish
+  styrränta: "FEDFUNDS",
+  "federal ränta": "FEDFUNDS",
+  arbetslöshet: "UNRATE",
+  "bnp usa": "GDP",
+  "inflationstakt": "CPIAUCSL",
+  "konsumentprisindex": "CPIAUCSL",
+  "industriproduktion": "INDPRO",
+  "detaljhandel": "RSAFS",
+  "bostadsbyggande": "HOUST",
+};
+
+const FRED_KEYWORD_ENTRIES = Object.entries(FRED_KEYWORDS)
+  .sort((a, b) => b[0].length - a[0].length);
+
+function matchFredKeyword(query: string): string | null {
+  const lower = query.toLowerCase();
+  for (const [kw, id] of FRED_KEYWORD_ENTRIES) {
+    if (lower.includes(kw)) return id;
+  }
+  return null;
+}
+
+/**
+ * Search FRED time series by text query.
+ * Uses keyword shortcut first, falls back to FRED series/search API.
+ */
+async function searchTablesFred(
+  baseUrl: string,
+  query: string,
+  _lang = "en",
+  pageSize = 10,
+): Promise<PxTableInfo[]> {
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) return [];
+
+  // Keyword match → direct series lookup (instant, avoids search API)
+  const kwMatch = matchFredKeyword(query);
+  if (kwMatch) {
+    try {
+      const url = `${baseUrl}/series?series_id=${encodeURIComponent(kwMatch)}&api_key=${apiKey}&file_type=json`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) });
+      if (res.ok) {
+        const json = (await res.json()) as FredSeriesResponse;
+        const s = json.seriess?.[0];
+        if (s) {
+          return [{
+            id: s.id,
+            label: s.title,
+            description: (s.notes ?? "").slice(0, 300),
+            variableNames: [s.units ?? "", s.frequency_short ?? ""].filter(Boolean),
+            firstPeriod: s.observation_start ?? "",
+            lastPeriod: s.observation_end ?? "",
+            source: "FRED",
+          }];
+        }
+      }
+    } catch { /* fall through to text search */ }
+  }
+
+  // Text search via FRED series/search API
+  try {
+    const url = `${baseUrl}/series/search?search_text=${encodeURIComponent(query)}&api_key=${apiKey}&file_type=json&limit=${pageSize}&order_by=popularity&sort_order=desc`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) });
+    if (!res.ok) return [];
+
+    const json = (await res.json()) as FredSearchResponse;
+    return (json.seriess ?? []).map((s) => ({
+      id: s.id,
+      label: s.title,
+      description: (s.notes ?? "").slice(0, 300),
+      variableNames: [s.units ?? "", s.frequency_short ?? ""].filter(Boolean),
+      firstPeriod: s.observation_start ?? "",
+      lastPeriod: s.observation_end ?? "",
+      source: "FRED",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch metadata for a FRED series.
+ * Returns synthetic PxTableMetadata with time dimension built from
+ * observation_start/observation_end reported by the series endpoint.
+ */
+async function fetchMetadataFred(
+  baseUrl: string,
+  tableId: string,
+  _lang = "en",
+): Promise<PxTableMetadata | null> {
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const url = `${baseUrl}/series?series_id=${encodeURIComponent(tableId)}&api_key=${apiKey}&file_type=json`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) });
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as FredSeriesResponse;
+    const s = json.seriess?.[0];
+    if (!s) return null;
+
+    // Build time dimension: last 5 years of annual points as representative values
+    const endYear = new Date(s.observation_end ?? "").getFullYear() || new Date().getFullYear();
+    const timeValues: PxDimensionValue[] = [];
+    for (let y = endYear; y >= endYear - 4; y--) {
+      timeValues.push({ code: String(y), label: String(y) });
+    }
+
+    const timeDim: PxDimension = {
+      id: "date",
+      label: "Date",
+      type: "time",
+      values: timeValues,
+    };
+
+    const contentsDim: PxDimension = {
+      id: "series",
+      label: s.units ?? "Value",
+      type: "contents",
+      values: [{ code: s.id, label: s.title }],
+    };
+
+    return {
+      id: tableId,
+      label: s.title,
+      source: "FRED",
+      dimensions: [timeDim, contentsDim],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch observations for a FRED series and convert to PxJsonStat2Response.
+ * FRED returns a flat time-series; we map date→value.
+ * The "geography" dimension is a single synthetic entry (US national or the
+ * series geography level) since FRED series IDs embed their geography.
+ */
+async function fetchDataFred(
+  baseUrl: string,
+  tableId: string,
+  selections: PxDimensionSelection[],
+  _lang = "en",
+): Promise<PxJsonStat2Response | null> {
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    // Build date filter from time dimension selection
+    const timeSel = selections.find((s) => s.dimensionId === "date");
+    const years = timeSel?.valueCodes ?? [];
+    let observationStart = "";
+    let observationEnd = "";
+    if (years.length > 0) {
+      const sorted = [...years].sort();
+      observationStart = `${sorted[0]}-01-01`;
+      observationEnd = `${sorted[sorted.length - 1]}-12-31`;
+    }
+
+    let url = `${baseUrl}/series/observations?series_id=${encodeURIComponent(tableId)}&api_key=${apiKey}&file_type=json`;
+    if (observationStart) url += `&observation_start=${observationStart}`;
+    if (observationEnd) url += `&observation_end=${observationEnd}`;
+
+    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as FredObservationsResponse;
+    const observations = json.observations ?? [];
+    if (observations.length === 0) return null;
+
+    // Filter out FRED sentinel value "."
+    const valid = observations.filter((o) => o.value !== ".");
+    if (valid.length === 0) return null;
+
+    // Build PxJsonStat2Response: dimensions are [date, series]
+    const dateIndex: Record<string, number> = {};
+    const dateLabels: Record<string, string> = {};
+    const values: (number | null)[] = [];
+
+    for (let i = 0; i < valid.length; i++) {
+      const obs = valid[i];
+      const key = obs.date;
+      dateIndex[key] = i;
+      dateLabels[key] = key;
+      const num = parseFloat(obs.value);
+      values.push(isNaN(num) ? null : num);
+    }
+
+    return {
+      version: "2.0",
+      class: "dataset",
+      label: tableId,
+      source: "FRED",
+      id: ["date", "series"],
+      size: [valid.length, 1],
+      dimension: {
+        date: {
+          label: "Date",
+          category: { index: dateIndex, label: dateLabels },
+        },
+        series: {
+          label: "Value",
+          category: {
+            index: { [tableId]: 0 },
+            label: { [tableId]: tableId },
+          },
+        },
+      },
+      value: values,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── FRED adapter export ─────────────────────────────────────
+
+export const fredAdapter: StatsApiAdapter = {
+  searchTables: searchTablesFred,
+  fetchMetadata: fetchMetadataFred,
+  fetchData: fetchDataFred,
 };
 
 // ─── Main orchestrator ──────────────────────────────────────

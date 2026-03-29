@@ -18,3 +18,13 @@ Format: [CATEGORY] NEVER/ALWAYS X because Y
 [GEOGRAPHY] ALWAYS add SCB 4-digit municipality codes (scb_code property) to geometry features when available because they are the authoritative join key for Swedish statistical data. Match exactly against TAB638 or source registry (2026-03-28).
 
 [AGENCY-HINT] ALWAYS short-circuit web search in clarify route when an unconnected source (like BRÅ for crime) covers the requested topic because Haiku selection is slow (30-40s). Return agency portal link + hint in <5s instead. Requires topic tag alignment in official-stats-resolver (2026-03-28).
+
+[EVAL] NEVER use offline eval (`pnpm eval`) to test example-bank changes because offline eval scores pre-built fixture manifests directly — it never calls the AI and never reads example-bank.ts. Only online eval (`pnpm eval:online`) passes prompts through the AI pipeline where examples influence output (2026-03-29). [COMPILED]
+
+[GEOGRAPHY] ALWAYS check admin1 geometry for `iso_3166_2` property first — it exists in almost all countries and is the most reliable join key. Use `direct_code` strategy with ISO prefix. Municipality/admin2 files almost never have numeric codes — default to `alias_crosswalk` via dimension labels (2026-03-29). [COMPILED]
+
+[GEOGRAPHY] ALWAYS include a label cleanup normalizer in geography plugins because PxWeb dimensions often have bilingual suffixes ("Nordland - Nordlánnda"), date ranges ("Viken (2020-2023)"), or regional qualifiers ("/Capodistria") that prevent direct name matching (2026-03-29). [COMPILED]
+
+[DATASOURCE] ALWAYS use `/connect-datasource` skill when adding new statistical sources and `/connect-geography` skill when building join plugins. These encode patterns from 10+ countries and prevent agents from re-discovering the same API quirks (2026-03-29). [COMPILED]
+
+[PARALLEL-AGENTS] ALWAYS dispatch geography plugins one-per-country as background agents because they are genuinely independent (different geometry files, different APIs, different code patterns). Three plugins built in parallel took ~4 min vs ~12 min sequential (2026-03-29). [COMPILED]

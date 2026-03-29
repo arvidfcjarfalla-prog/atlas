@@ -1,6 +1,6 @@
 # Atlas — Project Status
 
-Last updated: 2026-03-27
+Last updated: 2026-03-29
 
 ## Vision
 
@@ -46,7 +46,7 @@ Atlas is an AI-driven map platform. Users describe what they want in natural lan
 - [x] Compare view — side-by-side maps with draggable divider
 
 ### AI Pipeline
-- [x] Map generation (`/api/ai/generate-map`) — Claude Sonnet, 11 map families
+- [x] Map generation (`/api/ai/generate-map`) — Claude Sonnet 4.5, 14 map families
 - [x] Streaming chat agent (`/api/ai/chat`) — conversational editing with tools
 - [x] Prompt enhancement (`/api/ai/enhance-prompt`)
 - [x] Clarification flow (`/api/ai/clarify`)
@@ -74,7 +74,7 @@ Atlas is an AI-driven map platform. Users describe what they want in natural lan
 - [x] Geography plugins (per-country geometry resolution)
 
 ### Map Rendering
-- [x] Manifest compiler — 11 families: point, cluster, choropleth, heatmap, proportional-symbol, flow, isochrone, hexbin, hexbin-3d, screen-grid, trip
+- [x] Manifest compiler — 14 families: point, cluster, choropleth, heatmap, proportional-symbol, flow, isochrone, extrusion, animated-route, timeline, hexbin, hexbin-3d, screen-grid, trip
 - [x] Turf transforms — buffer, voronoi, convex-hull, centroid, simplify, dissolve (preprocessing step before compilation)
 - [x] Basemap layers — hillshade, nightlights, land mask, terrain, tectonic plates, contour lines
 - [x] H3 hexagonal binning — points → H3 cells → polygon fill layers with aggregation (count/sum/mean/max/min)
@@ -122,7 +122,7 @@ Atlas is an AI-driven map platform. Users describe what they want in natural lan
 - [ ] **Team workspaces** — Enterprise multi-user collaboration
 - [ ] **SSO/SAML** — Enterprise auth
 - [ ] **Custom data connectors** — Enterprise feature
-- [ ] **Map templates** — pre-built starting points
+- [x] **Map templates** — pre-built starting points (gallery for one-click map creation)
 - [ ] **Undo/redo** — editor history beyond auto-save versions
 - [ ] **Keyboard shortcuts** — editor-wide shortcuts (timeline has Space/arrows/+/- already)
 
@@ -199,7 +199,7 @@ packages/
 | Decision | Rationale |
 |----------|-----------|
 | MapManifest as intermediate format | Decouples AI from rendering. AI can't break the map. |
-| 11 map families (7 core + 4 plugin) | Constrains AI output to validated patterns. Hexbin/deck.gl families use dynamic imports. |
+| 14 map families (7 core + 7 extended) | Constrains AI output to validated patterns. Hexbin/deck.gl families use dynamic imports. |
 | Chat-first editing (not form-based) | Lower friction. Users describe what they want. |
 | Supabase for persistence | Managed Postgres + Auth + RLS. No infra to manage. |
 | Client-side MapLibre (not server-rendered) | Interactive maps need client JS. SSR adds complexity. |

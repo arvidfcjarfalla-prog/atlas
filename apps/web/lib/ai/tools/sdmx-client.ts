@@ -229,7 +229,7 @@ function fetchDataForConfig(config: SdmxAgencyConfig) {
   return async (
     _baseUrl: string,
     tableId: string,
-    selections: PxDimensionSelection[],
+    _selections: PxDimensionSelection[], // SDMX uses lastNObservations — dimension filtering not yet implemented
     _lang = "en",
   ): Promise<PxJsonStat2Response | null> => {
     try {
@@ -326,7 +326,9 @@ function parseSdmxJson(
       }
     }
 
-    // Keep first value per geo code (SDMX may have multiple series per geo)
+    // Keep first value per geo code — SDMX may have multiple series per geo
+    // (e.g. multiple measures). Since we fetch with lastNObservations=1 and
+    // the resolution pipeline only needs one value per region, first-wins is fine.
     if (!geoValues.has(geoCode)) {
       geoValues.set(geoCode, value);
     }
@@ -476,7 +478,7 @@ export const ECB_CONFIG: SdmxAgencyConfig = {
 export const OECD_CONFIG: SdmxAgencyConfig = {
   id: "intl-oecd",
   baseUrl: "https://sdmx.oecd.org/public/rest",
-  dataflowUrl: "https://sdmx.oecd.org/public/rest/dataflow?detail=full",
+  dataflowUrl: "https://sdmx.oecd.org/public/rest/dataflow/all",
   dataUrlTemplate: "https://sdmx.oecd.org/public/rest/data/{flow}",
   acceptHeader: "application/json",
   structureAcceptHeader: "application/vnd.sdmx.structure+json",
@@ -506,11 +508,142 @@ export const OECD_CONFIG: SdmxAgencyConfig = {
   },
 };
 
+export const IMF_CONFIG: SdmxAgencyConfig = {
+  id: "intl-imf",
+  baseUrl: "https://api.imf.org/external/sdmx/2.1",
+  dataflowUrl: "https://api.imf.org/external/sdmx/2.1/dataflow",
+  dataUrlTemplate: "https://api.imf.org/external/sdmx/2.1/data/{flow}",
+  acceptHeader: "application/json",
+  geoDimensionIds: ["REF_AREA"],
+  timeDimensionIds: ["TIME_PERIOD"],
+  keywords: {
+    gdp: "IFS",
+    bnp: "IFS",
+    inflation: "CPI",
+    "consumer price": "CPI",
+    "balance of payments": "BOP",
+    betalningsbalans: "BOP",
+    "government finance": "GFS",
+    "government debt": "GFS",
+    "government deficit": "GFS",
+    "financial soundness": "FSI",
+  },
+};
+
+export const ISTAT_CONFIG: SdmxAgencyConfig = {
+  id: "it-istat",
+  baseUrl: "https://sdmx.istat.it/SDMXWS/rest",
+  dataflowUrl: "https://sdmx.istat.it/SDMXWS/rest/dataflow",
+  dataUrlTemplate: "https://sdmx.istat.it/SDMXWS/rest/data/{flow}",
+  acceptHeader: "application/vnd.sdmx.data+json",
+  structureAcceptHeader: "application/vnd.sdmx.structure+json",
+  geoDimensionIds: ["REF_AREA", "ITTER107"],
+  timeDimensionIds: ["TIME_PERIOD"],
+  keywords: {
+    population: "DCIS_POPRES1",
+    befolkning: "DCIS_POPRES1",
+    unemployment: "DCCV_DISOCCUPT",
+    arbetslöshet: "DCCV_DISOCCUPT",
+    gdp: "DCCN_PILPROVV",
+    bnp: "DCCN_PILPROVV",
+    "regional gdp": "DCCN_PILPROVV",
+    "labour force": "DCCV_TAXISOCCUP",
+    employment: "DCCV_TAXISOCCUP",
+    poverty: "DCIS_POVERTA",
+    "consumer price": "DCSP_IPCA",
+    inflation: "DCSP_IPCA",
+    "life expectancy": "DCIS_MORTALITA1",
+    births: "DCIS_NASCITE",
+    migration: "DCIS_MIGR_INT",
+  },
+};
+
+export const EUROSTAT_CONFIG: SdmxAgencyConfig = {
+  id: "eu-eurostat",
+  baseUrl: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1",
+  dataflowUrl: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/all",
+  dataUrlTemplate: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/{flow}",
+  acceptHeader: "application/json",
+  structureAcceptHeader: "application/json",
+  geoDimensionIds: ["GEO", "geo", "REF_AREA"],
+  timeDimensionIds: ["TIME_PERIOD", "TIME"],
+  keywords: {
+    population: "demo_pjan",
+    unemployment: "une_rt_m",
+    gdp: "nama_10_gdp",
+    inflation: "prc_hicp_manr",
+    "house price": "prc_hpi_q",
+    migration: "migr_imm1ctz",
+    energy: "nrg_bal_c",
+    tourism: "tour_occ_nim",
+    education: "educ_uoe_enrt01",
+    poverty: "ilc_li01",
+    crime: "crim_off_cat",
+    transport: "tran_hv_frmod",
+  },
+};
+
+export const STATCAN_CONFIG: SdmxAgencyConfig = {
+  // Statistics Canada uses SDMX 2.1 REST at statcan.gc.ca
+  id: "ca-statcan",
+  baseUrl: "https://www.statcan.gc.ca/en/microdata/api",
+  dataflowUrl: "https://www150.statcan.gc.ca/t1/tbl1/sdmx/rest/dataflow",
+  dataUrlTemplate: "https://www150.statcan.gc.ca/t1/tbl1/sdmx/rest/data/{flow}",
+  acceptHeader: "application/json",
+  geoDimensionIds: ["REF_AREA", "GEO"],
+  timeDimensionIds: ["TIME_PERIOD"],
+  keywords: {
+    population: "14100287",
+    unemployment: "14100287",
+    gdp: "36100434",
+    trade: "12100121",
+  },
+};
+
+export const ILOSTAT_CONFIG: SdmxAgencyConfig = {
+  // ILO uses a custom SDMX-like REST API
+  id: "intl-ilostat",
+  baseUrl: "https://rplumber.ilo.org/data/indicator/",
+  dataflowUrl: "https://www.ilo.org/sdmx/rest/dataflow/ILO",
+  dataUrlTemplate: "https://www.ilo.org/sdmx/rest/data/ILO,{flow}",
+  acceptHeader: "application/json",
+  structureAcceptHeader: "application/vnd.sdmx.structure+json",
+  geoDimensionIds: ["REF_AREA"],
+  timeDimensionIds: ["TIME_PERIOD"],
+  keywords: {
+    unemployment: "UNE_DEAP_SEX_AGE_RT",
+    employment: "EMP_TEMP_SEX_AGE_NB",
+    wages: "EAR_XEES_SEX_ECO_CUR_NB",
+    "child labor": "SDG_0871_SEX_AGE_RT",
+  },
+};
+
+export const MALTA_NSO_CONFIG: SdmxAgencyConfig = {
+  id: "mt-nso",
+  baseUrl: "https://apidesign-statdb.nso.gov.mt/rest/v2/",
+  dataflowUrl: "https://apidesign-statdb.nso.gov.mt/rest/v2/dataflow",
+  dataUrlTemplate: "https://apidesign-statdb.nso.gov.mt/rest/v2/data/{flow}",
+  acceptHeader: "application/vnd.sdmx.data+json",
+  structureAcceptHeader: "application/vnd.sdmx.structure+json",
+  geoDimensionIds: ["REF_AREA"],
+  timeDimensionIds: ["TIME_PERIOD"],
+  keywords: {
+    population: "DF_POP",
+    tourism: "DF_TOUR",
+    gdp: "DF_GDP",
+  },
+};
+
 /** Map of source ID → SDMX config. */
 export const SDMX_CONFIGS: Record<string, SdmxAgencyConfig> = {
   "intl-bis": BIS_CONFIG,
   "au-abs": ABS_CONFIG,
   "intl-ecb": ECB_CONFIG,
-  // OECD omitted: requires per-dataset key filters and version-specific URLs
-  // IMF omitted: SDMX data endpoint returns 501, DataMapper API needs separate adapter
+  "intl-oecd": OECD_CONFIG,
+  "intl-imf": IMF_CONFIG,
+  "it-istat": ISTAT_CONFIG,
+  "eu-eurostat": EUROSTAT_CONFIG,
+  "ca-statcan": STATCAN_CONFIG,
+  "intl-ilostat": ILOSTAT_CONFIG,
+  "mt-nso": MALTA_NSO_CONFIG,
 };

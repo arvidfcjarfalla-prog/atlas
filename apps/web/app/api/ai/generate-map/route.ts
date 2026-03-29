@@ -49,15 +49,28 @@ function validateFetchUrl(raw: string): void {
   // Block RFC-1918 private ranges, link-local, and AWS metadata
   const ipMatch = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
   if (ipMatch) {
-    const [, a, b] = ipMatch.map(Number);
+    const octets = ipMatch.slice(1).map(Number);
+    const a = octets[0], b = octets[1];
     if (
       a === 10 ||                              // 10.0.0.0/8
-      (a === 172 && b! >= 16 && b! <= 31) ||   // 172.16.0.0/12
+      (a === 172 && b >= 16 && b <= 31) ||     // 172.16.0.0/12
       (a === 192 && b === 168) ||              // 192.168.0.0/16
       (a === 169 && b === 254)                 // 169.254.0.0/16 (link-local + AWS metadata)
     ) {
       throw new Error("Private and link-local addresses are not allowed");
     }
+  }
+
+  // Block IPv6 private/link-local (unique local fd00::/8, link-local fe80::/10,
+  // and IPv4-mapped ::ffff:x.x.x.x which could embed private IPv4)
+  const bareV6 = hostname.replace(/^\[|\]$/g, "");
+  if (
+    bareV6.startsWith("fd") ||
+    bareV6.startsWith("fe80") ||
+    bareV6.startsWith("fc") ||
+    bareV6.startsWith("::ffff:")
+  ) {
+    throw new Error("Private and link-local addresses are not allowed");
   }
 }
 
@@ -288,6 +301,54 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Fallback model: one rescue attempt with Opus if quality is still low ──
+    // Opt-in via AI_FALLBACK_ENABLED=true — Opus calls are expensive
+    let usedFallback = false;
+    if (
+      process.env.AI_FALLBACK_ENABLED === "true" &&
+      quality &&
+      quality.total < QUALITY_THRESHOLD &&
+      validation.valid
+    ) {
+      log("generate.fallback", { primaryScore: quality.total, attempts });
+      try {
+        const fallbackResult = await generateTextWithRetry({
+          model: MODELS.fallback(),
+          maxOutputTokens: MAX_TOKENS,
+          system: buildSystemPrompt(profile, lessonsBlock, genSkill),
+          messages: [
+            { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint, preferences) },
+          ],
+        });
+
+        totalInputTokens += fallbackResult.usage.inputTokens ?? 0;
+        totalOutputTokens += fallbackResult.usage.outputTokens ?? 0;
+        attempts++;
+
+        const fallbackText = fallbackResult.text;
+        if (fallbackText) {
+          try {
+            const fallbackManifest = extractJSON(fallbackText) as MapManifest;
+            const fallbackValidation = validateManifest(fallbackManifest, profile);
+            if (fallbackValidation.valid) {
+              const fallbackQuality = scoreManifest(fallbackManifest, profile ?? undefined);
+              if (fallbackQuality.total > quality.total) {
+                manifest = fallbackManifest;
+                validation = fallbackValidation;
+                quality = fallbackQuality;
+                usedFallback = true;
+                log("generate.fallback.accepted", { fallbackScore: fallbackQuality.total });
+              }
+            }
+          } catch {
+            // Fallback JSON parse failed — keep original manifest
+          }
+        }
+      } catch {
+        // Fallback model error — keep original manifest
+      }
+    }
+
     // ── Geometry guards: auto-correct family↔geometry mismatches ──
     if (profile) {
       const guardWarnings = applyGeometryGuards(manifest, profile);
@@ -324,6 +385,7 @@ export async function POST(request: Request) {
     log("generate.complete", {
       attempts,
       qualityScore: quality.total,
+      usedFallback,
       latencyMs: Date.now() - t0,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
@@ -335,7 +397,7 @@ export async function POST(request: Request) {
       quality,
       caseId,
       suggestions,
-      model: "generation",
+      model: usedFallback ? "fallback" : "generation",
       attempts,
       usage: {
         inputTokens: totalInputTokens,
