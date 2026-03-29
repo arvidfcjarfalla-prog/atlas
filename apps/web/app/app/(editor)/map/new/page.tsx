@@ -87,6 +87,7 @@ function NewMapPage() {
   const [clarifyQuestions, setClarifyQuestions] = useState<ClarificationQuestion[]>([]);
   const [clarifyWarning, setClarifyWarning] = useState<string | null>(null);
   const [tabularSuggestions, setTabularSuggestions] = useState<string[]>([]);
+  const [agencyHint, setAgencyHint] = useState<{ agencyName: string; portalUrl: string } | null>(null);
 
   // Confirmation stage state
   const [pendingAction, setPendingAction] = useState<GenerateAction | null>(null);
@@ -201,6 +202,10 @@ function NewMapPage() {
         if (action.kind === "tabular_warning") {
           setClarifyWarning(action.message);
           setTabularSuggestions(action.suggestions);
+          setAgencyHint(action.agencyHint ? { agencyName: action.agencyHint.agencyName, portalUrl: action.agencyHint.portalUrl } : null);
+          // No upload section to auto-open here (unlike the create page).
+          // The editor page shows a full-page "needs_input" view with agency link;
+          // file upload is available later via ChatPanel and drag-and-drop once a map is rendered.
           setStage("needs_input");
           return;
         }
@@ -574,6 +579,16 @@ function NewMapPage() {
         {clarifyWarning && (
           <div style={{ maxWidth: 500, background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)", borderRadius: 10, padding: "16px 20px", textAlign: "center" }}>
             <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "rgba(234,179,8,0.85)", margin: 0 }}>{clarifyWarning}</p>
+            {agencyHint && (
+              <a
+                href={agencyHint.portalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(94,197,212,0.9)", background: "rgba(94,197,212,0.08)", border: "1px solid rgba(94,197,212,0.25)", borderRadius: 20, padding: "6px 14px", textDecoration: "none", cursor: "pointer" }}
+              >
+                Open {agencyHint.agencyName} portal &#x2197;
+              </a>
+            )}
           </div>
         )}
         {tabularSuggestions.length > 0 && (

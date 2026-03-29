@@ -9,6 +9,7 @@
  */
 
 import type {
+  AgencyHint,
   ClarifyResponse,
   ClarificationQuestion,
   DatasetProfile,
@@ -36,6 +37,8 @@ export interface TabularWarningAction {
   message: string;
   /** AI-generated follow-up prompt suggestions. */
   suggestions: string[];
+  /** Agency hint when a relevant source was identified but not connected. */
+  agencyHint?: AgencyHint;
 }
 
 /** Need more info — show clarification questions. */
@@ -99,11 +102,12 @@ export function decideClarifyAction(
   // Suggestions are preferred over clarification questions because
   // they let the user pick a working prompt with one click.
   const suggestions = data.suggestions ?? [];
-  if (suggestions.length > 0 || data.dataWarning) {
+  if (suggestions.length > 0 || data.dataWarning || data.agencyHint) {
     return {
       kind: "tabular_warning",
       message: data.dataWarning ?? "Atlas kunde inte hitta data för din sökning.",
       suggestions,
+      agencyHint: data.agencyHint,
     };
   }
 

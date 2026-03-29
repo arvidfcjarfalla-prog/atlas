@@ -43,6 +43,15 @@ export interface DatasetProfile {
   attributes: AttributeProfile[];
 }
 
+// ─── Agency hint ────────────────────────────────────────────
+
+export interface AgencyHint {
+  agencyName: string;
+  portalUrl: string;
+  countryName: string;
+  coverageTags: string[];
+}
+
 // ─── Clarification ──────────────────────────────────────────
 
 export interface ClarificationQuestion {
@@ -100,6 +109,8 @@ export interface ClarifyResponse {
   coverageRatio?: number;
   /** Geographic scope hint — tells generate-map to apply a filter. */
   scopeHint?: { region: string; filterField: string };
+  /** Agency hint when a relevant source was identified but no adapter exists. */
+  agencyHint?: AgencyHint;
 }
 
 /** Request body for /api/ai/clarify. */

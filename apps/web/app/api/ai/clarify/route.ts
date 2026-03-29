@@ -732,6 +732,53 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     }
 
+    // ── Agency hint: short-circuit before web search ──────────────
+    // When a matched source covers the topic but has no adapter,
+    // tell the user immediately which agency has the data instead of
+    // spending 30-60s on web search that will likely fail.
+    // Logic: find sources whose coverageTags overlap with the prompt's
+    // topic tags but that have no working adapter. If such a source
+    // exists and PxWeb didn't produce data, short-circuit.
+    if (officialSources.length > 0 && !pxTabularFallback) {
+      // Find an unconnected source that matched the prompt's topic.
+      // Only short-circuit when no connected source covers the same tags —
+      // otherwise let the connected source try first (it may just be slow).
+      const connectedTags = new Set(
+        officialSources
+          .filter((s) => getStatsAdapter(s.source) !== null)
+          .flatMap((s) => s.source.coverageTags),
+      );
+      const unconnectedWithTopic = officialSources.find((s) => {
+        if (getStatsAdapter(s.source) !== null) return false;
+        // Only short-circuit if this source covers a tag that no connected source covers
+        return s.source.coverageTags.some((t) => !connectedTags.has(t));
+      });
+      if (unconnectedWithTopic) {
+        const src = unconnectedWithTopic.source;
+        const rawUrl = src.docsUrl ?? src.baseUrl;
+        const portalUrl = /^https?:\/\//.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+        const response: ClarifyResponse = {
+          ready: false,
+          dataWarning:
+            `Atlas has no automatic connection to ${src.agencyName}. ` +
+            `You can download the data from their portal and upload it as CSV.`,
+          suggestions: [],
+          agencyHint: {
+            agencyName: src.agencyName,
+            portalUrl,
+            countryName: src.countryName,
+            coverageTags: src.coverageTags,
+          },
+        };
+        log("clarify.agency_hint", {
+          agency: src.agencyName,
+          portalUrl,
+          latencyMs: Date.now() - t0,
+        });
+        return NextResponse.json(response);
+      }
+    }
+
     // ── Fast path 4.5: Web research (entity extraction from web) ──
     // For prompts about specific entities (people, businesses, events, venues)
     // whose locations must be discovered via web search + Photon geocoding.

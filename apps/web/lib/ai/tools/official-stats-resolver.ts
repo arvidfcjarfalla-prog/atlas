@@ -203,6 +203,11 @@ const TOPIC_TO_TAGS: Record<string, string[]> = {
   trade: ["trade", "economy"],
   exports: ["trade"],
   imports: ["trade"],
+  // Crime & justice
+  "crime rate": ["crime", "justice"],
+  brottslighet: ["crime", "justice"],
+  brott: ["crime", "justice"],
+  kriminalitet: ["crime", "justice"],
   // Housing
   housing: ["housing"],
   rent: ["housing", "prices"],
@@ -240,7 +245,7 @@ const TOPIC_TO_TAGS: Record<string, string[]> = {
   production: ["industry", "economy"],
   industri: ["industry"],
   // Social
-  crime: ["crime", "social"],
+  crime: ["crime", "justice", "social"],
   social: ["social"],
   gender: ["gender", "social"],
   tourism: ["tourism"],

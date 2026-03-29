@@ -609,11 +609,17 @@ function filterToMostGranularLevel(codes: string[], geoHint?: string | null): st
   if (geoHint === "county") {
     const countyLen2 = byLength.get(2);
     if (countyLen2 && countyLen2.length >= 10) return countyLen2;
+    // Hint says county but no 2-digit codes — signal "wrong table" with
+    // a sentinel empty array. Callers MUST check for length 0 and skip
+    // the data fetch so the retry loop tries the next table.
+    return [];
   }
   // If caller wants municipality level, prefer 4-digit codes
   if (geoHint === "municipality") {
     const muniLen4 = byLength.get(4);
     if (muniLen4 && muniLen4.length >= 10) return muniLen4;
+    // Hint says municipality but no 4-digit codes — wrong table.
+    return [];
   }
 
   // Default: most granular (longest codes) when there are enough of them
@@ -664,7 +670,12 @@ export function selectDimensions(
         let codes = activeValues.map((v) => v.code);
         // When mixed levels exist (e.g. county + municipality), select level matching hint
         codes = filterToMostGranularLevel(codes, geoLevelHint);
-        // If filtering removed everything (only "00" existed), include it
+        // Empty codes with a geo hint = wrong table for this level.
+        // Return empty selections so resolveOneTable skips this table.
+        if (codes.length === 0 && geoLevelHint) {
+          return [];
+        }
+        // If filtering removed everything (only "00" existed), include all values
         selections.push({
           dimensionId: dim.id,
           valueCodes: codes.length > 0 ? codes : dim.values.map((v) => v.code),
@@ -766,6 +777,10 @@ export function selectDimensionsWithAmbiguity(
         let codes2 = activeValues2.map((v) => v.code);
         // When mixed levels exist, select level matching the geo hint
         codes2 = filterToMostGranularLevel(codes2, geoLevelHint);
+        // Empty codes with a geo hint = wrong table for this level
+        if (codes2.length === 0 && geoLevelHint) {
+          return { selections: [], contentsAmbiguous: false };
+        }
         selections.push({
           dimensionId: dim.id,
           valueCodes: codes2.length > 0 ? codes2 : dim.values.map((v) => v.code),
@@ -1074,10 +1089,12 @@ export async function fetchData(
 
     for (const sel of selections) {
       // PxWeb v2 uses valueCodes[DimId]=code1,code2,...
-      // Use wildcard only for very large selections (>500) to avoid URL length limits.
-      // For geo dimensions with mixed levels (e.g. county+municipality codes),
-      // explicit codes are required so we only get the requested granularity.
-      const codes = sel.valueCodes.length > 500 ? "*" : sel.valueCodes.join(",");
+      // Use wildcard when the joined codes string is long enough to risk
+      // exceeding URL length limits (SCB's v2 API returns 404 above ~2000 chars).
+      // Threshold on string length rather than code count so short codes (e.g. "01")
+      // don't trigger wildcards unnecessarily on sources like SSB or Statistics Finland.
+      const joined = sel.valueCodes.join(",");
+      const codes = joined.length > 1500 ? "*" : joined;
       params.set(`valueCodes[${sel.dimensionId}]`, codes);
     }
 

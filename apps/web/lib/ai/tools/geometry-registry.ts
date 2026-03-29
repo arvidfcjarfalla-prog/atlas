@@ -299,13 +299,20 @@ const MANUAL_ENTRIES: GeometryEntry[] = [
     scope: { regionCode: "SE" },
     loaderType: "local_file",
     loaderTarget: "geo/se/municipalities.geojson",
-    joinKeys: GB_ADM2_KEYS,
-    featureIdProperty: "name",
+    joinKeys: [
+      { geometryProperty: "scb_code", codeFamily: { family: "national", namespace: "se-scb" } },
+      { geometryProperty: "name", codeFamily: { family: "name" } },
+    ],
+    featureIdProperty: "scb_code",
     nameProperty: "name",
     featureCount: 290,
     resolution: "high",
     status: "production",
-    notes: "Land-clipped against NE 10m Sweden polygon. Name-based join only (geoBoundaries has no codes at ADM2).",
+    notes:
+      "Land-clipped against NE 10m Sweden polygon. SCB 4-digit municipality codes added from TAB638. " +
+      "Codes verified 2026-03-29 against SCB TAB638 Region dimension (290 municipalities). " +
+      "To update: fetch TAB638 metadata, cross-reference 4-digit codes with geometry names. " +
+      "Sweden last changed municipality structure in 2003 (Knivsta split from Uppsala).",
   },
 
   // ── Norway ─────────────────────────────────────────────────

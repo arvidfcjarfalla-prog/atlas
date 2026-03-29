@@ -746,13 +746,20 @@ export async function resolvePxWeb(
   // (e.g. "utdanning fylke" returns barnehage tables before education tables).
   // Skip AI selection when known tables dominate the front — they are already
   // authoritative choices from the plugin.
-  const candidatesForAi = orderedTables.slice(0, 25);
-  const aiPickedId = await aiSelectTable(prompt, candidatesForAi, geoLevelHint, allKnownTableIds);
+  const hasKnownTableFirst =
+    allKnownTableIds.length > 0 &&
+    orderedTables.length > 0 &&
+    allKnownTableIds.includes(orderedTables[0].id);
 
-  if (aiPickedId) {
-    const aiTable = orderedTables.find((t) => t.id === aiPickedId);
-    if (aiTable) {
-      orderedTables = [aiTable, ...orderedTables.filter((t) => t.id !== aiPickedId)];
+  if (!hasKnownTableFirst) {
+    const candidatesForAi = orderedTables.slice(0, 25);
+    const aiPickedId = await aiSelectTable(prompt, candidatesForAi, geoLevelHint, allKnownTableIds);
+
+    if (aiPickedId) {
+      const aiTable = orderedTables.find((t) => t.id === aiPickedId);
+      if (aiTable) {
+        orderedTables = [aiTable, ...orderedTables.filter((t) => t.id !== aiPickedId)];
+      }
     }
   }
 

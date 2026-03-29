@@ -152,6 +152,7 @@ function CreateMapPageInner() {
   const [clarifyQuestions, setClarifyQuestions] = useState<ClarificationQuestion[]>([]);
   const [clarifyWarning, setClarifyWarning] = useState<string | null>(null);
   const [tabularSuggestions, setTabularSuggestions] = useState<string[]>([]);
+  const [agencyHint, setAgencyHint] = useState<{ agencyName: string; portalUrl: string } | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   // Resolved data from clarification
@@ -253,6 +254,12 @@ function CreateMapPageInner() {
         } else if (action.kind === "tabular_warning") {
           setClarifyWarning(action.message);
           setTabularSuggestions(action.suggestions);
+          if (action.agencyHint) {
+            setAgencyHint({ agencyName: action.agencyHint.agencyName, portalUrl: action.agencyHint.portalUrl });
+            setUploadOpen(true);
+          } else {
+            setAgencyHint(null);
+          }
           setState("idle");
         } else if (action.kind === "auto_answer") {
           // All questions have recommended defaults — re-submit automatically
@@ -1255,13 +1262,28 @@ function CreateMapPageInner() {
           </div>
         )}
 
-        {/* Data warning + suggestion chips */}
+        {/* Data warning + agency hint + suggestion chips */}
         {clarifyWarning && (
           <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <p className="text-caption text-amber-300/90">
-              <span className="mr-1">\u26A0</span>
+              <span className="mr-1">{"\u26A0"}</span>
               {clarifyWarning}
             </p>
+            {agencyHint && (
+              <div className="mt-3 flex items-center gap-3">
+                <a
+                  href={agencyHint.portalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-caption text-teal-300 hover:bg-teal-500/20 hover:text-teal-200 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open {agencyHint.agencyName} portal
+                </a>
+              </div>
+            )}
             {tabularSuggestions.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 <p className="text-caption text-amber-400/60 w-full mb-1">Try instead:</p>
@@ -1272,6 +1294,7 @@ function CreateMapPageInner() {
                       setPrompt(s);
                       setClarifyWarning(null);
                       setTabularSuggestions([]);
+                      setAgencyHint(null);
                       handleClarify(s);
                     }}
                     className="rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-caption text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 transition-colors"

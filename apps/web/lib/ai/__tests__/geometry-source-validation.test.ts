@@ -226,11 +226,14 @@ describe("se:admin1 property validation", () => {
 describe("se:municipalities property validation", () => {
   const entry = findById("se:municipalities")!;
 
-  it("exists and uses name-only join (geoBoundaries ADM2 has no codes)", () => {
+  it("exists and uses SCB code + name join", () => {
     expect(entry).toBeDefined();
-    expect(entry.joinKeys.length).toBe(1);
-    expect(entry.joinKeys[0].geometryProperty).toBe("name");
-    expect(entry.joinKeys[0].codeFamily.family).toBe("name");
+    expect(entry.joinKeys.length).toBe(2);
+    expect(entry.joinKeys[0].geometryProperty).toBe("scb_code");
+    expect(entry.joinKeys[0].codeFamily.family).toBe("national");
+    expect(entry.joinKeys[0].codeFamily.namespace).toBe("se-scb");
+    expect(entry.joinKeys[1].geometryProperty).toBe("name");
+    expect(entry.joinKeys[1].codeFamily.family).toBe("name");
   });
 
   it("has 290 municipalities and production status", () => {
@@ -238,15 +241,15 @@ describe("se:municipalities property validation", () => {
     expect(entry.status).toBe("production");
   });
 
-  it("representative municipality names join via name", () => {
+  it("representative municipality SCB codes join via scb_code", () => {
     const geometry = makeFC([
-      makeFeature({ name: "Upplands Väsby", iso_a3: "SWE" }),
-      makeFeature({ name: "Vallentuna", iso_a3: "SWE" }),
-      makeFeature({ name: "Stockholm", iso_a3: "SWE" }),
+      makeFeature({ scb_code: "0114", name: "Upplands Väsby", iso_a3: "SWE" }),
+      makeFeature({ scb_code: "0115", name: "Vallentuna", iso_a3: "SWE" }),
+      makeFeature({ scb_code: "0180", name: "Stockholm", iso_a3: "SWE" }),
     ]);
 
-    const rows = [makeRow("Upplands Väsby", 100), makeRow("Vallentuna", 200), makeRow("Stockholm", 300)];
-    const plan = makePlan(entry, 0); // name join key
+    const rows = [makeRow("0114", 100), makeRow("0115", 200), makeRow("0180", 300)];
+    const plan = makePlan(entry, 0); // scb_code join key
 
     const result = executeJoin(plan, rows, geometry);
     expect(result.diagnostics.matched).toBe(3);

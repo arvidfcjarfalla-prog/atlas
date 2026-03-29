@@ -760,6 +760,39 @@ export const swedenScbPlugin: GeographyPlugin = {
     ];
   },
 
+  knownTables() {
+    // SCB table IDs for common topics — verified to have 4-digit municipality codes.
+    // SCB's full-text search returns district-level tables (6-digit codes) or
+    // irrelevant matches before these canonical tables.
+    return {
+      // Population — TAB694 is the municipal summary (3 vars: region, contents, year).
+      // TAB638 has age×sex×marital breakdowns with no totals — unusable for simple queries.
+      befolkning: ["TAB694"],
+      population: ["TAB694"],
+      folkmängd: ["TAB694"],
+      folkm: ["TAB694"],
+      invånare: ["TAB694"],
+      // Income — TAB3556 (5 vars) is simpler and already map_ready in cache.
+      inkomst: ["TAB3556", "TAB3909"],
+      income: ["TAB3556", "TAB3909"],
+      förvärvsinkomst: ["TAB3556"],
+      medelinkomst: ["TAB3556"],
+      // Education
+      utbildning: ["TAB5956"],
+      utbildningsnivå: ["TAB5956"],
+      education: ["TAB5956"],
+      // Employment
+      sysselsättning: ["TAB4083"],
+      employment: ["TAB4083"],
+      arbetslöshet: ["TAB4083"],
+      unemployment: ["TAB4083"],
+      // Age
+      ålder: ["TAB637", "TAB638"],
+      medelålder: ["TAB637"],
+      age: ["TAB637"],
+    };
+  },
+
   confidenceHints() {
     return [
       {
