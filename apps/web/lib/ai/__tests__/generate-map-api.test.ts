@@ -63,6 +63,7 @@ vi.mock("@/lib/ai/ai-client", async () => {
   return {
     MODELS: {
       generation: vi.fn(() => ({ id: "mock-model" })),
+      fallback: vi.fn(() => ({ id: "mock-fallback-model" })),
       utility: vi.fn(() => ({ id: "mock-utility-model" })),
     },
     // Delegate to the mocked `generateText` so existing mocks work
@@ -434,5 +435,22 @@ describe("POST /api/ai/generate-map", () => {
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error).toMatch(/no text/i);
+  });
+
+  it("calls generateText multiple times on retry when first attempt returns unparseable JSON", async () => {
+    const validManifest = makeValidManifest();
+
+    // First two calls: garbled JSON, third: valid (route retries up to 3)
+    mockGenerateText
+      .mockResolvedValueOnce(makeTextResult("{ broken json"))
+      .mockResolvedValueOnce(makeTextResult("still { broken"))
+      .mockResolvedValueOnce(makeGenerateResult(validManifest));
+
+    const req = makeRequest({ prompt: "show data" });
+    const res = await POST(req);
+
+    // Should succeed on the third attempt
+    expect(res.status).toBe(200);
+    expect(mockGenerateText).toHaveBeenCalledTimes(3);
   });
 });

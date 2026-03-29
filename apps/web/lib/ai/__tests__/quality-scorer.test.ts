@@ -247,4 +247,53 @@ describe("scoreManifest", () => {
     expect(score.total).toBeLessThan(50);
     expect(score.deductions.length).toBeGreaterThan(3);
   });
+
+  // ── runtimeQuality dimension ───────────────────────────────
+
+  it("deducts for sparse choropleth (< 5 features)", () => {
+    const manifest = fullManifest();
+    const profile = polygonProfile();
+    profile.featureCount = 3;
+    const score = scoreManifest(manifest, profile);
+    expect(score.breakdown.runtimeQuality).toBeLessThan(10);
+    expect(score.deductions.some(d => d.includes("sparse"))).toBe(true);
+  });
+
+  it("deducts for high zoom on global data", () => {
+    const manifest = fullManifest({ defaultZoom: 14 });
+    const profile = polygonProfile();
+    // Global bounds (lat span > 100°)
+    profile.bounds = [[-60, -180], [70, 180]];
+    const score = scoreManifest(manifest, profile);
+    expect(score.breakdown.runtimeQuality).toBeLessThan(10);
+    expect(score.deductions.some(d => d.includes("Zoom level"))).toBe(true);
+  });
+
+  it("deducts for low zoom on local data", () => {
+    const manifest = fullManifest({ defaultZoom: 3 });
+    const profile = polygonProfile();
+    // Local bounds (lat span < 1°)
+    profile.bounds = [[59.3, 18.0], [59.4, 18.1]];
+    const score = scoreManifest(manifest, profile);
+    expect(score.breakdown.runtimeQuality).toBeLessThan(10);
+    expect(score.deductions.some(d => d.includes("too low"))).toBe(true);
+  });
+
+  it("deducts for labels on large datasets", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).labelField = "name";
+    const profile = polygonProfile();
+    profile.featureCount = 200;
+    const score = scoreManifest(manifest, profile);
+    expect(score.breakdown.runtimeQuality).toBeLessThan(10);
+    expect(score.deductions.some(d => d.includes("Labels"))).toBe(true);
+  });
+
+  it("gives full runtimeQuality when no issues", () => {
+    const manifest = fullManifest();
+    const profile = polygonProfile();
+    profile.featureCount = 50;
+    const score = scoreManifest(manifest, profile);
+    expect(score.breakdown.runtimeQuality).toBe(10);
+  });
 });

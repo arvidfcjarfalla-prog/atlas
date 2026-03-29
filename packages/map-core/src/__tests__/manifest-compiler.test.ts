@@ -1182,6 +1182,50 @@ describe("manifest-compiler", () => {
       expect(weight).not.toContain(10);
     });
 
+    it("hexbin-3d produces deck layer config", () => {
+      const layer: LayerManifest = {
+        id: "hex3d", kind: "asset", label: "HexGrid",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "hexbin-3d" },
+        hexbin3d: { elevationScale: 5000, coverage: 0.9 },
+      };
+      const data = fc([pt(0, 0, { v: 1 }), pt(1, 1, { v: 2 })]);
+      const result = compileLayer(layer, data);
+      expect(result.deckLayers).toBeDefined();
+      expect(result.deckLayers!.length).toBe(1);
+      expect(result.deckLayers![0].type).toBe("HexagonLayer");
+      expect(result.deckLayers![0].props.elevationScale).toBe(5000);
+    });
+
+    it("screen-grid produces deck layer config", () => {
+      const layer: LayerManifest = {
+        id: "sg", kind: "asset", label: "ScreenGrid",
+        sourceType: "geojson-static", geometryType: "point",
+        style: { markerShape: "circle", mapFamily: "screen-grid" },
+        screenGrid: { cellSize: 30 },
+      };
+      const data = fc([pt(0, 0, { v: 1 }), pt(1, 1, { v: 2 })]);
+      const result = compileLayer(layer, data);
+      expect(result.deckLayers).toBeDefined();
+      expect(result.deckLayers![0].type).toBe("ScreenGridLayer");
+      expect(result.deckLayers![0].props.cellSizePixels).toBe(30);
+    });
+
+    it("trip produces deck layer config and warns on missing timestampField", () => {
+      const layer: LayerManifest = {
+        id: "trip", kind: "asset", label: "Trip",
+        sourceType: "geojson-static", geometryType: "line",
+        style: { markerShape: "circle", mapFamily: "trip" },
+        trip: { timestampField: "", trailLength: 100, widthPixels: 4 },
+      };
+      const data = fc([line([[0, 0], [1, 1]], { ts: 1000 })]);
+      const result = compileLayer(layer, data);
+      expect(result.deckLayers).toBeDefined();
+      expect(result.deckLayers![0].type).toBe("TripsLayer");
+      expect(result.deckLayers![0].props.trailLength).toBe(100);
+      expect(result.warnings?.some(w => w.includes("timestampField"))).toBe(true);
+    });
+
     it("natural-breaks classification emits a warning", () => {
       const layer: LayerManifest = {
         id: "nb", kind: "asset", label: "NB",
