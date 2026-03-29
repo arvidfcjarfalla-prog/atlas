@@ -181,7 +181,7 @@ function normalizedValues(
 function uniqueStringValues(
   data: GeoJSON.FeatureCollection,
   field: string,
-  max = 7,
+  max = 12,
 ): string[] {
   const seen = new Set<string>();
   for (const f of data.features) {
@@ -432,37 +432,88 @@ function compilePoint(
       ? getColors(scheme(layer), 1)[0]
       : "#6baed6";
 
-  const layers: LayerSpecification[] = [
-    {
-      id: pointsId,
-      type: "circle",
+  // Check what geometry types the data contains
+  const hasLines = data.features.some(
+    (f) => f.geometry && (f.geometry.type === "LineString" || f.geometry.type === "MultiLineString"),
+  );
+  const hasPolygons = data.features.some(
+    (f) => f.geometry && (f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"),
+  );
+  const hasPoints = data.features.some(
+    (f) => f.geometry && (f.geometry.type === "Point" || f.geometry.type === "MultiPoint"),
+  );
+
+  const baseColor = typeof colorExpr === "string" ? colorExpr : "#6baed6";
+  const layers: LayerSpecification[] = [];
+
+  if (hasPolygons) {
+    warnings.push("Point family received Polygon data — rendering as filled areas");
+    layers.push({
+      id: `${layer.id}-fill`,
+      type: "fill",
       source: sourceId,
+      filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
       paint: {
-        "circle-color": colorExpr as string,
-        "circle-radius": 5,
-        "circle-stroke-width": 1,
-        "circle-stroke-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
-        "circle-opacity": layer.style.fillOpacity ?? 0.85,
+        "fill-color": baseColor,
+        "fill-opacity": layer.style.fillOpacity ?? 0.6,
       },
-    } as LayerSpecification,
-    {
-      id: highlightId,
-      type: "circle",
+    } as LayerSpecification);
+  }
+
+  if (hasLines) {
+    const lineId = `${layer.id}-lines`;
+    layers.push({
+      id: lineId,
+      type: "line",
       source: sourceId,
+      filter: ["any",
+        ["==", ["geometry-type"], "LineString"],
+        ["==", ["geometry-type"], "MultiLineString"],
+      ],
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "circle-color": "transparent",
-        "circle-radius": 10,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "rgba(255,255,255,0.6)",
-        "circle-stroke-opacity": [
-          "case",
-          ["boolean", ["feature-state", "hover"], false],
-          1,
-          0,
-        ],
+        "line-color": baseColor,
+        "line-width": 3,
+        "line-opacity": layer.style.fillOpacity ?? 0.85,
       },
-    } as LayerSpecification,
-  ];
+    } as LayerSpecification);
+  }
+
+  if (hasPoints || (!hasLines && !hasPolygons)) {
+    layers.push(
+      {
+        id: pointsId,
+        type: "circle",
+        source: sourceId,
+        ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
+        paint: {
+          "circle-color": colorExpr as string,
+          "circle-radius": 5,
+          "circle-stroke-width": 1,
+          "circle-stroke-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
+          "circle-opacity": layer.style.fillOpacity ?? 0.85,
+        },
+      } as LayerSpecification,
+      {
+        id: highlightId,
+        type: "circle",
+        source: sourceId,
+        ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
+        paint: {
+          "circle-color": "transparent",
+          "circle-radius": 10,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "rgba(255,255,255,0.6)",
+          "circle-stroke-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            1,
+            0,
+          ],
+        },
+      } as LayerSpecification,
+    );
+  }
 
   return {
     sourceId,
@@ -567,13 +618,13 @@ function compileChoropleth(
 
   const colorField = layer.style.colorField;
   const classCount = classes(layer);
-  // Force quantile for choropleth — it distributes features evenly across color
-  // classes, ensuring visual distinction even with skewed data. Only manual and
-  // categorical are exempt (they have explicit user-defined breaks/categories).
   const requestedMethod = layer.style.classification?.method ?? "quantile";
   const method = requestedMethod === "manual" || requestedMethod === "categorical"
     ? requestedMethod
     : "quantile";
+  if (requestedMethod !== method && requestedMethod !== "quantile") {
+    warnings.push(`Classification "${requestedMethod}" not yet implemented — using quantile`);
+  }
   const colorScheme = scheme(layer);
   let paletteColors = getColors(colorScheme, classCount);
   if (paletteColors.length === 0 && classCount > 0) {
@@ -615,40 +666,108 @@ function compileChoropleth(
     }
   }
 
-  const layers: LayerSpecification[] = [
-    {
-      id: fillId,
-      type: "fill",
-      source: sourceId,
-      paint: {
-        "fill-color": fillColor as string,
-        "fill-opacity": layer.style.fillOpacity ?? 0.85,
-      },
-    } as LayerSpecification,
-    {
-      id: strokeId,
+  // Check if data has polygons — if only points/lines, fallback to appropriate layer types
+  const hasPolys = data.features.some(
+    (f) => f.geometry && (f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"),
+  );
+  const hasLineData = data.features.some(
+    (f) => f.geometry && (f.geometry.type === "LineString" || f.geometry.type === "MultiLineString"),
+  );
+  const hasPointData = data.features.some(
+    (f) => f.geometry && f.geometry.type === "Point",
+  );
+
+  const layers: LayerSpecification[] = [];
+
+  if (hasPolys) {
+    layers.push(
+      {
+        id: fillId,
+        type: "fill",
+        source: sourceId,
+        filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+        paint: {
+          "fill-color": fillColor as string,
+          "fill-opacity": layer.style.fillOpacity ?? 0.85,
+        },
+      } as LayerSpecification,
+      {
+        id: strokeId,
+        type: "line",
+        source: sourceId,
+        filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+        paint: {
+          "line-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
+          "line-width": layer.style.strokeWidth ?? 0.5,
+        },
+      } as LayerSpecification,
+      {
+        id: highlightId,
+        type: "fill",
+        source: sourceId,
+        filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+        paint: {
+          "fill-color": "rgba(255,255,255,0.1)",
+          "fill-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            1,
+            0,
+          ],
+        },
+      } as LayerSpecification,
+    );
+  }
+
+  if (hasLineData && !hasPolys) {
+    warnings.push("Choropleth received LineString data — rendering as colored lines");
+    layers.push({
+      id: `${layer.id}-lines`,
       type: "line",
       source: sourceId,
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
-        "line-width": layer.style.strokeWidth ?? 0.5,
+        "line-color": fillColor as string,
+        "line-width": 3,
+        "line-opacity": layer.style.fillOpacity ?? 0.85,
       },
-    } as LayerSpecification,
-    {
-      id: highlightId,
-      type: "fill",
+    } as LayerSpecification);
+  }
+
+  if (hasPointData && !hasPolys) {
+    warnings.push("Choropleth received Point data — rendering as colored circles");
+    layers.push({
+      id: `${layer.id}-circles`,
+      type: "circle",
       source: sourceId,
+      filter: ["==", ["geometry-type"], "Point"],
       paint: {
-        "fill-color": "rgba(255,255,255,0.1)",
-        "fill-opacity": [
-          "case",
-          ["boolean", ["feature-state", "hover"], false],
-          1,
-          0,
-        ],
+        "circle-color": fillColor as string,
+        "circle-radius": 6,
+        "circle-opacity": layer.style.fillOpacity ?? 0.85,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "rgba(255,255,255,0.3)",
       },
-    } as LayerSpecification,
-  ];
+    } as LayerSpecification);
+  }
+
+  if (layers.length === 0) {
+    // Fallback: emit standard fill layers (original behavior)
+    layers.push(
+      {
+        id: fillId,
+        type: "fill",
+        source: sourceId,
+        paint: { "fill-color": fillColor as string, "fill-opacity": layer.style.fillOpacity ?? 0.85 },
+      } as LayerSpecification,
+      {
+        id: strokeId,
+        type: "line",
+        source: sourceId,
+        paint: { "line-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)", "line-width": layer.style.strokeWidth ?? 0.5 },
+      } as LayerSpecification,
+    );
+  }
 
   // Optional text labels on polygons — use centroid points to avoid duplicate
   // labels on MultiPolygon archipelago features (one label per largest ring).
@@ -715,9 +834,15 @@ function compileHeatmap(
   const colorScheme = scheme(layer);
   const ramp = getColors(colorScheme, 6);
 
-  const weightExpr: Expr | number = layer.style.sizeField
-    ? ["interpolate", ["linear"], ["get", layer.style.sizeField], 0, 0, 10, 1]
-    : 1;
+  // Derive weight domain from actual data instead of hardcoded [0, 10]
+  let weightExpr: Expr | number = 1;
+  if (layer.style.sizeField) {
+    const vals = numericValues(data, layer.style.sizeField);
+    const lo = vals.length > 0 ? Math.min(...vals) : 0;
+    const hi = vals.length > 0 ? Math.max(...vals) : 1;
+    const range = hi - lo || 1;
+    weightExpr = ["interpolate", ["linear"], ["get", layer.style.sizeField], lo, 0, lo + range, 1];
+  }
 
   const layers: LayerSpecification[] = [
     {
@@ -1206,7 +1331,7 @@ function compileTimeline(
 
   // Detect geometry type and delegate to appropriate base compiler
   const hasPolygons = data.features.some(
-    (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+    (f) => f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon",
   );
 
   // Compile base layers (choropleth for polygons, point for points)

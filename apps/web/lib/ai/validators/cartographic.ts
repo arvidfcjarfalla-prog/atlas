@@ -165,10 +165,10 @@ export function validateCartographic(
       );
     }
 
-    // Extrusion invisible at pitch 0
+    // Extrusion invisible at pitch 0 — promote to error so retry loop can fix it
     if (family === "extrusion" && !manifest.defaultPitch) {
-      warnings.push(
-        `Layer "${id}": extrusion maps need defaultPitch ≥ 30 to show 3D effect. Current pitch: 0`,
+      errors.push(
+        `Layer "${id}": extrusion maps need defaultPitch ≥ 30 to show 3D effect. Set manifest.defaultPitch to 45 or higher.`,
       );
     }
 

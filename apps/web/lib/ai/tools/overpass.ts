@@ -21,6 +21,7 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_CACHE_SIZE = 200;
 
 function getCached(key: string): GeoJSON.FeatureCollection | null {
   const entry = cache.get(key);
@@ -43,9 +44,50 @@ export interface OverpassQuery {
   bbox: [number, number, number, number];
 }
 
+/** Tags where the geometry is a way (line/area), not a node. */
+const WAY_KEYS = new Set(["highway", "waterway", "barrier"]);
+
+/** Tags that are areas (closed ways) — need way query + polygon output. */
+const AREA_KEYS = new Set(["leisure", "landuse", "aeroway", "natural"]);
+
+/** Railway values that are point features (stations, stops) — NOT track lines. */
+const RAILWAY_NODE_VALUES = new Set([
+  "station", "halt", "tram_stop", "subway_entrance",
+  "level_crossing", "crossing", "signal",
+]);
+
 function buildQL(query: OverpassQuery): string {
   const { key, value, bbox } = query;
   const [s, w, n, e] = bbox;
+
+  // Railway: node for stations/stops, way for tracks
+  if (key === "railway") {
+    if (RAILWAY_NODE_VALUES.has(value)) {
+      return `[out:json][timeout:${TIMEOUT}];
+node["${key}"="${value}"](${s},${w},${n},${e});
+out center ${MAX_FEATURES};`;
+    }
+    return `[out:json][timeout:${TIMEOUT}];
+way["${key}"="${value}"](${s},${w},${n},${e});
+out geom ${MAX_FEATURES};`;
+  }
+
+  // Linear features (roads, paths, waterways)
+  if (WAY_KEYS.has(key)) {
+    return `[out:json][timeout:${TIMEOUT}];
+way["${key}"="${value}"](${s},${w},${n},${e});
+out geom ${MAX_FEATURES};`;
+  }
+
+  // Area features (parks, stadiums, airports, landuse)
+  if (AREA_KEYS.has(key)) {
+    return `[out:json][timeout:${TIMEOUT}];
+(way["${key}"="${value}"](${s},${w},${n},${e});
+ node["${key}"="${value}"](${s},${w},${n},${e}););
+out geom ${MAX_FEATURES};`;
+  }
+
+  // Default: point features (amenity, shop, tourism, etc.)
   return `[out:json][timeout:${TIMEOUT}];
 node["${key}"="${value}"](${s},${w},${n},${e});
 out center ${MAX_FEATURES};`;
@@ -74,7 +116,10 @@ export async function queryOverpass(
       signal: AbortSignal.timeout(20_000),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[overpass] HTTP ${res.status} for query: ${query.key}=${query.value}`);
+      return null;
+    }
 
     const data = await res.json();
     const elements = data.elements as Array<{
@@ -82,41 +127,69 @@ export async function queryOverpass(
       lat?: number;
       lon?: number;
       center?: { lat: number; lon: number };
+      geometry?: Array<{ lat: number; lon: number }>;
       tags?: Record<string, string>;
     }>;
 
     if (!elements || elements.length === 0) return null;
 
-    const features: GeoJSON.Feature[] = elements
-      .filter((el) => {
+    const features: GeoJSON.Feature[] = [];
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i];
+      const tags = el.tags ?? {};
+      const props = {
+        name: tags.name ?? "",
+        type: tags[query.key] ?? query.value,
+        ...tags,
+      };
+
+      if (el.type === "way" && el.geometry && el.geometry.length >= 2) {
+        const coords = el.geometry.map((p: { lon: number; lat: number }) => [p.lon, p.lat]);
+        // Closed way (first == last) with 4+ points → Polygon
+        const first = coords[0];
+        const last = coords[coords.length - 1];
+        const isClosed = coords.length >= 4 && first[0] === last[0] && first[1] === last[1];
+        if (isClosed) {
+          features.push({
+            type: "Feature",
+            id: i,
+            geometry: { type: "Polygon", coordinates: [coords] },
+            properties: props,
+          });
+        } else {
+          features.push({
+            type: "Feature",
+            id: i,
+            geometry: { type: "LineString", coordinates: coords },
+            properties: props,
+          });
+        }
+      } else {
+        // Node or way center → Point
         const lat = el.lat ?? el.center?.lat;
         const lon = el.lon ?? el.center?.lon;
-        return lat != null && lon != null;
-      })
-      .map((el, i) => {
-        const lat = el.lat ?? el.center?.lat ?? 0;
-        const lon = el.lon ?? el.center?.lon ?? 0;
-        const tags = el.tags ?? {};
-        return {
-          type: "Feature" as const,
+        if (lat == null || lon == null) continue;
+        features.push({
+          type: "Feature",
           id: i,
           geometry: {
-            type: "Point" as const,
+            type: "Point",
             coordinates: [lon, lat],
           },
-          properties: {
-            name: tags.name ?? "",
-            type: tags[query.key] ?? query.value,
-            ...tags,
-          },
-        };
-      });
+          properties: props,
+        });
+      }
+    }
 
     const fc: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features,
     };
 
+    if (cache.size >= MAX_CACHE_SIZE) {
+      const oldest = cache.keys().next().value;
+      if (oldest) cache.delete(oldest);
+    }
     cache.set(cacheKey, { data: fc, timestamp: Date.now() });
 
     return fc;
