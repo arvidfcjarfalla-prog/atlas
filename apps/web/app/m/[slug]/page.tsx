@@ -112,6 +112,7 @@ export default function PublicSharePage() {
     );
   }
 
+  const legacyDataMissing = !geojsonData && map?.data_status === "legacy";
   const mapData: GeoJSON.FeatureCollection | string =
     geojsonData ?? manifest.layers[0]?.sourceUrl ?? { type: "FeatureCollection" as const, features: [] };
   const layer = manifest.layers[0];
@@ -119,6 +120,20 @@ export default function PublicSharePage() {
 
   return (
     <>
+      {/* Legacy data banner */}
+      {legacyDataMissing && (
+        <div style={{
+          position: "fixed", top: 46, left: 0, right: 0, zIndex: 99,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          padding: "8px 16px",
+          background: "rgba(239,68,68,0.10)",
+          borderBottom: "1px solid rgba(239,68,68,0.20)",
+          fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(239,68,68,0.9)",
+        }}>
+          <span>Datan för den här kartan är inte längre tillgänglig.</span>
+        </div>
+      )}
+
       {/* Floating top bar */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,

@@ -15,6 +15,7 @@ import { useAgentChat, type AgentMessage } from "@/lib/hooks/use-agent-chat";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Toast } from "@/components/Toast";
 import type { DatasetProfile } from "@/lib/ai/types";
+import { profileDataset } from "@/lib/ai/profiler";
 import { EditorToolbar } from "@/components/EditorToolbar";
 import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
@@ -176,6 +177,7 @@ export default function MapPage() {
   const [legendItems, setLegendItems] = useState<CompiledLegendItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [legacyDataMissing, setLegacyDataMissing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
@@ -241,15 +243,27 @@ export default function MapPage() {
         }
       } catch { /* ignore parse errors */ }
 
-      const dataUrl = row.geojson_url ?? m.layers[0]?.sourceUrl;
+      // Prefer durable artifact, fallback to legacy cache URL
+      const dataUrl = row.artifact_id
+        ? `/api/datasets/${row.artifact_id}/geojson`
+        : row.geojson_url ?? m.layers[0]?.sourceUrl;
+      let dataLoaded = false;
       if (dataUrl) {
         try {
           const geoRes = await fetch(dataUrl);
           if (geoRes.ok) {
             const geo = await geoRes.json();
-            if (geo?.type === "FeatureCollection") setGeojsonData(geo);
+            if (geo?.type === "FeatureCollection") {
+              setGeojsonData(geo);
+              setDataProfile(profileDataset(geo));
+              dataLoaded = true;
+            }
           }
         } catch { /* non-fatal */ }
+      }
+      // Legacy maps without artifact: data is gone when cache expires
+      if (!dataLoaded && row.data_status === "legacy") {
+        setLegacyDataMissing(true);
       }
       setLoading(false);
     }
@@ -412,35 +426,6 @@ export default function MapPage() {
   }, [id, showToast]);
 
   const [mapWarnings, setMapWarnings] = useState<string[]>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  const handleFileUpload = useCallback(async (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    try {
-      const res = await fetch("/api/ai/upload-data", { method: "POST", body: form });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setMapWarnings([err.error ?? "Upload failed"]);
-        return;
-      }
-      const data = await res.json();
-      if (data.geojson) {
-        setGeojsonData(data.geojson);
-        if (data.warnings?.length) setMapWarnings(data.warnings);
-        if (data.profile) setDataProfile(data.profile);
-      }
-    } catch {
-      setMapWarnings(["File upload failed"]);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
-  }, [handleFileUpload]);
 
   // ── Agent chat ──────────────────────────────────────────────
   const handleManifestUpdate = useCallback(
@@ -451,13 +436,30 @@ export default function MapPage() {
       setRedoStack([]);
       setManifest(newManifest);
       if (dataUrl && dataUrl !== mapRow?.geojson_url) {
+        // Save manifest immediately (without new data URL).
+        // The data URL is only persisted after fetch validates it,
+        // to prevent saving a broken geojson_url that triggers
+        // artifact_id = null in PATCH.
+        autoSave(newManifest);
         fetch(dataUrl)
-          .then((r) => r.ok ? r.json() : null)
+          .then((r) => (r.ok ? r.json() : null))
           .then((geo) => {
-            if (geo?.type === "FeatureCollection") setGeojsonData(geo);
+            if (geo?.type === "FeatureCollection") {
+              setGeojsonData(geo);
+              setDataProfile(profileDataset(geo));
+              // Data validated — persist the new URL and update mapRow
+              // so handleRegenerate reads fresh values in this session.
+              // The PATCH endpoint nulls artifact_id when geojson_url
+              // changes, so mirror that here for in-session consistency.
+              setMapRow((prev) =>
+                prev
+                  ? { ...prev, geojson_url: dataUrl, artifact_id: null, data_status: "legacy" as const }
+                  : prev,
+              );
+              autoSave(newManifest, dataUrl);
+            }
           })
           .catch(() => {});
-        autoSave(newManifest, dataUrl);
       } else {
         autoSave(newManifest);
       }
@@ -503,6 +505,70 @@ export default function MapPage() {
     setRedoStack((r) => r.slice(0, -1));
     autoSave(next);
   }, [manifest, redoStack, autoSave]);
+
+  // ── Regenerate map ─────────────────────────────────────────
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const handleRegenerate = useCallback(async () => {
+    if (!mapRow?.prompt || !manifest || isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      // sourceUrl: pass geojson_url unchanged (already encoded).
+      // artifactId is the primary signal — generate-map uses it for
+      // deterministic fallback when cache is cold.
+      const sourceUrl = mapRow.geojson_url ?? manifest.layers[0]?.sourceUrl;
+
+      const res = await fetch("/api/ai/generate-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: mapRow.prompt,
+          ...(sourceUrl ? { sourceUrl, dataUrl: sourceUrl } : {}),
+          ...(dataProfile ? { dataProfile } : {}),
+          ...(mapRow.artifact_id ? { artifactId: mapRow.artifact_id } : {}),
+        }),
+      });
+
+      if (!res.ok) {
+        showToast("Kunde inte regenerera kartan", "error");
+        return;
+      }
+
+      const data = await res.json();
+      if (!data.manifest) {
+        showToast("Ingen karta genererades", "error");
+        return;
+      }
+
+      // Push current to history for undo
+      saveVersion(manifest, "before-regenerate");
+      setManifestHistory((h) => [...h, manifest]);
+      setRedoStack([]);
+      setManifest(data.manifest);
+      autoSave(data.manifest);
+
+      // Re-fetch GeoJSON for the new manifest
+      const geoUrl = sourceUrl ?? data.manifest.layers[0]?.sourceUrl;
+      if (geoUrl) {
+        try {
+          const geoRes = await fetch(
+            mapRow.artifact_id
+              ? `/api/datasets/${mapRow.artifact_id}/geojson`
+              : geoUrl,
+          );
+          if (geoRes.ok) {
+            const geo = await geoRes.json();
+            if (geo?.type === "FeatureCollection") setGeojsonData(geo);
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      showToast("Karta regenererad", "success");
+    } catch {
+      showToast("Regenerering misslyckades", "error");
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [mapRow, manifest, dataProfile, isRegenerating, autoSave, saveVersion, showToast]);
 
   // ── Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z ────────────────
   useEffect(() => {
@@ -637,7 +703,7 @@ export default function MapPage() {
           <span style={{ fontSize: 13, color: "#5a5752", flexShrink: 0 }}>&#x1F50D;</span>
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Sök features…" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "#e4e0d8", width: "100%", outline: "none", fontFamily: "'Geist',sans-serif" }} />
         </div>
-        <ChatPanel messages={chatMessages} input={chatInput} isStreaming={chatStreaming} onInputChange={setChatInput} onSend={handleSend} onStop={abortStream} onUndo={handleUndo} canUndo={manifestHistory.length > 0} onFileUpload={handleFileUpload} />
+        <ChatPanel messages={chatMessages} input={chatInput} isStreaming={chatStreaming} onInputChange={setChatInput} onSend={handleSend} onStop={abortStream} onUndo={handleUndo} canUndo={manifestHistory.length > 0} />
       </div>
     );
 
@@ -655,6 +721,8 @@ export default function MapPage() {
           onExportPNG={handleExportPNG}
           onExportGeoJSON={handleExportGeoJSON}
           onExportPDF={handleExportPDF}
+          onRegenerate={mapRow?.prompt ? handleRegenerate : undefined}
+          isRegenerating={isRegenerating}
           onExportSVG={handleExportSVG}
           hasCompareManifest={!!compareManifest}
         />
@@ -705,6 +773,29 @@ export default function MapPage() {
             </button>
           </div>
         )}
+        {legacyDataMissing && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+            padding: "10px 16px",
+            background: "rgba(239,68,68,0.08)",
+            borderBottom: "1px solid rgba(239,68,68,0.20)",
+            fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(239,68,68,0.9)",
+          }}>
+            <span>Datan för den här kartan är inte längre tillgänglig.</span>
+            {mapRow?.prompt && (
+              <button
+                onClick={() => router.push(`/app/map/new?prompt=${encodeURIComponent(mapRow.prompt)}`)}
+                style={{
+                  background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.30)",
+                  borderRadius: 6, padding: "4px 14px", fontSize: 12, fontWeight: 600,
+                  color: "rgba(239,68,68,0.95)", cursor: "pointer",
+                }}
+              >
+                Skapa ny med samma fråga
+              </button>
+            )}
+          </div>
+        )}
         {mapWarnings.length > 0 && (
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 16px",
@@ -719,22 +810,7 @@ export default function MapPage() {
         )}
         <div
           style={{ flex: 1, minHeight: 0, position: "relative" }}
-          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
         >
-          {isDragOver && (
-            <div style={{
-              position: "absolute", inset: 0, zIndex: 50,
-              background: "rgba(99,130,255,0.12)", border: "2px dashed rgba(99,130,255,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              pointerEvents: "none",
-            }}>
-              <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "rgba(99,130,255,0.9)" }}>
-                Släpp fil för att ladda data
-              </span>
-            </div>
-          )}
           {mode === "compare" && compareManifest ? (
             <CompareView
               manifestA={compareManifest}

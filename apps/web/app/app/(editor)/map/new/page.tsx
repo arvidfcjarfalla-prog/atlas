@@ -71,6 +71,7 @@ function NewMapPage() {
   const queryClient = useQueryClient();
   const prompt = searchParams.get("prompt") ?? "";
   const templateId = searchParams.get("template");
+  const artifactId = searchParams.get("artifactId");
   const { user } = useAuth();
 
   const { toast, show: showToast } = useToast();
@@ -128,6 +129,7 @@ function NewMapPage() {
           ...(dataProfile ? { dataProfile } : {}),
           ...(scopeHint ? { scopeHint } : {}),
           ...(preferences && Object.keys(preferences).length > 0 ? { preferences } : {}),
+          ...(artifactId ? { artifactId } : {}),
         }),
       });
       if (!genRes.ok) throw new Error("Map generation failed");

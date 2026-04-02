@@ -15,6 +15,8 @@ interface EditorToolbarProps {
   onExportPDF?: () => void;
   onExportSVG?: () => void;
   hasCompareManifest?: boolean;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 // Design tokens from docs/prototype/atlas.html EditorView
@@ -32,6 +34,8 @@ export function EditorToolbar({
   onExportPDF,
   onExportSVG,
   hasCompareManifest,
+  onRegenerate,
+  isRegenerating,
 }: EditorToolbarProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -180,6 +184,28 @@ export function EditorToolbar({
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
+
+      {/* Regenerate */}
+      {onRegenerate && (
+        <button
+          onClick={onRegenerate}
+          disabled={isRegenerating}
+          style={{
+            fontSize: 11,
+            fontFamily: "'Segoe UI',-apple-system,sans-serif",
+            color: isRegenerating ? "#3a3732" : "#908c85",
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${bd}`,
+            padding: "5px 12px",
+            borderRadius: 6,
+            cursor: isRegenerating ? "default" : "pointer",
+            marginRight: 6,
+            opacity: isRegenerating ? 0.5 : 1,
+          }}
+        >
+          {isRegenerating ? "Regenererar\u2026" : "Regenerera"}
+        </button>
+      )}
 
       {/* Export */}
       {onExportPNG && onExportGeoJSON ? (

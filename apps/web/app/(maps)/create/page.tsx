@@ -123,6 +123,7 @@ function CreateRedirect() {
 function CreateMapPageInner() {
   const searchParams = useSearchParams();
   const urlPrompt = searchParams.get("prompt")?.trim() ?? "";
+  const artifactId = searchParams.get("artifactId");
   const [state, setState] = useState<FlowState>("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -377,6 +378,7 @@ function CreateMapPageInner() {
             ...(profile ? { dataProfile: profile } : {}),
             ...(parentCaseId ? { parentCaseId } : {}),
             ...(scopeHint ? { scopeHint } : {}),
+            ...(artifactId ? { artifactId } : {}),
           }),
         });
 
