@@ -99,6 +99,30 @@ After any code change, always run:
 pnpm typecheck && pnpm test
 ```
 
+### Focused Test Workflow
+
+Use the smallest relevant test set while iterating, then run the full suite before closing a phase.
+
+```bash
+# Map persistence contracts (save/reopen/publish/duplicate/by-slug)
+cd /Users/arvidhjartberg/atlas/apps/web && npx vitest run lib/ai/__tests__/map-persistence.test.ts
+
+# Data cache semantics (L1/L2 TTL, refresh behavior)
+cd /Users/arvidhjartberg/atlas/apps/web && npx vitest run lib/ai/__tests__/data-cache.test.ts
+
+# Deterministic path + artifact fallback (generate-map cold start)
+cd /Users/arvidhjartberg/atlas/apps/web && npx vitest run lib/ai/__tests__/generate-map-deterministic-fallback.test.ts lib/ai/__tests__/fas3-determinism.test.ts
+
+# Full verification gate before marking work complete
+cd /Users/arvidhjartberg/atlas && pnpm typecheck && pnpm test
+```
+
+Rule of thumb:
+- If you change `apps/web/app/api/maps*`, run `map-persistence.test.ts`.
+- If you change `apps/web/lib/ai/tools/data-search.ts`, run `data-cache.test.ts`.
+- If you change `apps/web/app/api/ai/generate-map*` or `dataset-storage.ts`, run the deterministic path tests.
+- If tests fail, inspect only the failing test and the closest route/tool file first.
+
 ## Testing
 
 - Unit tests: Vitest (v4.1+), 43 test files across 3 packages
