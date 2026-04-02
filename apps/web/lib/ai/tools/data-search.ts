@@ -21,9 +21,17 @@ import { MODELS } from "../ai-client";
 import { profileDataset } from "../profiler";
 import { getServiceClient } from "../../supabase/service";
 import type { DatasetProfile } from "../types";
+import type { NormalizedDimension, SourceMetadata } from "./normalized-result";
 import type { Json } from "../../supabase/types";
 
 // ─── Types ──────────────────────────────────────────────────
+
+/** Lightweight subset of NormalizedSourceResult for deterministic manifest generation. */
+export interface NormalizedMeta {
+  sourceMetadata: SourceMetadata;
+  dimensions: NormalizedDimension[];
+  candidateMetricFields: string[];
+}
 
 export interface DataSearchResult {
   found: boolean;
@@ -50,6 +58,8 @@ export interface CacheEntry {
   timestamp: number;
   /** Pipeline resolution status at cache-write time (absent in legacy entries). */
   resolutionStatus?: "map_ready" | "tabular_only";
+  /** Lightweight metadata from the source adapter — used by deterministic manifest generation. */
+  normalizedMeta?: NormalizedMeta;
 }
 
 // L1: In-memory cache (fast, volatile — survives within a single lambda invocation)

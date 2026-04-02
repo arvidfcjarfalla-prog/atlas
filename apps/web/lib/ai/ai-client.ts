@@ -13,10 +13,14 @@ import { logDiagnostic } from "../logger";
 
 export const MODELS: {
   generation: () => LanguageModel;
+  fallback: () => LanguageModel;
   utility: () => LanguageModel;
 } = {
   /** Main map generation — needs best quality. */
   generation: () => anthropic("claude-sonnet-4-5-20250929"),
+
+  /** Fallback for low quality scores (< 60) — stronger model, higher cost. */
+  fallback: () => anthropic("claude-opus-4-5-20250918"),
 
   /** Fast utility tasks — intent extraction, metric matching, prompt enhancement. */
   utility: () =>
