@@ -13,6 +13,112 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      dataset_artifacts: {
+        Row: {
+          id: string;
+          source_id: string;
+          table_id: string | null;
+          query_fingerprint: string;
+          version: number;
+          geojson_url: string | null;
+          profile: Json;
+          normalized_meta: Json | null;
+          provenance: Json;
+          status: "map_ready" | "tabular_only";
+          feature_count: number;
+          content_hash: string;
+          storage_bucket: string | null;
+          storage_path: string | null;
+          owner_user_id: string | null;
+          is_public: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_id: string;
+          table_id?: string | null;
+          query_fingerprint: string;
+          version?: number;
+          geojson_url?: string | null;
+          profile: Json;
+          normalized_meta?: Json | null;
+          provenance: Json;
+          status?: "map_ready" | "tabular_only";
+          feature_count: number;
+          content_hash: string;
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          owner_user_id?: string | null;
+          is_public?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          status?: "map_ready" | "tabular_only";
+          storage_bucket?: string | null;
+          storage_path?: string | null;
+          owner_user_id?: string | null;
+          is_public?: boolean;
+        };
+        Relationships: [];
+      };
+      resolution_sessions: {
+        Row: {
+          id: string;
+          prompt_key: string;
+          prompt_original: string;
+          topic_group: string;
+          source_path: string | null;
+          winning_source_id: string | null;
+          winning_table_id: string | null;
+          artifact_id: string | null;
+          latency_ms: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          prompt_key: string;
+          prompt_original: string;
+          topic_group: string;
+          source_path?: string | null;
+          winning_source_id?: string | null;
+          winning_table_id?: string | null;
+          artifact_id?: string | null;
+          latency_ms?: number | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      resolution_attempts: {
+        Row: {
+          id: string;
+          session_id: string;
+          ordinal: number;
+          source_id: string;
+          table_id: string;
+          status: string;
+          confidence: number | null;
+          coverage_ratio: number | null;
+          failure_reason: string | null;
+          latency_ms: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          ordinal: number;
+          source_id: string;
+          table_id: string;
+          status: string;
+          confidence?: number | null;
+          coverage_ratio?: number | null;
+          failure_reason?: string | null;
+          latency_ms?: number | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       data_cache: {
         Row: {
           id: string;
@@ -24,6 +130,8 @@ export interface Database {
           resolution_status: string | null;
           created_at: string;
           expires_at: string | null;
+          pinned: boolean;
+          normalized_meta: Json | null;
         };
         Insert: {
           id?: string;
@@ -35,6 +143,8 @@ export interface Database {
           resolution_status?: string | null;
           created_at?: string;
           expires_at?: string | null;
+          pinned?: boolean;
+          normalized_meta?: Json | null;
         };
         Update: {
           data?: Json;
@@ -43,6 +153,8 @@ export interface Database {
           description?: string;
           resolution_status?: string | null;
           expires_at?: string | null;
+          pinned?: boolean;
+          normalized_meta?: Json | null;
         };
         Relationships: [];
       };
@@ -148,6 +260,8 @@ export interface Database {
           is_public: boolean;
           slug: string | null;
           chat_history: Json;
+          artifact_id: string | null;
+          data_status: "ok" | "missing_source" | "legacy";
           created_at: string;
           updated_at: string;
         };
@@ -163,6 +277,8 @@ export interface Database {
           is_public?: boolean;
           slug?: string | null;
           chat_history?: Json;
+          artifact_id?: string | null;
+          data_status?: "ok" | "missing_source" | "legacy";
           created_at?: string;
           updated_at?: string;
         };
@@ -178,6 +294,8 @@ export interface Database {
           is_public?: boolean;
           slug?: string | null;
           chat_history?: Json;
+          artifact_id?: string | null;
+          data_status?: "ok" | "missing_source" | "legacy";
           updated_at?: string;
         };
         Relationships: [];

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { type ModelMessage } from "ai";
 import { MODELS, generateTextWithRetry } from "../../../../lib/ai/ai-client";
 import type { MapManifest } from "@atlas/data-models";
+import { classify } from "@atlas/data-models";
 import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
 import { classifyGenSkill } from "../../../../lib/ai/skills/router";
 import { validateManifest } from "../../../../lib/ai/validators";
@@ -12,10 +13,134 @@ import { saveCase, findRelevantLessons, formatLessons } from "../../../../lib/ai
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 import { applyGeometryGuards } from "../../../../lib/ai/geometry-guards";
+import { getCachedData } from "../../../../lib/ai/tools/data-search";
+import type { NormalizedMeta } from "../../../../lib/ai/tools/data-search";
+import { readArtifactMeta, readDurableDataset } from "../../../../lib/ai/tools/dataset-storage";
+import { createClient } from "../../../../lib/supabase/server";
+import { canGenerateDeterministic, generateDeterministicManifest } from "../../../../lib/ai/tools/deterministic-manifest";
+import type { NormalizedSourceResult } from "../../../../lib/ai/tools/normalized-result";
 import { log } from "../../../../lib/logger";
 import { reportError } from "../../../../lib/error-reporter";
 
 const QUALITY_THRESHOLD = 60;
+
+/** Cache-key pattern — artifact fallback only applies to cache-proxy URLs. */
+const CACHE_URL_RE = /\/api\/geo\/cached\/(.+)/;
+
+/** Tracks which data source resolved for observability. */
+type MetaSource = "cache" | "artifact" | "none";
+
+/**
+ * Read normalizedMeta: cache first, artifact fallback on miss.
+ * Artifact fallback only when sourceUrl is a cache-proxy URL and artifactId is provided,
+ * to avoid semantic mismatch between URL and artifact data.
+ *
+ * Returns [meta, source] so the caller can log which path resolved.
+ */
+async function tryGetNormalizedMeta(
+  sourceUrl?: string,
+  artifactId?: string,
+  userId?: string,
+): Promise<[NormalizedMeta | null, MetaSource]> {
+  if (!sourceUrl) return [null, "none"];
+  const match = sourceUrl.match(CACHE_URL_RE);
+  if (!match) return [null, "none"];
+
+  // 1. Try cache (fast, warm path)
+  const key = decodeURIComponent(match[1]);
+  const entry = await getCachedData(key);
+  if (entry?.normalizedMeta) return [entry.normalizedMeta, "cache"];
+
+  // 2. Fallback: artifact (cold start recovery)
+  if (artifactId) {
+    const meta = await readArtifactMeta(artifactId, { userId });
+    if (meta) return [meta, "artifact"];
+  }
+  return [null, "none"];
+}
+
+/** Build a minimal NormalizedSourceResult stub from cached metadata. */
+function normalizedMetaToStub(meta: NormalizedMeta): NormalizedSourceResult {
+  return {
+    adapterStatus: "ok",
+    dimensions: meta.dimensions,
+    rows: [],
+    candidateMetricFields: meta.candidateMetricFields,
+    countryHints: [],
+    geographyHints: [],
+    sourceMetadata: meta.sourceMetadata,
+    diagnostics: { originalPrompt: "" },
+    confidence: 1,
+  };
+}
+
+/**
+ * Embed pre-computed classification breaks into choropleth layers.
+ * When the frontend renders via URL, it compiles against empty data —
+ * these breaks let the compiler produce correct step expressions and legends.
+ *
+ * Data source priority: cache → durable artifact storage.
+ * Artifact fallback only when sourceUrl is a cache-proxy URL.
+ */
+/** Returns source of features used for break computation. */
+async function embedClassificationBreaks(
+  manifest: MapManifest,
+  sourceUrl?: string,
+  artifactId?: string,
+  userId?: string,
+): Promise<MetaSource> {
+  if (!sourceUrl) return "none";
+  const match = sourceUrl.match(CACHE_URL_RE);
+  if (!match) return "none";
+
+  // 1. Try cache
+  const key = decodeURIComponent(match[1]);
+  const entry = await getCachedData(key);
+  let features = entry?.data?.features;
+  let source: MetaSource = features?.length ? "cache" : "none";
+
+  // 2. Fallback: durable artifact storage
+  if (!features?.length && artifactId) {
+    const fc = await readDurableDataset(artifactId, { userId });
+    features = fc?.features;
+    if (features?.length) source = "artifact";
+  }
+
+  if (!features?.length) return "none";
+
+  for (const layer of manifest.layers) {
+    if (layer.style.mapFamily !== "choropleth" || !layer.style.colorField) continue;
+    const classification = layer.style.classification;
+    if (!classification) continue;
+    if (classification.breaks?.length) continue;
+
+    const colorField = layer.style.colorField;
+    const normField = layer.style.normalization?.field;
+    const multiplier = layer.style.normalization?.multiplier ?? 1;
+
+    let vals: number[];
+    if (normField) {
+      vals = features
+        .map((f) => {
+          const v = Number(f.properties?.[colorField]);
+          const n = Number(f.properties?.[normField]);
+          return n > 0 ? (v * multiplier) / n : NaN;
+        })
+        .filter((v) => Number.isFinite(v));
+    } else {
+      vals = features
+        .map((f) => Number(f.properties?.[colorField]))
+        .filter((v) => Number.isFinite(v));
+    }
+
+    if (vals.length === 0) continue;
+    const result = classify(vals, classification.method ?? "quantile", classification.classes ?? 5);
+    classification.breaks = result.breaks;
+    classification.min = result.min;
+    classification.max = result.max;
+  }
+  return source;
+}
 
 /**
  * Validate a URL to prevent SSRF attacks.
@@ -159,11 +284,13 @@ async function fetchAndProfile(url: string): Promise<DatasetProfile | null> {
  *   - prompt: string (required)
  *   - dataUrl?: string — URL to a GeoJSON FeatureCollection (will be profiled)
  *   - dataProfile?: DatasetProfile — pre-computed dataset profile
+ *   - artifactId?: string — durable artifact ID for cold-start fallback
  *
  * Response: { manifest, validation, model, usage, profile? }
  */
 export async function POST(request: Request) {
   const t0 = Date.now();
+  const evalMode = request.headers.get("x-atlas-eval") === "1";
   let prompt: string | undefined;
   try {
     const body = await request.json();
@@ -188,6 +315,87 @@ export async function POST(request: Request) {
     let profile: DatasetProfile | null = body.dataProfile ?? null;
     if (!profile && sourceUrl && typeof sourceUrl === "string") {
       profile = await fetchAndProfile(sourceUrl);
+    }
+
+    // Optional artifact ID for cold-start fallback (reads from durable storage
+    // when cache is empty). Only used when sourceUrl is a cache-proxy URL.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const artifactId: string | undefined =
+      typeof body.artifactId === "string" && UUID_RE.test(body.artifactId)
+        ? body.artifactId
+        : undefined;
+
+    // Optional auth — needed for reading private artifact data.
+    // Public artifacts work without auth. Failure is non-fatal.
+    let userId: string | undefined;
+    if (artifactId) {
+      try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+      } catch { /* anonymous is fine for public artifacts */ }
+    }
+
+    // ── Deterministic fast path ──────────────────────────────
+    // If the data came from a PxWeb source and has polygon geometry with
+    // _atlas_value, generate the manifest via rules instead of AI.
+    // Zero tokens, sub-millisecond, same response shape.
+    const [normalizedMeta, metaSource] = await tryGetNormalizedMeta(sourceUrl, artifactId, userId);
+    if (normalizedMeta && profile && canGenerateDeterministic(normalizedMetaToStub(normalizedMeta), profile)) {
+      const { manifest, reasons } = generateDeterministicManifest({
+        normalized: normalizedMetaToStub(normalizedMeta),
+        profile,
+        dataUrl: sourceUrl!,
+        prompt,
+      });
+
+      const validation = validateManifest(manifest, profile);
+      if (profile) {
+        const guardWarnings = applyGeometryGuards(manifest, profile);
+        validation.warnings.push(...guardWarnings);
+      }
+      manifest.validation = validation;
+
+      const quality = scoreManifest(manifest, profile);
+      const suggestions = getSuggestions(quality, manifest);
+
+      const caseId = crypto.randomUUID();
+      if (!evalMode) {
+        saveCase({
+          id: caseId,
+          timestamp: new Date().toISOString(),
+          prompt,
+          ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: normalizedMeta.sourceMetadata.sourceName ?? "unknown" } } : {}),
+          manifest,
+          quality,
+          attempts: 0,
+          outcome: "accepted",
+          refinements: [],
+          usage: { inputTokens: 0, outputTokens: 0 },
+        }).catch(() => {});
+      }
+
+      const breaksSource = await embedClassificationBreaks(manifest, sourceUrl, artifactId, userId);
+
+      log("generate.deterministic", {
+        qualityScore: quality.total,
+        reasons,
+        metaSource,
+        breaksSource,
+        latencyMs: Date.now() - t0,
+      });
+
+      return NextResponse.json({
+        manifest,
+        validation,
+        quality,
+        caseId,
+        suggestions,
+        model: "deterministic",
+        attempts: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        ...(profile ? { profile } : {}),
+      });
     }
 
     // Read optional scope hint (e.g. { region: "Europe", filterField: "continent" })
@@ -365,27 +573,33 @@ export async function POST(request: Request) {
     // Derive refinement suggestions from quality deductions + manifest gaps
     const suggestions = getSuggestions(quality, manifest);
 
-    // Save case record (fire-and-forget — never delays response)
+    // Save case record (fire-and-forget — never delays response, skipped in eval mode)
     const caseId = crypto.randomUUID();
     const parentCaseId: string | undefined = body.parentCaseId;
-    saveCase({
-      id: caseId,
-      ...(parentCaseId ? { parentCaseId } : {}),
-      timestamp: new Date().toISOString(),
-      prompt,
-      ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: body.dataSource ?? "unknown" } } : {}),
-      manifest,
-      quality,
-      attempts,
-      outcome: "accepted",
-      refinements: [],
-      usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
-    }).catch(() => {});
+    if (!evalMode) {
+      saveCase({
+        id: caseId,
+        ...(parentCaseId ? { parentCaseId } : {}),
+        timestamp: new Date().toISOString(),
+        prompt,
+        ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: body.dataSource ?? "unknown" } } : {}),
+        manifest,
+        quality,
+        attempts,
+        outcome: "accepted",
+        refinements: [],
+        usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+      }).catch(() => {});
+    }
+
+    const breaksSource = await embedClassificationBreaks(manifest, sourceUrl, artifactId, userId);
 
     log("generate.complete", {
       attempts,
       qualityScore: quality.total,
       usedFallback,
+      metaSource,
+      breaksSource,
       latencyMs: Date.now() - t0,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,

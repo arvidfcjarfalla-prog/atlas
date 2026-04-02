@@ -65,14 +65,12 @@ async function readDbCache(key: string): Promise<CacheEntry | null> {
   try {
     const { data, error } = await client
       .from("data_cache")
-      .select("data, profile, source, description, resolution_status, created_at, expires_at")
+      .select("data, profile, source, description, resolution_status, created_at, normalized_meta")
       .eq("cache_key", key)
       .maybeSingle();
     if (error || !data) return null;
-    // Check expiry
-    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
-    // Check age-based TTL for entries without explicit expiry
-    if (!data.expires_at && Date.now() - new Date(data.created_at).getTime() > DB_TTL_MS) return null;
+    // TTL: 24h from last write (created_at is reset on every upsert)
+    if (Date.now() - new Date(data.created_at).getTime() > DB_TTL_MS) return null;
     return {
       data: data.data as unknown as GeoJSON.FeatureCollection,
       profile: data.profile as unknown as DatasetProfile,
@@ -80,6 +78,7 @@ async function readDbCache(key: string): Promise<CacheEntry | null> {
       description: data.description,
       timestamp: new Date(data.created_at).getTime(),
       resolutionStatus: data.resolution_status as CacheEntry["resolutionStatus"],
+      normalizedMeta: (data.normalized_meta as unknown as NormalizedMeta) ?? undefined,
     };
   } catch {
     return null;
@@ -98,7 +97,10 @@ async function writeDbCache(key: string, entry: CacheEntry): Promise<void> {
         source: entry.source,
         description: entry.description,
         resolution_status: entry.resolutionStatus ?? null,
-        expires_at: null, // Uses age-based TTL
+        normalized_meta: (entry.normalizedMeta as unknown as Json) ?? null,
+        // Reset created_at on every upsert so TTL measures time since last
+        // refresh, not first insert.
+        created_at: new Date().toISOString(),
       },
       { onConflict: "cache_key" },
     );
@@ -125,9 +127,11 @@ export async function getCachedData(key: string): Promise<CacheEntry | null> {
   // L2: Supabase
   const dbEntry = await readDbCache(key);
   if (dbEntry) {
-    // Promote to L1
-    memoryCache.set(key, dbEntry);
-    return dbEntry;
+    // Promote to L1 with fresh timestamp — L2 TTL already validated the entry,
+    // so L1 gets a full 1-hour window from this moment.
+    const promoted = { ...dbEntry, timestamp: Date.now() };
+    memoryCache.set(key, promoted);
+    return promoted;
   }
 
   return null;
@@ -149,7 +153,10 @@ export function getCachedDataSync(key: string): CacheEntry | null {
 
 /** Write to both L1 (memory) and L2 (Supabase). */
 export async function setCache(key: string, entry: CacheEntry): Promise<void> {
-  memoryCache.set(key, entry);
+  // Normalize timestamp so L1 TTL always measures from write time,
+  // regardless of what the caller passes.
+  const stamped = { ...entry, timestamp: Date.now() };
+  memoryCache.set(key, stamped);
   await writeDbCache(key, entry);
 }
 

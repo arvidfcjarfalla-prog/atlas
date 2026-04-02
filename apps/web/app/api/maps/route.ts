@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
+import { getCachedData } from "../../../lib/ai/tools/data-search";
+import { ensureDurableDataset } from "../../../lib/ai/tools/dataset-storage";
+import { log } from "../../../lib/logger";
 import type { Json } from "../../../lib/supabase/types";
 
 // GET /api/maps — list the current user's maps, newest first
@@ -84,6 +87,28 @@ export async function POST(request: Request) {
     }
   }
 
+  // Create durable artifact from cached data (best-effort, blocks save response)
+  let artifactId: string | null = null;
+  if (body.geojson_url) {
+    const cacheKeyMatch = body.geojson_url.match(/\/api\/geo\/cached\/(.+)/);
+    if (cacheKeyMatch) {
+      const cacheKey = decodeURIComponent(cacheKeyMatch[1]);
+      const entry = await getCachedData(cacheKey);
+      if (entry) {
+        artifactId = await ensureDurableDataset({
+          cacheKey,
+          entry,
+          sourceId: entry.source,
+          userId: user.id,
+          isPublic: body.is_public ?? false,
+        });
+      }
+      if (!artifactId) {
+        log("maps.save.artifact-failed", { cacheKey, hasEntry: !!entry });
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("maps")
     .insert({
@@ -95,8 +120,10 @@ export async function POST(request: Request) {
       geojson_url: body.geojson_url ?? null,
       thumbnail_url: body.thumbnail_url ?? null,
       is_public: body.is_public ?? false,
+      artifact_id: artifactId,
+      data_status: artifactId ? "ok" : (body.geojson_url ? "legacy" : "ok"),
     })
-    .select("id, title, created_at")
+    .select("id, title, artifact_id, created_at")
     .single();
 
   if (error) {

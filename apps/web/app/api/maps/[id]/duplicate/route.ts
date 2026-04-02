@@ -20,7 +20,7 @@ export async function POST(_request: Request, { params }: Params) {
   // Fetch the source map — RLS allows reading public maps
   const { data: source, error: fetchError } = await supabase
     .from("maps")
-    .select("title, manifest, geojson_url, prompt")
+    .select("title, manifest, geojson_url, prompt, artifact_id")
     .eq("id", id)
     .single();
 
@@ -28,7 +28,7 @@ export async function POST(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Create a copy owned by the current user
+  // Create a copy owned by the current user — share the same artifact (immutable)
   const { data: copy, error: insertError } = await supabase
     .from("maps")
     .insert({
@@ -37,6 +37,8 @@ export async function POST(_request: Request, { params }: Params) {
       prompt: source.prompt ?? "",
       manifest: source.manifest as Json,
       geojson_url: source.geojson_url,
+      artifact_id: source.artifact_id as string | null,
+      data_status: source.artifact_id ? "ok" : "legacy",
       is_public: false,
     })
     .select("id")

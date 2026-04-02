@@ -642,6 +642,11 @@ function compileChoropleth(
       ? normalizedValues(data, colorField, normField, multiplier)
       : numericValues(data, colorField);
 
+    // Pre-computed breaks from generate-map (used when data is a URL)
+    const preBreaks = layer.style.classification?.breaks;
+    const preMin = layer.style.classification?.min;
+    const preMax = layer.style.classification?.max;
+
     if (vals.length > 0) {
       const breaks = classify(vals, method, classCount);
       if (breaks.breaks.length > 0) {
@@ -663,6 +668,23 @@ function compileChoropleth(
         }
         fillColor = expr;
       }
+    } else if (preBreaks?.length && preMin != null && preMax != null) {
+      // No local data (URL source) — use pre-computed breaks from generate-map
+      let valueExpr: Expr;
+      if (normField) {
+        const numerator: Expr = multiplier !== 1
+          ? ["*", ["get", colorField], multiplier]
+          : ["get", colorField];
+        valueExpr = ["/", numerator, ["max", ["get", normField], 1]];
+      } else {
+        valueExpr = ["get", colorField];
+      }
+      const expr: Expr = ["step", valueExpr, paletteColors[0]];
+      for (let i = 0; i < preBreaks.length; i++) {
+        expr.push(preBreaks[i]);
+        expr.push(paletteColors[Math.min(i + 1, paletteColors.length - 1)]);
+      }
+      fillColor = expr;
     }
   }
 
@@ -1724,7 +1746,27 @@ function buildChoroplethLegend(
   const vals = normField
     ? normalizedValues(data, colorField, normField, multiplier)
     : numericValues(data, colorField);
-  if (vals.length === 0) return [{ label: "No data", color: "#999999", shape: "square" as const }];
+  if (vals.length === 0) {
+    // Try pre-computed breaks from generate-map (URL-based data)
+    const preBreaks = layer.style.classification?.breaks;
+    const preMin = layer.style.classification?.min;
+    const preMax = layer.style.classification?.max;
+    if (preBreaks?.length && preMin != null && preMax != null) {
+      const allBreaks = [preMin, ...preBreaks, preMax];
+      const items: CompiledLegendItem[] = [];
+      for (let i = 0; i < classCount && i < paletteColors.length; i++) {
+        const lo = allBreaks[i] ?? preMin;
+        const hi = allBreaks[i + 1] ?? preMax;
+        items.push({
+          label: `${formatNumber(lo)} – ${formatNumber(hi)}`,
+          color: paletteColors[i],
+          shape: "square",
+        });
+      }
+      return items;
+    }
+    return [{ label: "No data", color: "#999999", shape: "square" as const }];
+  }
 
   const breaks = classify(vals, method, classCount);
   const items: CompiledLegendItem[] = [];

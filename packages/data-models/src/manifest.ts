@@ -160,6 +160,10 @@ export interface ClassificationConfig {
   classes: number;
   /** Manual break values when method is "manual". */
   breaks?: number[];
+  /** Pre-computed data min (used when data is loaded via URL). */
+  min?: number;
+  /** Pre-computed data max (used when data is loaded via URL). */
+  max?: number;
 }
 
 // ─── v2: Color scheme ────────────────────────────────────────
