@@ -144,18 +144,24 @@ const PX_COUNTRY_NAMES = new Set([
   "counties", "county", "lan", "län",
   "regions", "region", "regioner",
   "states", "state", "provinces", "province",
-  "fylke", "fylker",
+  "kommune", "fylke", "fylker",
+  "kunta", "kunnittain", "maakunta",
+  "landskap",
 ]);
 
 /** Geographic level keywords in prompts → normalized level hint. */
 const GEO_LEVEL_KEYWORDS: Record<string, string> = {
   // Swedish
   kommuner: "municipality", kommun: "municipality", kommunerna: "municipality",
-  lan: "county", län: "county",
+  lan: "county", län: "county", länen: "county",
   regioner: "region",
-  // Norwegian
+  landskap: "landskap",
+  // Norwegian (kommuner already listed under Swedish)
   kommune: "municipality",
   fylke: "county", fylker: "county",
+  // Finnish
+  kunta: "municipality", kunnittain: "municipality",
+  maakunta: "county",
   // English
   municipalities: "municipality", municipality: "municipality",
   counties: "county", county: "county",
@@ -296,6 +302,8 @@ const NORDIC_TO_EN: Record<string, string> = {
   folketal: "population",
   innbyggere: "population",
   innvandring: "immigration",
+  innvandrere: "immigration",
+  innvandrer: "immigration",
   utvandring: "emigration",
   fødsler: "births",
   fødselstall: "births",
@@ -313,7 +321,10 @@ const NORDIC_TO_EN: Record<string, string> = {
   // Norwegian / Danish (housing)
   bolig: "housing",
   boliger: "housing",
+  boligpriser: "housing prices",
+  boligpris: "housing prices",
   husleie: "rent",
+  husleige: "rent",
   // Norwegian / Danish (geography levels)
   fylke: "county",
   fylker: "county",

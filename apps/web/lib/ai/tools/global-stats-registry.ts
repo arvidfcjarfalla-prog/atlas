@@ -124,7 +124,7 @@ export const OFFICIAL_STATS_REGISTRY: OfficialStatsSource[] = [
     auth: "none",
     formats: ["json", "json-stat", "csv"],
     languages: ["no", "en"],
-    coverageTags: ["population", "economy", "labor", "regions"],
+    coverageTags: ["population", "economy", "labor", "regions", "housing", "immigration", "education", "health", "social", "environment"],
     geographyLevels: ["country", "county", "municipality"],
     verificationStatus: "verified",
     priority: 100,

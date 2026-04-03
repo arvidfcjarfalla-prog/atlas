@@ -35,12 +35,15 @@ const COUNTRY_NAME_TO_CODE: Record<string, string> = {
   // Nordic
   sweden: "SE", sverige: "SE", swedish: "SE", svenska: "SE", svensk: "SE",
   // Swedish admin terms — unambiguously imply Sweden
-  kommun: "SE", kommunerna: "SE", län: "SE",
+  // Note: "kommun" (singular) omitted — ambiguous with Finnish Swedish context
+  kommunerna: "SE", län: "SE", länen: "SE",
   norway: "NO", norge: "NO", norwegian: "NO", norska: "NO", norsk: "NO",
   // Norwegian admin terms — unambiguously imply Norway
   kommune: "NO", fylke: "NO", fylker: "NO",
   denmark: "DK", danmark: "DK", danish: "DK", danska: "DK", dansk: "DK",
-  finland: "FI", finnish: "FI", finska: "FI", finsk: "FI",
+  finland: "FI", finnish: "FI", finska: "FI", finsk: "FI", suomi: "FI",
+  // Finnish admin terms
+  kunta: "FI", kunnittain: "FI", maakunta: "FI",
   iceland: "IS", island: "IS", isländska: "IS",
   // Europe
   uk: "GB", "united kingdom": "GB", britain: "GB", british: "GB", england: "GB",
