@@ -23,6 +23,7 @@ import { getServiceClient } from "../../supabase/service";
 import type { DatasetProfile } from "../types";
 import type { NormalizedDimension, SourceMetadata } from "./normalized-result";
 import type { Json } from "../../supabase/types";
+import { matchWorldBankCoreKeyword } from "./worldbank-keywords";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ Reply with a single JSON object:
 Rules:
 - isCountryLevel: true if the user wants data compared ACROSS countries (not subnational like states/provinces).
 - indicatorKey: pick the best match from the curated list below. null if none match.
-- indicatorCode: if indicatorKey is null, provide a World Bank API indicator code from your knowledge (e.g. "SH.TBS.INCD", "EN.ATM.CO2E.PC"). null if you cannot determine one.
+- indicatorCode: if indicatorKey is null, provide a World Bank API indicator code from your knowledge (e.g. "SH.TBS.INCD", "EN.GHG.CO2.PC.CE.AR5"). null if you cannot determine one.
 - indicatorLabel: human-readable label for indicatorCode (e.g. "Tuberculosis incidence per 100k"). null if indicatorCode is null.
 - englishPrompt: translate the prompt to concise English (max 15 words).
 
@@ -614,12 +615,19 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
 
   // Find matching indicator — keyword match first (instant), then AI fallback
   let matched: { code: string; label: string; unit: string } | null = null;
-  const sortedEntries = Object.entries(WORLD_BANK_INDICATORS)
-    .sort((a, b) => b[0].length - a[0].length);
-  for (const [keyword, indicator] of sortedEntries) {
-    if (lower.includes(keyword)) {
-      matched = indicator;
-      break;
+  const coreCode = matchWorldBankCoreKeyword(query);
+  if (coreCode) {
+    matched =
+      Object.values(WORLD_BANK_INDICATORS).find((indicator) => indicator.code === coreCode)
+      ?? { code: coreCode, label: coreCode, unit: "" };
+  } else {
+    const sortedEntries = Object.entries(WORLD_BANK_INDICATORS)
+      .sort((a, b) => b[0].length - a[0].length);
+    for (const [keyword, indicator] of sortedEntries) {
+      if (lower.includes(keyword)) {
+        matched = indicator;
+        break;
+      }
     }
   }
 
