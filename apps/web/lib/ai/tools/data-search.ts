@@ -525,6 +525,22 @@ interface WBIntentResult {
   englishPrompt: string;
 }
 
+/**
+ * Parse World Bank API responses defensively.
+ * The API intermittently returns XML/HTML for some indicators.
+ */
+async function parseWbJson(res: Response): Promise<unknown> {
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("xml") || ct.includes("html")) {
+    throw new Error(`World Bank API returned non-JSON content-type: ${ct}`);
+  }
+  const text = await res.text();
+  if (text.trimStart().startsWith("<")) {
+    throw new Error("World Bank API returned XML/HTML body");
+  }
+  return JSON.parse(text);
+}
+
 const WB_INTENT_SYSTEM = `You extract structured intent from map prompts about country-level world statistics. Any language.
 
 Reply with a single JSON object:
@@ -692,8 +708,9 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return { found: false, error: "World Bank API error" };
 
-    const json = await res.json();
-    const records = json[1] as Array<{
+    const json = await parseWbJson(res);
+    const parsed = Array.isArray(json) ? json : [];
+    const records = parsed[1] as Array<{
       country: { id: string; value: string };
       countryiso3code: string;
       value: number | null;

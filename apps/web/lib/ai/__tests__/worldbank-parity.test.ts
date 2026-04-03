@@ -137,4 +137,19 @@ describe("World Bank path parity", () => {
     expect(wb.found).toBe(true);
     expect(wb.cacheKey).toBe(`worldbank-${expectedCode}`);
   });
+
+  it("handles non-JSON World Bank responses without crashing", async () => {
+    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockImplementationOnce(async () =>
+      new Response("<error>temporary</error>", {
+        status: 200,
+        headers: { "content-type": "application/xml" },
+      }),
+    );
+
+    const result = await searchWorldBank("population by country");
+
+    expect(result.found).toBe(false);
+    expect(result.error).toContain("non-JSON");
+  });
 });
