@@ -65,6 +65,7 @@ const POINT_FAMILIES = new Set<MapFamily>([
   "cluster",
   "heatmap",
   "proportional-symbol",
+  "timeline",
   "hexbin",
   "hexbin-3d",
   "screen-grid",
@@ -75,6 +76,7 @@ const POLYGON_FAMILIES = new Set<MapFamily>([
   "choropleth",
   "isochrone",
   "extrusion",
+  "timeline",
 ]);
 
 /** Families that work with line geometry. */

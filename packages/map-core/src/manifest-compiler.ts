@@ -1454,7 +1454,8 @@ function compileHexbin(
   let fillColor: string | Expr = paletteColors[Math.floor(paletteColors.length / 2)];
   if (vals.length > 0) {
     const method = layer.style.classification?.method ?? "quantile";
-    const breaks = classify(vals, method, classCount);
+    const manualBreaks = layer.style.classification?.breaks;
+    const breaks = classify(vals, method, classCount, manualBreaks);
     if (breaks.breaks.length > 0) {
       const expr: Expr = ["step", ["get", "_hex_value"], paletteColors[0]];
       for (let i = 0; i < breaks.breaks.length; i++) {

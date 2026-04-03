@@ -155,6 +155,20 @@ describe("scoreManifest", () => {
     expect(score.breakdown.familyAppropriateness).toBe(20);
   });
 
+  it("gives full marks for timeline with point geometry", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "timeline";
+    const score = scoreManifest(manifest, pointProfile());
+    expect(score.breakdown.familyAppropriateness).toBe(20);
+  });
+
+  it("gives full marks for timeline with polygon geometry", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "timeline";
+    const score = scoreManifest(manifest, polygonProfile());
+    expect(score.breakdown.familyAppropriateness).toBe(20);
+  });
+
   // ── Color scheme quality ──
 
   it("gives full color score for sequential scheme on choropleth", () => {

@@ -1271,5 +1271,35 @@ describe("manifest-compiler", () => {
       expect(expr[3]).toBeCloseTo(34, 6);
       expect(expr[5]).toBeCloseTo(67, 6);
     });
+
+    it("uses manual breaks for hexbin classification", () => {
+      const layer: LayerManifest = {
+        id: "hex-manual",
+        kind: "asset",
+        label: "Hex Manual",
+        sourceType: "geojson-static",
+        geometryType: "point",
+        style: {
+          markerShape: "circle",
+          mapFamily: "hexbin",
+          classification: { method: "manual", classes: 3, breaks: [20, 60] },
+          color: { scheme: "viridis" },
+        },
+      };
+      const data = fc([
+        pt(10.0, 59.0, {}),
+        pt(10.01, 59.01, {}),
+        pt(10.02, 59.02, {}),
+        pt(11.0, 60.0, {}),
+      ]);
+
+      const result = compileLayer(layer, data);
+      const fill = result.layers.find((l) => l.id === "hex-manual-fill") as FillLayerSpecification;
+      const expr = fill.paint?.["fill-color"] as unknown[];
+      expect(Array.isArray(expr)).toBe(true);
+      expect(expr[0]).toBe("step");
+      expect(expr[3]).toBe(20);
+      expect(expr[5]).toBe(60);
+    });
   });
 });
