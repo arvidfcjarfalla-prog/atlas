@@ -8,13 +8,9 @@
  *   4. Execute join → JoinExecutionResult
  *   5. Classify → PxWebResolutionResult
  *
- * This module does NOT replace the existing `searchPxWeb()` function.
- * It wraps its artifacts and runs them through the resolution pipeline,
- * producing a final verdict: map_ready, tabular_only, candidate_mode,
+ * This module is the canonical PxWeb resolution path.
+ * It produces a final verdict: map_ready, tabular_only, candidate_mode,
  * or unsupported.
- *
- * The clarify route calls `resolvePxWeb()` instead of `searchPxWeb()`
- * and only treats the result as success when mapReady is true.
  */
 
 import type { OfficialStatsSource } from "./global-stats-registry";
@@ -593,7 +589,6 @@ async function resolveOneTable(
 /**
  * Full PxWeb resolution: fetch → normalize → detect → plan → join → classify.
  *
- * This replaces the old `searchPxWeb()` call in the clarify route.
  * Only returns map_ready when all pipeline stages succeed.
  *
  * When the first-choice table doesn't produce map_ready, retries with
