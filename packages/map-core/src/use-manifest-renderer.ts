@@ -201,6 +201,31 @@ export function useManifestRenderer({
 
     const canvas = map.getCanvas();
     const tooltipFields = layer.interaction?.tooltipFields ?? [];
+    const hoverStateKey = hoverEffect === "enlarge" ? "hoverEnlarge" : "hover";
+    const interactiveLayer = map.getLayer(interactiveLayerId) as { type?: string } | undefined;
+    const isCircleLayer = interactiveLayer?.type === "circle";
+    let originalCircleRadius: unknown = null;
+    let enlargeRadiusApplied = false;
+    if (hoverEffect === "enlarge" && isCircleLayer) {
+      originalCircleRadius = map.getPaintProperty(interactiveLayerId, "circle-radius");
+      if (originalCircleRadius != null) {
+        map.setPaintProperty(interactiveLayerId, "circle-radius", [
+          "case",
+          ["boolean", ["feature-state", hoverStateKey], false],
+          ["*", originalCircleRadius as never, 1.35],
+          originalCircleRadius as never,
+        ]);
+        enlargeRadiusApplied = true;
+      }
+    }
+
+    function setHoveredFeatureState(id: string | number, hovered: boolean) {
+      map!.setFeatureState(
+        { source: compiled!.sourceId, id },
+        { [hoverStateKey]: hovered },
+      );
+    }
+
     let hoveredFeatureId: string | number | null = null;
     let activePopup: maplibregl.Popup | null = null;
     let hoverPopup: maplibregl.Popup | null = null;
@@ -279,12 +304,9 @@ export function useManifestRenderer({
       const feature = e.features?.[0];
       if (!feature) return;
 
-      if (hoverEffect === "highlight" && feature.id != null) {
+      if ((hoverEffect === "highlight" || hoverEffect === "enlarge") && feature.id != null) {
         hoveredFeatureId = feature.id;
-        map.setFeatureState(
-          { source: compiled.sourceId, id: feature.id },
-          { hover: true },
-        );
+        setHoveredFeatureState(feature.id, true);
       }
 
       // Show hover tooltip (if no click popup is open)
@@ -319,17 +341,11 @@ export function useManifestRenderer({
       if (newId !== hoveredFeatureId) {
         // Clear old highlight
         if (hoveredFeatureId != null) {
-          map.setFeatureState(
-            { source: compiled.sourceId, id: hoveredFeatureId },
-            { hover: false },
-          );
+          setHoveredFeatureState(hoveredFeatureId, false);
         }
         // Set new highlight
-        if (hoverEffect === "highlight" && newId != null) {
-          map.setFeatureState(
-            { source: compiled.sourceId, id: newId },
-            { hover: true },
-          );
+        if ((hoverEffect === "highlight" || hoverEffect === "enlarge") && newId != null) {
+          setHoveredFeatureState(newId, true);
         }
         hoveredFeatureId = newId;
 
@@ -368,10 +384,7 @@ export function useManifestRenderer({
     const handleMouseLeave = () => {
       canvas.style.cursor = "";
       if (hoveredFeatureId != null) {
-        map.setFeatureState(
-          { source: compiled.sourceId, id: hoveredFeatureId },
-          { hover: false },
-        );
+        setHoveredFeatureState(hoveredFeatureId, false);
         hoveredFeatureId = null;
       }
       if (hoverPopup) { hoverPopup.remove(); hoverPopup = null; }
@@ -424,6 +437,9 @@ export function useManifestRenderer({
       map.off("mousemove", interactiveLayerId, handleMouseMove);
       map.off("mouseleave", interactiveLayerId, handleMouseLeave);
       map.off("click", interactiveLayerId, handleClick);
+      if (enlargeRadiusApplied) {
+        map.setPaintProperty(interactiveLayerId, "circle-radius", originalCircleRadius as never);
+      }
       if (activePopup) activePopup.remove();
       if (hoverPopup) hoverPopup.remove();
     };
