@@ -1,0 +1,122 @@
+[
+  {
+    "id": "se-population-municipality",
+    "prompt": "befolkning per kommun i Sverige",
+    "sourceId": "se-scb",
+    "expected": { "status": "map_ready", "level": "municipality", "minCoverage": 0.8 }
+  },
+  {
+    "id": "se-income-county",
+    "prompt": "medelinkomst per län i Sverige",
+    "sourceId": "se-scb",
+    "expected": { "status": "map_ready", "level": "county", "minCoverage": 0.8 }
+  },
+  {
+    "id": "se-education-municipality",
+    "prompt": "utbildningsnivå per kommun i Sverige",
+    "sourceId": "se-scb",
+    "expected": { "status": "map_ready", "level": "municipality", "minCoverage": 0.5 }
+  },
+  {
+    "id": "no-population-municipality",
+    "prompt": "befolkning per kommune i Norge",
+    "sourceId": "no-ssb",
+    "expected": { "status": "map_ready", "level": "municipality", "minCoverage": 0.5 }
+  },
+  {
+    "id": "no-unemployment-county",
+    "prompt": "arbetslöshet per fylke i Norge",
+    "sourceId": "no-ssb",
+    "expected": { "status": "map_ready", "level": "admin1", "minCoverage": 0.5 }
+  },
+  {
+    "id": "fi-population-municipality",
+    "prompt": "befolkning per kommun i Finland",
+    "sourceId": "fi-stat",
+    "expected": { "status": "map_ready", "level": "municipality", "minCoverage": 0.3 }
+  },
+  {
+    "id": "dk-population-municipality",
+    "prompt": "folketal per kommune i Danmark",
+    "sourceId": "dk-dst",
+    "expected": { "status": "map_ready", "level": "municipality", "minCoverage": 0.5 }
+  },
+  {
+    "id": "es-unemployment-nuts2",
+    "prompt": "unemployment by NUTS2 region in Spain",
+    "sourceId": "es-ine",
+    "expected": { "status": "map_ready", "level": "nuts2", "minCoverage": 0.3 }
+  },
+  {
+    "id": "it-gdp-nuts2",
+    "prompt": "GDP per capita by NUTS2 region in Italy",
+    "sourceId": "it-istat",
+    "expected": { "status": "map_ready", "level": "nuts2", "minCoverage": 0.3 }
+  },
+  {
+    "id": "de-density-nuts3",
+    "prompt": "population density by NUTS3 region in Germany",
+    "sourceId": "de-destatis",
+    "expected": { "status": "map_ready", "level": "nuts3", "minCoverage": 0.3 }
+  },
+  {
+    "id": "gr-youth-unemployment",
+    "prompt": "youth unemployment by region in Greece",
+    "sourceId": "intl-oecd",
+    "expected": { "status": "map_ready", "level": "admin1", "minCoverage": 0.3 }
+  },
+  {
+    "id": "africa-gdp-country",
+    "prompt": "GDP per capita by country in Africa",
+    "sourceId": "intl-imf",
+    "expected": { "status": "map_ready", "level": "country", "minCoverage": 0.3 }
+  },
+  {
+    "id": "southamerica-lifeexpectancy",
+    "prompt": "life expectancy by country in South America",
+    "sourceId": "intl-unsdg",
+    "expected": { "status": "map_ready", "level": "country", "minCoverage": 0.3 }
+  },
+  {
+    "id": "europe-co2-country",
+    "prompt": "CO2 emissions per capita by country in Europe",
+    "sourceId": "intl-unsdg",
+    "expected": { "status": "map_ready", "level": "country", "minCoverage": 0.3 }
+  },
+  {
+    "id": "us-obesity-state",
+    "prompt": "obesity rate by US state",
+    "sourceId": "us-cdc",
+    "expected": { "status": "map_ready", "level": "admin1", "minCoverage": 0.3 }
+  },
+  {
+    "id": "us-income-state",
+    "prompt": "median household income by US state",
+    "sourceId": "us-census",
+    "expected": { "status": "map_ready", "level": "admin1", "minCoverage": 0.3 }
+  },
+  {
+    "id": "us-education-state",
+    "prompt": "bachelor degree attainment by US state",
+    "sourceId": "us-census",
+    "expected": { "status": "map_ready", "level": "admin1", "minCoverage": 0.3 }
+  },
+  {
+    "id": "poi-hospitals-stockholm",
+    "prompt": "hospitals in Stockholm",
+    "sourceId": "se-scb",
+    "expected": { "status": "unsupported" }
+  },
+  {
+    "id": "poi-ev-charging-oslo",
+    "prompt": "EV charging stations in Oslo",
+    "sourceId": "no-ssb",
+    "expected": { "status": "unsupported" }
+  },
+  {
+    "id": "negative-nonsense",
+    "prompt": "nonsens metric xyz qqq in Scandinavia",
+    "sourceId": "se-scb",
+    "expected": { "status": "unsupported" }
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "_description": "World Bank aggregate/regional ISO3 codes to exclude from country-level data",
+  "_source": "World Bank API /v2/country — entries with region.id = 'NA' or aggregates",
+  "codes": [
+    "ARB", "CSS", "CEB", "EAP", "EAS", "ECA", "ECS", "EMU", "EUU",
+    "FCS", "HIC", "HPC", "IBD", "IBT", "IDA", "IDB", "IDX", "INX",
+    "LAC", "LCN", "LDC", "LIC", "LMC", "LMY", "LTE", "MEA", "MIC",
+    "MNA", "NAC", "OED", "OSS", "PRE", "PSS", "PST", "SAS", "SSA",
+    "SSF", "SST", "TEA", "TEC", "TLA", "TMN", "TSA", "TSS", "UMC",
+    "WLD"
+  ]
+}

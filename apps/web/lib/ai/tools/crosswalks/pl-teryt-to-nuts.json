@@ -1,0 +1,20 @@
+{
+  "_description": "Polish TERYT voivodeship code (2-digit) → NUTS2 (2021). Mazowieckie (14) maps to two NUTS2 units.",
+  "_source": "GUS KTS, Eurostat NUTS 2021",
+  "02": { "nuts2": "PL51", "name": "Dolnośląskie" },
+  "04": { "nuts2": "PL61", "name": "Kujawsko-Pomorskie" },
+  "06": { "nuts2": "PL81", "name": "Lubelskie" },
+  "08": { "nuts2": "PL43", "name": "Lubuskie" },
+  "10": { "nuts2": "PL71", "name": "Łódzkie" },
+  "12": { "nuts2": "PL21", "name": "Małopolskie" },
+  "14": { "nuts2": ["PL91", "PL92"], "name": "Mazowieckie", "_note": "Split: PL91 = Warszawski stołeczny, PL92 = Mazowiecki regionalny" },
+  "16": { "nuts2": "PL52", "name": "Opolskie" },
+  "18": { "nuts2": "PL82", "name": "Podkarpackie" },
+  "20": { "nuts2": "PL84", "name": "Podlaskie" },
+  "22": { "nuts2": "PL63", "name": "Pomorskie" },
+  "24": { "nuts2": "PL22", "name": "Śląskie" },
+  "26": { "nuts2": "PL72", "name": "Świętokrzyskie" },
+  "28": { "nuts2": "PL62", "name": "Warmińsko-Mazurskie" },
+  "30": { "nuts2": "PL41", "name": "Wielkopolskie" },
+  "32": { "nuts2": "PL42", "name": "Zachodniopomorskie" }
+}

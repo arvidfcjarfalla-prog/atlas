@@ -1,0 +1,22 @@
+{
+  "_description": "German AGS Bundesland code (2-digit) → NUTS1 (2021)",
+  "_source": "Destatis GV-ISys, Eurostat NUTS 2021",
+  "laender": {
+    "01": { "nuts1": "DEF", "name": "Schleswig-Holstein" },
+    "02": { "nuts1": "DE6", "name": "Hamburg" },
+    "03": { "nuts1": "DE9", "name": "Niedersachsen" },
+    "04": { "nuts1": "DE5", "name": "Bremen" },
+    "05": { "nuts1": "DEA", "name": "Nordrhein-Westfalen" },
+    "06": { "nuts1": "DE7", "name": "Hessen" },
+    "07": { "nuts1": "DEB", "name": "Rheinland-Pfalz" },
+    "08": { "nuts1": "DE1", "name": "Baden-Württemberg" },
+    "09": { "nuts1": "DE2", "name": "Bayern" },
+    "10": { "nuts1": "DEC", "name": "Saarland" },
+    "11": { "nuts1": "DE3", "name": "Berlin" },
+    "12": { "nuts1": "DE4", "name": "Brandenburg" },
+    "13": { "nuts1": "DE8", "name": "Mecklenburg-Vorpommern" },
+    "14": { "nuts1": "DED", "name": "Sachsen" },
+    "15": { "nuts1": "DEE", "name": "Sachsen-Anhalt" },
+    "16": { "nuts1": "DEG", "name": "Thüringen" }
+  }
+}

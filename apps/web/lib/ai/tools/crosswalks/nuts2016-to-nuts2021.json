@@ -1,0 +1,14 @@
+{
+  "_description": "NUTS 2016 → NUTS 2021 correspondence for changed regions only",
+  "_source": "Eurostat NUTS correspondence tables",
+  "_notes": "Primary change: all UK codes removed (Brexit 2021-01-01). Poland Mazowieckie split and Ireland/Hungary restructuring happened in NUTS 2013→2016, NOT 2016→2021.",
+  "removed_uk": {
+    "_note": "All UK NUTS codes removed from NUTS 2021 due to Brexit. 179+ codes across NUTS1/2/3.",
+    "nuts1": ["UKC", "UKD", "UKE", "UKF", "UKG", "UKH", "UKI", "UKJ", "UKK", "UKL", "UKM", "UKN"],
+    "nuts2_sample": ["UKC1", "UKC2", "UKD1", "UKD3", "UKD4", "UKD6", "UKD7", "UKE1", "UKE2", "UKE3", "UKE4", "UKF1", "UKF2", "UKF3", "UKG1", "UKG2", "UKG3", "UKH1", "UKH2", "UKH3", "UKI3", "UKI4", "UKI5", "UKI6", "UKI7", "UKJ1", "UKJ2", "UKJ3", "UKJ4", "UKK1", "UKK2", "UKK3", "UKK4", "UKL1", "UKL2", "UKM5", "UKM6", "UKM7", "UKM8", "UKM9", "UKN0"]
+  },
+  "other_changes": [
+    { "country": "NL", "type": "boundary_change", "note": "Minor boundary adjustments in some NUTS3 regions, codes unchanged" }
+  ],
+  "_verification_note": "This table covers NUTS 2016→2021 only. For NUTS 2013→2016 changes (Poland PL12→PL91/PL92, Ireland IE01/IE02→IE04/IE05/IE06, Hungary HU10→HU11/HU12), use a separate NUTS2013→2016 crosswalk."
+}

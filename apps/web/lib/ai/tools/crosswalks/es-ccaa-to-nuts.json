@@ -1,0 +1,26 @@
+{
+  "_description": "Spanish CCAA code (INE 2-digit) → NUTS2 (2021)",
+  "_source": "INE, Eurostat NUTS 2021",
+  "_notes": "Canarias and Illes Balears have island-level NUTS3 that do not map 1:1 to provinces",
+  "ccaa": {
+    "01": { "nuts2": "ES61", "name": "Andalucía" },
+    "02": { "nuts2": "ES24", "name": "Aragón" },
+    "03": { "nuts2": "ES12", "name": "Principado de Asturias" },
+    "04": { "nuts2": "ES53", "name": "Illes Balears" },
+    "05": { "nuts2": "ES70", "name": "Canarias" },
+    "06": { "nuts2": "ES13", "name": "Cantabria" },
+    "07": { "nuts2": "ES41", "name": "Castilla y León" },
+    "08": { "nuts2": "ES42", "name": "Castilla-La Mancha" },
+    "09": { "nuts2": "ES51", "name": "Cataluña" },
+    "10": { "nuts2": "ES52", "name": "Comunitat Valenciana" },
+    "11": { "nuts2": "ES43", "name": "Extremadura" },
+    "12": { "nuts2": "ES11", "name": "Galicia" },
+    "13": { "nuts2": "ES30", "name": "Comunidad de Madrid" },
+    "14": { "nuts2": "ES62", "name": "Región de Murcia" },
+    "15": { "nuts2": "ES22", "name": "Comunidad Foral de Navarra" },
+    "16": { "nuts2": "ES21", "name": "País Vasco" },
+    "17": { "nuts2": "ES23", "name": "La Rioja" },
+    "18": { "nuts2": "ES63", "name": "Ciudad Autónoma de Ceuta" },
+    "19": { "nuts2": "ES64", "name": "Ciudad Autónoma de Melilla" }
+  }
+}
