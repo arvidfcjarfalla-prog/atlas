@@ -61,3 +61,6 @@ AS $$
   )
   RETURNING map_versions.id, map_versions.version, map_versions.created_at;
 $$;
+
+-- Grant API roles access (required for PostgREST / Supabase JS client)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.map_versions TO anon, authenticated, service_role;
