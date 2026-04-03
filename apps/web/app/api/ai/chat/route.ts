@@ -171,118 +171,118 @@ export async function POST(request: Request) {
             inputSchema: z.object({
               query: z.string().describe("Description of the data needed"),
             }),
-	            execute: async ({ query }) => {
-	              log("agent.tool_call", { tool: "search_data", query });
+            execute: async ({ query }) => {
+              log("agent.tool_call", { tool: "search_data", query });
 
-	              // Try PxWeb first for subnational data (SCB, SSB, etc.)
-	              const intent = extractIntent(query);
-	              const officialSources = resolveOfficialStatsSources(intent, query);
-	              const topPxWeb = officialSources.find(
-	                (s) => getStatsAdapter(s.source) !== null,
-	              );
-	              let pxTabularFallback = false;
+              // Try PxWeb first for subnational data (SCB, SSB, etc.)
+              const intent = extractIntent(query);
+              const officialSources = resolveOfficialStatsSources(intent, query);
+              const topPxWeb = officialSources.find(
+                (s) => getStatsAdapter(s.source) !== null,
+              );
+              let pxTabularFallback = false;
 
-	              if (topPxWeb) {
-	                try {
-	                  const pxResult = await resolvePxWeb(topPxWeb.source, query);
-	                  const decision = classifyPipelineResult(pxResult, query);
-	                  if (decision.kind === "terminate" && decision.response.ready && decision.response.dataUrl) {
-	                    latestDataUrl = decision.response.dataUrl;
-	                    return {
-	                      found: true,
-	                      source: `PxWeb (${topPxWeb.source.agencyName})`,
-	                      dataUrl: latestDataUrl,
-	                      profile: decision.response.dataProfile,
-	                    };
-	                  }
-	                  if (decision.kind === "stash_tabular") {
-	                    pxTabularFallback = true;
-	                  }
-	                } catch (e) {
-	                  log("agent.pxweb_error", { error: e instanceof Error ? e.message : String(e) });
-	                }
-	              }
+              if (topPxWeb) {
+                try {
+                  const pxResult = await resolvePxWeb(topPxWeb.source, query);
+                  const decision = classifyPipelineResult(pxResult, query);
+                  if (decision.kind === "terminate" && decision.response.ready && decision.response.dataUrl) {
+                    latestDataUrl = decision.response.dataUrl;
+                    return {
+                      found: true,
+                      source: `PxWeb (${topPxWeb.source.agencyName})`,
+                      dataUrl: latestDataUrl,
+                      profile: decision.response.dataProfile,
+                    };
+                  }
+                  if (decision.kind === "stash_tabular") {
+                    pxTabularFallback = true;
+                  }
+                } catch (e) {
+                  log("agent.pxweb_error", { error: e instanceof Error ? e.message : String(e) });
+                }
+              }
 
-	              // Keep source order close to clarify route so create/edit flows resolve similarly.
-	              // 1) Kolada (always tried after PxWeb), 2) Data Commons (skip if PxWeb found
-	              // tabular data), 3) Eurostat (skip explicit global scope), 4) World Bank.
-	              const koladaResult = await searchKolada(query).catch((e: unknown) => {
-	                log("agent.kolada_error", { error: e instanceof Error ? e.message : String(e) });
-	                return { found: false as const };
-	              });
-	              if (koladaResult.found && koladaResult.cacheKey) {
-	                latestDataUrl = `/api/geo/cached/${encodeURIComponent(koladaResult.cacheKey)}`;
-	                return {
-	                  found: true,
-	                  source: "Kolada",
-	                  dataUrl: latestDataUrl,
-	                  profile: koladaResult.profile,
-	                };
-	              }
+              // Keep source order close to clarify route so create/edit flows resolve similarly.
+              // 1) Kolada (always tried after PxWeb), 2) Data Commons (skip if PxWeb found
+              // tabular data), 3) Eurostat (skip explicit global scope), 4) World Bank.
+              const koladaResult = await searchKolada(query).catch((e: unknown) => {
+                log("agent.kolada_error", { error: e instanceof Error ? e.message : String(e) });
+                return { found: false as const };
+              });
+              if (koladaResult.found && koladaResult.cacheKey) {
+                latestDataUrl = `/api/geo/cached/${encodeURIComponent(koladaResult.cacheKey)}`;
+                return {
+                  found: true,
+                  source: "Kolada",
+                  dataUrl: latestDataUrl,
+                  profile: koladaResult.profile,
+                };
+              }
 
-	              const dcResult = !pxTabularFallback
-	                ? await searchDataCommons(query).catch((e: unknown) => {
-	                    log("agent.data_commons_error", { error: e instanceof Error ? e.message : String(e) });
-	                    return { found: false as const };
-	                  })
-	                : { found: false as const };
-	              if (dcResult.found && dcResult.cacheKey) {
-	                latestDataUrl = `/api/geo/cached/${encodeURIComponent(dcResult.cacheKey)}`;
-	                return {
-	                  found: true,
-	                  source: "Data Commons",
-	                  dataUrl: latestDataUrl,
-	                  profile: dcResult.profile,
-	                };
-	              }
+              const dcResult = !pxTabularFallback
+                ? await searchDataCommons(query).catch((e: unknown) => {
+                    log("agent.data_commons_error", { error: e instanceof Error ? e.message : String(e) });
+                    return { found: false as const };
+                  })
+                : { found: false as const };
+              if (dcResult.found && dcResult.cacheKey) {
+                latestDataUrl = `/api/geo/cached/${encodeURIComponent(dcResult.cacheKey)}`;
+                return {
+                  found: true,
+                  source: "Data Commons",
+                  dataUrl: latestDataUrl,
+                  profile: dcResult.profile,
+                };
+              }
 
-	              const lowerQuery = query.toLowerCase();
-	              const hasGlobalScope = [
-	                "worldwide", "globally", "global", "all countries", "every country",
-	                "hela världen", "världen", "samtliga länder", "alla länder",
-	                "whole world", "around the world", "across the world",
-	              ].some((kw) => lowerQuery.includes(kw));
-	              const eurostatResult = hasGlobalScope
-	                ? { found: false as const }
-	                : await searchEurostat(query).catch((e: unknown) => {
-	                    log("agent.eurostat_error", { error: e instanceof Error ? e.message : String(e) });
-	                    return { found: false as const };
-	                  });
-	              if (eurostatResult.found && eurostatResult.cacheKey) {
-	                latestDataUrl = `/api/geo/cached/${encodeURIComponent(eurostatResult.cacheKey)}`;
-	                return {
-	                  found: true,
-	                  source: "Eurostat",
-	                  dataUrl: latestDataUrl,
-	                  profile: eurostatResult.profile,
-	                };
-	              }
+              const lowerQuery = query.toLowerCase();
+              const hasGlobalScope = [
+                "worldwide", "globally", "global", "all countries", "every country",
+                "hela världen", "världen", "samtliga länder", "alla länder",
+                "whole world", "around the world", "across the world",
+              ].some((kw) => lowerQuery.includes(kw));
+              const eurostatResult = hasGlobalScope
+                ? { found: false as const }
+                : await searchEurostat(query).catch((e: unknown) => {
+                    log("agent.eurostat_error", { error: e instanceof Error ? e.message : String(e) });
+                    return { found: false as const };
+                  });
+              if (eurostatResult.found && eurostatResult.cacheKey) {
+                latestDataUrl = `/api/geo/cached/${encodeURIComponent(eurostatResult.cacheKey)}`;
+                return {
+                  found: true,
+                  source: "Eurostat",
+                  dataUrl: latestDataUrl,
+                  profile: eurostatResult.profile,
+                };
+              }
 
-	              const worldBankResult = await searchPublicData(query).catch((e: unknown) => {
-	                log("agent.worldbank_error", { error: e instanceof Error ? e.message : String(e) });
-	                return { found: false as const };
-	              });
-	              if (worldBankResult.found && worldBankResult.cacheKey) {
-	                latestDataUrl = `/api/geo/cached/${encodeURIComponent(worldBankResult.cacheKey)}`;
-	                return {
-	                  found: true,
-	                  source: "World Bank",
-	                  dataUrl: latestDataUrl,
-	                  profile: worldBankResult.profile,
-	                };
-	              }
+              const worldBankResult = await searchPublicData(query).catch((e: unknown) => {
+                log("agent.worldbank_error", { error: e instanceof Error ? e.message : String(e) });
+                return { found: false as const };
+              });
+              if (worldBankResult.found && worldBankResult.cacheKey) {
+                latestDataUrl = `/api/geo/cached/${encodeURIComponent(worldBankResult.cacheKey)}`;
+                return {
+                  found: true,
+                  source: "World Bank",
+                  dataUrl: latestDataUrl,
+                  profile: worldBankResult.profile,
+                };
+              }
 
-	              if (pxTabularFallback) {
-	                return {
-	                  found: false,
-	                  error: "Found tabular PxWeb data but could not join geometry for map rendering",
-	                };
-	              }
+              if (pxTabularFallback) {
+                return {
+                  found: false,
+                  error: "Found tabular PxWeb data but could not join geometry for map rendering",
+                };
+              }
 
-	              return { found: false, error: "No matching dataset found in catalog" };
-	            },
-	          }),
-	        } : {}),
+              return { found: false, error: "No matching dataset found in catalog" };
+            },
+          }),
+        } : {}),
 
         // ── Tool: Search POI ────────────────────────────────────
         ...(enabledTools.has("search_poi") ? {
