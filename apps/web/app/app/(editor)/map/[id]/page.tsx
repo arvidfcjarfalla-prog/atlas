@@ -557,7 +557,10 @@ export default function MapPage() {
           );
           if (geoRes.ok) {
             const geo = await geoRes.json();
-            if (geo?.type === "FeatureCollection") setGeojsonData(geo);
+            if (geo?.type === "FeatureCollection") {
+              setGeojsonData(geo);
+              setDataProfile(profileDataset(geo));
+            }
           }
         } catch { /* non-fatal */ }
       }

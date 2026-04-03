@@ -43,7 +43,13 @@ export async function GET(
     );
   }
 
+  // Public artifacts (no auth needed) can be CDN-cached.
+  // Private artifacts must stay private.
+  const cacheControl = !userId
+    ? "public, max-age=3600, s-maxage=86400"
+    : "private, max-age=3600";
+
   return NextResponse.json(geojson, {
-    headers: { "Cache-Control": "private, max-age=3600" },
+    headers: { "Cache-Control": cacheControl },
   });
 }
