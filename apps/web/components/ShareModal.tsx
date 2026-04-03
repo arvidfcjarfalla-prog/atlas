@@ -38,7 +38,7 @@ export function ShareModal({
   const host = typeof window !== "undefined" ? window.location.host : "atlas.app";
   const shareUrl = localSlug ? `${window.location.protocol}//${host}/m/${localSlug}` : null;
   const embedCode = shareUrl
-    ? `<iframe src="${shareUrl}/embed" width="100%" height="500" frameborder="0" style="border-radius:8px;border:none"></iframe>`
+    ? `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden"><iframe src="${shareUrl}/embed" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;border-radius:8px" allowfullscreen></iframe></div>`
     : null;
 
   const handleToggle = useCallback(async () => {
@@ -111,7 +111,7 @@ export function ShareModal({
               margin: 0,
             }}
           >
-            Dela karta
+            Share map
           </h2>
           <button
             onClick={onClose}
@@ -144,10 +144,10 @@ export function ShareModal({
         >
           <div>
             <div style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 500, color: "#e4e0d8" }}>
-              {localPublic ? "Publik" : "Privat"}
+              {localPublic ? "Public" : "Private"}
             </div>
             <div style={{ fontFamily: "'Geist',sans-serif", fontSize: 11, color: "#5a5752", marginTop: 2 }}>
-              {localPublic ? "Alla med länken kan se kartan" : "Bara du kan se kartan"}
+              {localPublic ? "Anyone with the link can view this map" : "Only you can see this map"}
             </div>
           </div>
           <button
@@ -187,7 +187,7 @@ export function ShareModal({
             {/* Share link */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontFamily: "'Geist',sans-serif", fontSize: 11, color: "#5a5752", marginBottom: 6, display: "block" }}>
-                Länk
+                Link
               </label>
               <div
                 style={{
@@ -229,7 +229,7 @@ export function ShareModal({
                     transition: "all 0.15s ease",
                   }}
                 >
-                  {linkCopied ? "✓ Kopierad" : "Kopiera"}
+                  {linkCopied ? "Copied!" : "Copy"}
                 </button>
               </div>
             </div>
@@ -237,7 +237,7 @@ export function ShareModal({
             {/* Embed code */}
             <div>
               <label style={{ fontFamily: "'Geist',sans-serif", fontSize: 11, color: "#5a5752", marginBottom: 6, display: "block" }}>
-                Bädda in
+                Embed
               </label>
               <div
                 style={{
@@ -276,8 +276,14 @@ export function ShareModal({
                     cursor: "pointer",
                   }}
                 >
-                  {embedCopied ? "✓ Kopierad" : "Kopiera embed-kod"}
+                  {embedCopied ? "Copied!" : "Copy embed code"}
                 </button>
+                <p style={{
+                  fontFamily: "'Geist',sans-serif", fontSize: 10,
+                  color: "#5a5752", margin: "8px 0 0", lineHeight: 1.5,
+                }}>
+                  Responsive 16:9. Works in WordPress, Ghost, Notion, and most CMS editors — paste into a Custom HTML block.
+                </p>
               </div>
             </div>
           </>
@@ -292,7 +298,7 @@ export function ShareModal({
               margin: 0,
             }}
           >
-            Gör kartan publik för att dela
+            Make the map public to share
           </p>
         ) : null}
       </div>

@@ -9,3 +9,6 @@ dist/
 playwright-report/
 test-results/
 supabase/.temp/
+supabase/.branches/
+tmp/
+apps/web/supabase/

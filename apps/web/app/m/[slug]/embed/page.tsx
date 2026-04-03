@@ -42,7 +42,7 @@ export default function EmbedPage() {
   if (!manifest) {
     return (
       <div style={{ minHeight: "100vh", background: "#0d1217", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "#5a5752" }}>Kartan kunde inte laddas</p>
+        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "#5a5752" }}>Map could not be loaded</p>
       </div>
     );
   }

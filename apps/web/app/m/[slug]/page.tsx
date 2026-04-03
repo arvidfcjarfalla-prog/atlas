@@ -93,9 +93,9 @@ export default function PublicSharePage() {
   if (isPrivate) {
     return (
       <div style={{ minHeight: "100vh", background: "#0d1217", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "#908c85" }}>Den här kartan är privat</p>
+        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "#908c85" }}>This map is private</p>
         <a href="/" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, color: "#5a5752", textDecoration: "none" }}>
-          Gå till Atlas
+          Go to Atlas
         </a>
       </div>
     );
@@ -104,9 +104,9 @@ export default function PublicSharePage() {
   if (notFound || !manifest) {
     return (
       <div style={{ minHeight: "100vh", background: "#0d1217", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "#908c85" }}>Kartan hittades inte</p>
+        <p style={{ fontFamily: "'Geist',sans-serif", fontSize: 16, color: "#908c85" }}>Map not found</p>
         <a href="/" style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, color: "#5a5752", textDecoration: "none" }}>
-          Gå till Atlas
+          Go to Atlas
         </a>
       </div>
     );
@@ -130,23 +130,24 @@ export default function PublicSharePage() {
           borderBottom: "1px solid rgba(239,68,68,0.20)",
           fontFamily: "'Geist',sans-serif", fontSize: 13, color: "rgba(239,68,68,0.9)",
         }}>
-          <span>Datan för den här kartan är inte längre tillgänglig.</span>
+          <span>Data for this map is no longer available.</span>
         </div>
       )}
 
-      {/* Floating top bar */}
+      {/* Floating top bar — responsive */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 16px",
+        gap: 8,
+        padding: "10px 12px",
         background: "rgba(13,18,23,0.72)",
         backdropFilter: "blur(16px)",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, fontWeight: 500, color: "rgba(228,224,216,0.60)" }}>Atlas</span>
-          <span style={{ color: "rgba(255,255,255,0.12)" }}>|</span>
-          <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 14, color: "#e4e0d8", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+          <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 500, color: "rgba(228,224,216,0.60)", flexShrink: 0 }}>Atlas</span>
+          <span style={{ color: "rgba(255,255,255,0.12)", flexShrink: 0 }}>|</span>
+          <span style={{ fontFamily: "'Geist',sans-serif", fontSize: 13, color: "#e4e0d8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
             {title}
           </span>
         </div>
@@ -154,17 +155,19 @@ export default function PublicSharePage() {
           onClick={handleOpenInAtlas}
           disabled={duplicating || authLoading}
           style={{
-            fontFamily: "'Geist',sans-serif", fontSize: 13, fontWeight: 500,
+            fontFamily: "'Geist',sans-serif", fontSize: 12, fontWeight: 500,
             color: "#8ecba0", background: "rgba(142,203,160,0.08)",
             border: "1px solid rgba(142,203,160,0.20)", borderRadius: 8,
-            padding: "6px 14px", cursor: duplicating ? "wait" : "pointer",
+            padding: "8px 14px", cursor: duplicating ? "wait" : "pointer",
             transition: "background 150ms ease",
             opacity: duplicating ? 0.6 : 1,
+            flexShrink: 0, whiteSpace: "nowrap",
+            minHeight: 36,
           }}
           onMouseEnter={(e) => { if (!duplicating) (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.15)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(142,203,160,0.08)"; }}
         >
-          {duplicating ? "Kopierar…" : "Öppna i Atlas"}
+          {duplicating ? "Copying…" : "Open in Atlas"}
         </button>
       </div>
 

@@ -29,10 +29,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   if (!data) {
-    return { title: "Kartan hittades inte — Atlas" };
+    return { title: "Map not found — Atlas" };
   }
 
-  const description = data.description ?? data.prompt ?? "En interaktiv karta skapad med Atlas";
+  const description = data.description ?? data.prompt ?? "An interactive map made with Atlas";
 
   return {
     title: `${data.title} — Atlas`,
