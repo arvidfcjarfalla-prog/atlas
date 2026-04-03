@@ -41,9 +41,11 @@ export async function loadPublicMap(
   const map = data as MapRow;
   const manifest = data.manifest as unknown as MapManifest;
 
-  // Fetch GeoJSON if available
+  // Fetch GeoJSON: prefer durable artifact, fallback to cache URL
   let geojson: GeoJSON.FeatureCollection | null = null;
-  const geoUrl = data.geojson_url ?? manifest?.layers?.[0]?.sourceUrl;
+  const geoUrl = map.artifact_id
+    ? `/api/datasets/${map.artifact_id}/geojson`
+    : data.geojson_url ?? manifest?.layers?.[0]?.sourceUrl;
   if (geoUrl) {
     try {
       const res = await fetch(geoUrl);

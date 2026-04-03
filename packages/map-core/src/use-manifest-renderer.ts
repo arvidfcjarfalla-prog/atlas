@@ -155,16 +155,16 @@ export function useManifestRenderer({
       const msg = error instanceof Error ? error.message : "Failed to render layer";
       console.error("[Atlas] Render error:", msg);
       setRenderError(msg);
-      // Clean up orphaned source
-      if (
-        map.getSource(compiled.sourceId) &&
-        compiled.layers.every((l) => !map.getLayer(l.id))
-      ) {
-        try {
+      // Clean up orphaned source (map may be disposed after manifest swap)
+      try {
+        if (
+          map?.getSource?.(compiled.sourceId) &&
+          compiled.layers.every((l) => !map.getLayer(l.id))
+        ) {
           map.removeSource(compiled.sourceId);
-        } catch {
-          /* noop */
         }
+      } catch {
+        /* map disposed — safe to ignore */
       }
     }
   }, [map, isReady, compiled, data, beforeLayerId]);
