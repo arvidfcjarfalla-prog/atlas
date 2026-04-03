@@ -34,3 +34,11 @@ Format: [CATEGORY] NEVER/ALWAYS X because Y
 [CLARIFY] NEVER interpret user opinions or observations as action requests. When the user states a preference ("jag gillar inte X"), ASK what they want done about it instead of immediately modifying code or artifacts. The pipeline says clarify first — this applies to conversational context too, not just build tasks (2026-03-29).
 
 [GEOGRAPHY-PLUGIN] NEVER set level: "municipality" as the default in knownDimensions() for a dimension name that can represent multiple admin levels (e.g. Finnish "Alue", "Area", "Område" appear in both regional and municipal PxWeb tables). Wrong default level causes the join planner to look up the wrong geometry entry — MK codes matched against a municipality file yield zero hits and "tabular_only". Instead: (1) map dimension names that are region-specific (e.g. "Alue", "Area") to "admin1", (2) add explicit entries for municipality-specific names (e.g. "Kunta"), (3) keep confidence ≤0.5 so matchCodes() can override the level from actual code patterns (MK vs KU prefix) (2026-03-29).
+
+[AGENTS] NEVER delegate file-creation tasks to research-type agents. They loop endlessly planning what to write without actually writing. Use them for web search and analysis only, then write files yourself from their findings. Three crosswalk agents looped in this pattern in one session (2026-04-03).
+
+[CROSSWALKS] ALWAYS verify AI-generated lookup tables against an external source before shipping. Indonesia BPS province codes 34 (Yogyakarta) and 35 (East Java) were swapped — caught only because a review agent spot-checked against Wikipedia. Silent misjoin bugs are the worst kind (2026-04-03).
+
+[DOCS] ALWAYS check docs against actual code when reading them. Blueprint v3.2 described migrations 013/014 as resolution_outcomes/generation_records but the actual files are data_cache_pinned_and_meta/durable_dataset_storage. Following the blueprint blindly would have produced wrong migration numbers (2026-04-03).
+
+[DISCOVERABILITY] ALWAYS link new files/directories from CLAUDE.md Key Files section. crosswalks/ with 15 JSON files was invisible until explicitly added. If CLAUDE.md doesn't mention it, future sessions won't find it (2026-04-03).

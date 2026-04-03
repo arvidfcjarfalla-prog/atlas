@@ -47,6 +47,14 @@ Each has a dedicated compiler in `packages/map-core/src/manifest-compiler.ts`.
 - `apps/web/lib/ai/tools/pxweb-client.ts` — PxWeb client (wildcard threshold: URL string length >1500 chars instead of fixed count)
 - `apps/web/app/api/ai/clarify/route.ts` — Agency hint UX (short-circuit web search for unconnected sources, <5s response)
 - `apps/web/lib/ai/tools/official-stats-resolver.ts` — Global stats registry with crime/justice topic tags
+- `apps/web/lib/ai/tools/crosswalks/` — 15 static JSON crosswalk tables (ISO2↔ISO3, M49→ISO3, FIPS, JIS, KOSIS, IBGE, INEGI, BPS, INDEC, AGS→NUTS, CCAA→NUTS, TERYT→NUTS, dept→NUTS3, NUTS2016→2021, WB aggregate blocklist)
+- `apps/web/lib/ai/tools/DATA_SOURCE_RESEARCH.md` — Comprehensive research on ~50 non-PxWeb data sources (API details, auth, rate limits, geographic codes, per-source implementation notes)
+- `docs/source-integration-spec.md` — Source integration spec: current architecture audit, joinability matrices for ~50 sources, adapter contract, crosswalk inventory, prioritized implementation plan
+- `docs/platform-plan.md` — End-to-end platform plan: 4 phases (begriplighet → egen data → live-data → lärande), consensus-reviewed, activation metric, competitive positioning
+- `docs/architecture-blueprint-v3.md` — Architecture blueprint v3.2: immutable logs, resolution sessions/attempts, artifact versioning, table scores, migration plan (phases 0–7)
+- `docs/archive/data-upload-research.md` — Data upload research: 6 archetypes, pipeline architecture, geocoding options, visualization logic
+- `docs/archive/data-upload-ui-design.md` — Data upload UI spec: drag-and-drop, preview with match-rate, upload+prompt combo, responsive design
+- `docs/archive/data-upload-debate-findings.md` — Data upload debate: 5-perspective consensus, MVP scope (CSV only, Sweden+countries, manual column selection, skip AI in v1)
 
 ## AI Tools (`apps/web/lib/ai/tools/`)
 
@@ -56,7 +64,8 @@ Each has a dedicated compiler in `packages/map-core/src/manifest-compiler.ts`.
 | **Geography** | `geometry-registry`, `geometry-loader`, `geometry-join`, `geography-plugins`, `geography-detector`, `join-planner` |
 | **Stats** | `official-stats-resolver`, `global-stats-registry`, `normalized-result`, `ai-metric-matcher` |
 | **Routing** | `intent-classifier`, `source-adapter`, `dataset-registry`, `resolution-memory` |
-| **Utilities** | `url-fetcher`, `overpass`, `route-snapper`, `ai-suggestion-generator` |
+| **Utilities** | `url-fetcher`, `overpass`, `ai-suggestion-generator` |
+| **Crosswalks** | `crosswalks/*.json` — 15 static lookup tables mapping national stats codes ↔ ISO/NUTS/FIPS for join operations |
 
 ## Evaluation System
 
@@ -138,6 +147,25 @@ Rule of thumb:
 // In Node scripts — import from source, not barrel
 import { compileLayer } from "../../../packages/map-core/src/manifest-compiler.js";
 ```
+
+## How Arvid Works
+
+- Speaks Swedish. Respond in Swedish. Code and docs in English.
+- **Vibe coder.** Explain everything non-technically. No jargon, no implementation details unless asked. Describe what was done in terms of behavior ("maps now remember their data when reopened"), not code ("added artifact_id column with FK constraint"). Same for plans and proposals.
+- Sends detailed task briefs for big work — treat as complete specs, execute directly.
+- Short messages ("fixa", "kolla", "review") mean exactly that — act immediately.
+- Runs parallel work streams deliberately. Don't ask if this is intentional.
+- Reviews output actively. When he says "review", do a real code review.
+- Cares about system readiness and discoverability, not just functionality.
+
+## Behavioral Rules
+
+- **Agents that loop:** If a delegated agent hasn't produced files within ~2 minutes, kill it and do the work yourself. Research agents are good at searching, bad at writing files.
+- **Verify data:** Never trust AI-generated lookup tables blindly. Spot-check against external sources. (Indonesia BPS 34/35 swap was caught in review.)
+- **Discoverability:** After creating new directories or files, add them to CLAUDE.md Key Files. Add cross-references between related docs. Add README.md in new directories.
+- **Docs staleness:** When reading a doc in `docs/`, check for a `last-reviewed` date. If >60 days old or absent, flag as potentially stale before using it for decisions.
+- **Session continuity:** Write non-obvious decisions to `learned-rules.md` during the session, not just corrections. This is the only reliable cross-session memory.
+- **Don't over-explain:** Don't summarize what was accomplished — he can read the diff. Don't propose plans without being asked. Don't ask permission for routine operations.
 
 ## Development Rules
 

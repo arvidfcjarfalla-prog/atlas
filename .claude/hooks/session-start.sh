@@ -28,6 +28,16 @@ if [ -n "$UNSTAGED" ]; then
   CTX+="Unstaged changes:"$'\n'"$UNSTAGED"$'\n'
 fi
 
+# Latest learned rules — decisions and corrections from recent sessions
+RULES_FILE="$CLAUDE_PROJECT_DIR/.claude/learned-rules.md"
+if [ -f "$RULES_FILE" ]; then
+  RULE_COUNT=$(wc -l < "$RULES_FILE" | tr -d ' ')
+  LAST_RULES=$(tail -5 "$RULES_FILE" | grep -v '^$' || true)
+  if [ -n "$LAST_RULES" ]; then
+    CTX+="Learned rules ($RULE_COUNT lines, last 5):"$'\n'"$LAST_RULES"$'\n\n'
+  fi
+fi
+
 # Test status snapshot — only on fresh startup to keep resume fast
 if [ "$SOURCE" = "startup" ]; then
   TEST_RESULT=$(cd "$CLAUDE_PROJECT_DIR" && pnpm test 2>&1 | tail -1 || true)
