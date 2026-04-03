@@ -60,6 +60,16 @@ function polygonProfile(): DatasetProfile {
   };
 }
 
+function lineProfile(): DatasetProfile {
+  return {
+    featureCount: 20,
+    geometryType: "LineString",
+    bounds: [[0, 0], [10, 10]],
+    crs: null,
+    attributes: [],
+  };
+}
+
 // ─── Tests ──────────────────────────────────────────────────
 
 describe("scoreManifest", () => {
@@ -121,6 +131,27 @@ describe("scoreManifest", () => {
     const manifest = fullManifest();
     (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "point";
     const score = scoreManifest(manifest, pointProfile());
+    expect(score.breakdown.familyAppropriateness).toBe(20);
+  });
+
+  it("gives full marks for extrusion with polygon geometry", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "extrusion";
+    const score = scoreManifest(manifest, polygonProfile());
+    expect(score.breakdown.familyAppropriateness).toBe(20);
+  });
+
+  it("gives full marks for hexbin with point geometry", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "hexbin";
+    const score = scoreManifest(manifest, pointProfile());
+    expect(score.breakdown.familyAppropriateness).toBe(20);
+  });
+
+  it("gives full marks for trip with line geometry", () => {
+    const manifest = fullManifest();
+    (manifest.layers[0].style as unknown as Record<string, unknown>).mapFamily = "trip";
+    const score = scoreManifest(manifest, lineProfile());
     expect(score.breakdown.familyAppropriateness).toBe(20);
   });
 

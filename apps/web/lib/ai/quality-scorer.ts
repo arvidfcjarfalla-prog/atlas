@@ -61,12 +61,27 @@ function isCategoricalChoropleth(manifest: MapManifest): boolean {
 
 /** Families that work with point geometry. */
 const POINT_FAMILIES = new Set<MapFamily>([
-  "point", "cluster", "heatmap", "proportional-symbol",
+  "point",
+  "cluster",
+  "heatmap",
+  "proportional-symbol",
+  "hexbin",
+  "hexbin-3d",
+  "screen-grid",
 ]);
 
 /** Families that work with polygon geometry. */
 const POLYGON_FAMILIES = new Set<MapFamily>([
-  "choropleth", "isochrone",
+  "choropleth",
+  "isochrone",
+  "extrusion",
+]);
+
+/** Families that work with line geometry. */
+const LINE_FAMILIES = new Set<MapFamily>([
+  "flow",
+  "animated-route",
+  "trip",
 ]);
 
 /**
@@ -123,9 +138,9 @@ export function scoreManifest(
       // point on polygon is unusual but not wrong
       familyAppropriateness = 10;
       deductions.push(`Family "${family}" is unusual for ${geoType} geometry`);
-    } else if (isLineGeo && family !== "flow") {
+    } else if (isLineGeo && !LINE_FAMILIES.has(family)) {
       familyAppropriateness = 10;
-      deductions.push(`Family "${family}" is unusual for ${geoType} geometry — consider flow`);
+      deductions.push(`Family "${family}" is unusual for ${geoType} geometry — consider flow, animated-route, or trip`);
     }
   } else if (!profile) {
     // Without profile, we can't score family appropriateness — give benefit of the doubt
