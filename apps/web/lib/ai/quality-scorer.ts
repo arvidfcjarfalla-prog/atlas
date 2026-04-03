@@ -204,11 +204,11 @@ export function scoreManifest(
     if (classification) {
       // Method specified (+10)
       classificationQuality += 10;
-      // Class count 3–7 (+5)
-      if (classification.classes >= 3 && classification.classes <= 7) {
+      // Class count 2–9 (+5) — aligns with validator and prompt contract.
+      if (classification.classes >= 2 && classification.classes <= 9) {
         classificationQuality += 5;
       } else {
-        deductions.push(`Classification has ${classification.classes} classes — 3–7 is recommended`);
+        deductions.push(`Classification has ${classification.classes} classes — 2–9 is supported`);
       }
     } else {
       deductions.push("No classification specified for quantitative family");

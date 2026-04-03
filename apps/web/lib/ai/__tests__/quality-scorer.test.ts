@@ -194,7 +194,7 @@ describe("scoreManifest", () => {
 
   // ── Classification quality ──
 
-  it("gives full marks for classification with 3-7 classes on choropleth", () => {
+  it("gives full marks for classification with supported class counts on choropleth", () => {
     const score = scoreManifest(fullManifest(), polygonProfile());
     expect(score.breakdown.classificationQuality).toBe(15);
   });
@@ -207,12 +207,19 @@ describe("scoreManifest", () => {
     expect(score.deductions.some((d) => d.includes("No classification"))).toBe(true);
   });
 
-  it("deducts for classification with 2 classes", () => {
+  it("gives full classification score for 2 classes", () => {
     const manifest = fullManifest();
     manifest.layers[0].style.classification = { method: "quantile", classes: 2 };
     const score = scoreManifest(manifest, polygonProfile());
-    // method specified (+10) but classes < 3 (no +5)
+    expect(score.breakdown.classificationQuality).toBe(15);
+  });
+
+  it("deducts for classification with 10 classes", () => {
+    const manifest = fullManifest();
+    manifest.layers[0].style.classification = { method: "quantile", classes: 10 };
+    const score = scoreManifest(manifest, polygonProfile());
     expect(score.breakdown.classificationQuality).toBe(10);
+    expect(score.deductions.some((d) => d.includes("2–9 is supported"))).toBe(true);
   });
 
   it("gives full marks to non-quantitative families without classification", () => {
