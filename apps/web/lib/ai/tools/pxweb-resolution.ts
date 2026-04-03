@@ -59,7 +59,7 @@ import { aiSelectContentsValue, aiSelectTable } from "./ai-metric-matcher";
 import { getCachedData, setCache, type CacheEntry } from "./data-search";
 import { profileDataset } from "../profiler";
 import { recordsToGeoJSON } from "./pxweb-client";
-import { recordResolution, getLearnedTables } from "./resolution-memory";
+import { getLearnedTables } from "./resolution-memory";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -578,21 +578,6 @@ async function resolveOneTable(
     await setCache(tableKey, cacheEntry).catch(() => {});
     if (searchCacheKey !== tableKey) {
       await setCache(searchCacheKey, cacheEntry).catch(() => {});
-    }
-
-    // Learn from success — store the recipe for future similar prompts
-    if (result.status === "map_ready") {
-      const coverageRatio =
-        result.joinExecution?.diagnostics?.coverageRatio ?? 0;
-      recordResolution({
-        sourceId: source.id,
-        countryCode: source.countryCode ?? "",
-        tableId: table.id,
-        tableLabel: table.label,
-        geoLevel: result.detection?.level ?? "unknown",
-        keywords: searchQuery.split(/\s+/).filter((w) => w.length > 2),
-        coverageRatio,
-      }).catch(() => {});  // fire-and-forget, non-critical
     }
 
     return {

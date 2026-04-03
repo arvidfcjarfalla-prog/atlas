@@ -9,7 +9,7 @@ import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
-import { saveCase } from "../../../../lib/ai/case-memory";
+// case-memory writes disabled — reads already stubbed, Supabase logs are the durable record
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 import { applyGeometryGuards } from "../../../../lib/ai/geometry-guards";
@@ -360,20 +360,6 @@ export async function POST(request: Request) {
       const suggestions = getSuggestions(quality, manifest);
 
       const caseId = crypto.randomUUID();
-      if (!evalMode && quality.total >= 60) {
-        saveCase({
-          id: caseId,
-          timestamp: new Date().toISOString(),
-          prompt,
-          ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: normalizedMeta.sourceMetadata.sourceName ?? "unknown" } } : {}),
-          manifest,
-          quality,
-          attempts: 0,
-          outcome: "accepted",
-          refinements: [],
-          usage: { inputTokens: 0, outputTokens: 0 },
-        }).catch(() => {});
-      }
 
       const breaksSource = await embedClassificationBreaks(manifest, sourceUrl, artifactId, userId);
 
@@ -570,22 +556,6 @@ export async function POST(request: Request) {
 
     // Save case record (fire-and-forget — never delays response, skipped in eval mode)
     const caseId = crypto.randomUUID();
-    const parentCaseId: string | undefined = body.parentCaseId;
-    if (!evalMode && quality.total >= 60) {
-      saveCase({
-        id: caseId,
-        ...(parentCaseId ? { parentCaseId } : {}),
-        timestamp: new Date().toISOString(),
-        prompt,
-        ...(sourceUrl ? { resolvedSource: { url: sourceUrl, source: body.dataSource ?? "unknown" } } : {}),
-        manifest,
-        quality,
-        attempts,
-        outcome: "accepted",
-        refinements: [],
-        usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
-      }).catch(() => {});
-    }
 
     const breaksSource = await embedClassificationBreaks(manifest, sourceUrl, artifactId, userId);
 
