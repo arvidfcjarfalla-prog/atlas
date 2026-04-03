@@ -18,25 +18,7 @@ import type {
   PxJsonStat2Response,
 } from "./pxweb-client";
 import { resolveWorldBankIndicator } from "./worldbank-indicator-resolver";
-
-// ─── JSON safety ───────────────────────────────────────────
-
-/**
- * Parse a World Bank API response as JSON, guarding against the
- * intermittent XML/HTML responses the API returns for some indicators.
- * Throws on non-JSON so callers' catch blocks can handle it.
- */
-async function parseWbJson(res: Response): Promise<unknown> {
-  const ct = res.headers.get("content-type") ?? "";
-  if (ct.includes("xml") || ct.includes("html")) {
-    throw new Error(`World Bank API returned non-JSON content-type: ${ct}`);
-  }
-  const text = await res.text();
-  if (text.trimStart().startsWith("<")) {
-    throw new Error("World Bank API returned XML/HTML body");
-  }
-  return JSON.parse(text);
-}
+import { parseWbJson } from "./worldbank-json";
 
 // ─── Constants ──────────────────────────────────────────────
 
@@ -126,31 +108,6 @@ async function searchTablesWb(
     }));
   } catch {
     return [];
-  }
-}
-
-// ─── Indicator list cache ───────────────────────────────────
-
-let cachedIndicators: Array<Record<string, unknown>> | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL_MS = 3_600_000; // 1 hour
-
-async function getIndicatorList(baseUrl: string): Promise<Array<Record<string, unknown>>> {
-  if (cachedIndicators && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
-    return cachedIndicators;
-  }
-  try {
-    const res = await fetch(
-      `${baseUrl}/v2/indicator?format=json&per_page=2000&source=2`,
-      { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) },
-    );
-    if (!res.ok) return cachedIndicators ?? [];
-    const json = await parseWbJson(res);
-    cachedIndicators = (Array.isArray(json) && json.length >= 2 ? json[1] : []) as Array<Record<string, unknown>>;
-    cacheTimestamp = Date.now();
-    return cachedIndicators;
-  } catch {
-    return cachedIndicators ?? [];
   }
 }
 

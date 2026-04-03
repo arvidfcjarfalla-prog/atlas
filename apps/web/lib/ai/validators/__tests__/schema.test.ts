@@ -66,7 +66,9 @@ describe("validateSchema", () => {
   it("returns error when layers is undefined", () => {
     const manifest = validManifest();
     (manifest as any).layers = undefined;
-    expect(() => validateSchema(manifest)).toThrow();
+    const result = validateSchema(manifest);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("Manifest must have at least one layer");
   });
 
   it("returns error when layer is missing id", () => {

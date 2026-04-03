@@ -22,6 +22,7 @@ import type { DatasetProfile } from "../types";
 import type { NormalizedDimension, SourceMetadata } from "./normalized-result";
 import type { Json } from "../../supabase/types";
 import { resolveWorldBankIndicator } from "./worldbank-indicator-resolver";
+import { parseWbJson } from "./worldbank-json";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -291,22 +292,6 @@ async function loadCountryGeometry(): Promise<GeoJSON.FeatureCollection | null> 
   } catch {
     return null;
   }
-}
-
-/**
- * Parse World Bank API responses defensively.
- * The API intermittently returns XML/HTML for some indicators.
- */
-async function parseWbJson(res: Response): Promise<unknown> {
-  const ct = res.headers.get("content-type") ?? "";
-  if (ct.includes("xml") || ct.includes("html")) {
-    throw new Error(`World Bank API returned non-JSON content-type: ${ct}`);
-  }
-  const text = await res.text();
-  if (text.trimStart().startsWith("<")) {
-    throw new Error("World Bank API returned XML/HTML body");
-  }
-  return JSON.parse(text);
 }
 
 /**

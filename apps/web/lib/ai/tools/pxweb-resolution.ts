@@ -55,7 +55,6 @@ import { aiSelectContentsValue, aiSelectTable } from "./ai-metric-matcher";
 import { getCachedData, setCache, type CacheEntry } from "./data-search";
 import { profileDataset } from "../profiler";
 import { recordsToGeoJSON } from "./pxweb-client";
-import { getLearnedTables } from "./resolution-memory";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -695,14 +694,7 @@ export async function resolvePxWeb(
     allTopicKeywords,
   );
 
-  // Prepend learned tables — proven table IDs from past map_ready resolutions
-  const learnedTableIds = await getLearnedTables(source.id, allTopicKeywords);
-  // Merge: learned first, then plugin-known (deduped)
-  const knownSet = new Set(knownTableIds);
-  const allKnownTableIds = [
-    ...learnedTableIds.filter((id) => !knownSet.has(id)),
-    ...knownTableIds,
-  ];
+  const allKnownTableIds = knownTableIds;
 
   // Build stub PxTableInfo objects for known tables that aren't in the search results.
   // resolveOneTable only needs the table id — all other fields are fetched from metadata.

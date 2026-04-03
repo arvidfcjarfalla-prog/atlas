@@ -53,7 +53,7 @@ export async function GET(_request: Request, { params }: Params) {
     }
 
     if (count && count > 0) {
-      return NextResponse.json({ status: "private" }, { status: 403 });
+      return NextResponse.json({ status: "not_found" }, { status: 404 });
     }
   }
 

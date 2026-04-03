@@ -508,7 +508,7 @@ function compilePoint(
         id: pointsId,
         type: "circle",
         source: sourceId,
-        ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
+        ...(hasLines || hasPolygons ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
           "circle-color": colorExpr as string,
           "circle-radius": radiusExpr as number,
@@ -521,7 +521,7 @@ function compilePoint(
         id: highlightId,
         type: "circle",
         source: sourceId,
-        ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
+        ...(hasLines || hasPolygons ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
           "circle-color": "transparent",
           "circle-radius": highlightRadiusExpr as number,
@@ -665,7 +665,8 @@ function compileChoropleth(
     const preMax = layer.style.classification?.max;
 
     if (vals.length > 0) {
-      const breaks = classify(vals, method, classCount);
+      const manualBreaks = layer.style.classification?.breaks;
+      const breaks = classify(vals, method, classCount, manualBreaks);
       if (breaks.breaks.length > 0) {
         // The value expression: either normalized (field * multiplier / normField) or raw
         let valueExpr: Expr;
@@ -1656,7 +1657,8 @@ function buildColorExpression(
       return paletteColors[0];
     }
 
-    const breaks = classify(vals, method, classCount);
+    const manualBreaks = layer.style.classification?.breaks;
+    const breaks = classify(vals, method, classCount, manualBreaks);
     if (breaks.breaks.length === 0) {
       if (breaks.min === breaks.max) {
         warnings.push(`All values for "${colorField}" are identical (${breaks.min}) — classification not applied`);
@@ -1719,7 +1721,8 @@ function buildLegendItems(
     const vals = numericValues(data, colorField);
     if (vals.length === 0) return [{ label: "No data", color: "#999999", shape }];
 
-    const breaks = classify(vals, method, classCount);
+    const manualBreaks = layer.style.classification?.breaks;
+    const breaks = classify(vals, method, classCount, manualBreaks);
     const items: CompiledLegendItem[] = [];
     const allBreaks = [breaks.min, ...breaks.breaks, breaks.max];
 
@@ -1784,7 +1787,8 @@ function buildChoroplethLegend(
     return [{ label: "No data", color: "#999999", shape: "square" as const }];
   }
 
-  const breaks = classify(vals, method, classCount);
+  const manualBreaks = layer.style.classification?.breaks;
+  const breaks = classify(vals, method, classCount, manualBreaks);
   const items: CompiledLegendItem[] = [];
   const allBreaks = [breaks.min, ...breaks.breaks, breaks.max];
 

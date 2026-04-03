@@ -80,11 +80,10 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
     (async () => {
       try {
         // Dynamic import deck.gl packages
-        const [{ MapboxOverlay }, { HexagonLayer, ScreenGridLayer }, { TripsLayer }, deckLayers_] = await Promise.all([
+        const [{ MapboxOverlay }, { HexagonLayer, ScreenGridLayer }, { TripsLayer }] = await Promise.all([
           import("@deck.gl/mapbox"),
           import("@deck.gl/aggregation-layers"),
           import("@deck.gl/geo-layers"),
-          import("@deck.gl/layers"),
         ]);
 
         if (cancelled) return;

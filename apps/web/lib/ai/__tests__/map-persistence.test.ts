@@ -738,7 +738,7 @@ describe("GET /api/maps/by-slug/:slug — public map access", () => {
     expect(body.status).toBe("owner");
   });
 
-  it("returns status=private (403) for another user's private map", async () => {
+  it("returns 404 for another user's private map (no existence leak)", async () => {
     currentSupabaseMock = makeSupabaseMock({
       selectResult: { data: null, error: null },
     });
@@ -750,9 +750,9 @@ describe("GET /api/maps/by-slug/:slug — public map access", () => {
       "http://localhost/api/maps/by-slug/private-map",
     );
     const res = await getBySlug(req, makeSlugParams("private-map"));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     const body = await res.json();
-    expect(body.status).toBe("private");
+    expect(body.status).toBe("not_found");
   });
 
   it("returns status=not_found (404) for nonexistent map", async () => {

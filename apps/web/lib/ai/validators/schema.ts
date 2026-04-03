@@ -24,6 +24,7 @@ export function validateSchema(manifest: MapManifest): ManifestValidation {
   if (!manifest.title) errors.push("Missing required field: title");
   if (!manifest.layers || manifest.layers.length === 0) {
     errors.push("Manifest must have at least one layer");
+    return { valid: errors.length === 0, errors, warnings };
   }
 
   const layerIds = new Set<string>();

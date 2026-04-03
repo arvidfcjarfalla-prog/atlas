@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const { data: deletedDataCache, error: dataCacheError } = await client
     .from("data_cache")
     .delete()
+    .eq("pinned", false)
     .lt("created_at", cutoff)
     .select("cache_key");
 
