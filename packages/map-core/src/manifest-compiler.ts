@@ -618,13 +618,7 @@ function compileChoropleth(
 
   const colorField = layer.style.colorField;
   const classCount = classes(layer);
-  const requestedMethod = layer.style.classification?.method ?? "quantile";
-  const method = requestedMethod === "manual" || requestedMethod === "categorical"
-    ? requestedMethod
-    : "quantile";
-  if (requestedMethod !== method && requestedMethod !== "quantile") {
-    warnings.push(`Classification "${requestedMethod}" not yet implemented — using quantile`);
-  }
+  const method = layer.style.classification?.method ?? "quantile";
   const colorScheme = scheme(layer);
   let paletteColors = getColors(colorScheme, classCount);
   if (paletteColors.length === 0 && classCount > 0) {
@@ -1459,7 +1453,8 @@ function compileHexbin(
 
   let fillColor: string | Expr = paletteColors[Math.floor(paletteColors.length / 2)];
   if (vals.length > 0) {
-    const breaks = classify(vals, "quantile", classCount);
+    const method = layer.style.classification?.method ?? "quantile";
+    const breaks = classify(vals, method, classCount);
     if (breaks.breaks.length > 0) {
       const expr: Expr = ["step", ["get", "_hex_value"], paletteColors[0]];
       for (let i = 0; i < breaks.breaks.length; i++) {
@@ -1624,8 +1619,7 @@ function buildColorExpression(
   if (fieldType === "number") {
     // Numeric → classified step expression
     const classCount = classes(layer);
-    const reqMethod = layer.style.classification?.method ?? "quantile";
-    const method = reqMethod === "manual" || reqMethod === "categorical" ? reqMethod : "quantile";
+    const method = layer.style.classification?.method ?? "quantile";
     let paletteColors = getColors(scheme(layer), classCount);
     if (paletteColors.length === 0 && classCount > 0) {
       warnings.push(`Unknown color scheme "${scheme(layer)}", falling back to "viridis"`);
@@ -1696,8 +1690,7 @@ function buildLegendItems(
   if (fieldType === "number") {
     // Numeric → class-based legend
     const classCount = classes(layer);
-    const reqMethod = layer.style.classification?.method ?? "quantile";
-    const method = reqMethod === "manual" || reqMethod === "categorical" ? reqMethod : "quantile";
+    const method = layer.style.classification?.method ?? "quantile";
     const paletteColors = getColors(scheme(layer), classCount);
     const vals = numericValues(data, colorField);
     if (vals.length === 0) return [{ label: "No data", color: "#999999", shape }];
@@ -1739,8 +1732,7 @@ function buildChoroplethLegend(
   }
 
   const classCount = classes(layer);
-  const reqMethod2 = layer.style.classification?.method ?? "quantile";
-  const method = reqMethod2 === "manual" || reqMethod2 === "categorical" ? reqMethod2 : "quantile";
+  const method = layer.style.classification?.method ?? "quantile";
   const normField = layer.style.normalization?.field;
   const multiplier = layer.style.normalization?.multiplier ?? 1;
   const vals = normField

@@ -1226,11 +1226,11 @@ describe("manifest-compiler", () => {
       expect(result.warnings?.some(w => w.includes("timestampField"))).toBe(true);
     });
 
-    it("natural-breaks classification emits a warning", () => {
+    it("natural-breaks classification compiles without fallback warning", () => {
       const layer: LayerManifest = {
         id: "nb", kind: "asset", label: "NB",
         sourceType: "geojson-static", geometryType: "polygon",
-        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "natural-breaks" as "quantile", classes: 3 } },
+        style: { markerShape: "circle", mapFamily: "choropleth", colorField: "value", color: { scheme: "viridis" }, classification: { method: "natural-breaks", classes: 3 } },
       };
       const data = fc([
         poly(rect(0, 0, 1, 1), { value: 10 }),
@@ -1239,7 +1239,37 @@ describe("manifest-compiler", () => {
         poly(rect(3, 0, 4, 1), { value: 100 }),
       ]);
       const result = compileLayer(layer, data);
-      expect(result.warnings?.some(w => w.includes("not yet implemented"))).toBe(true);
+      const warnings = result.warnings ?? [];
+      expect(warnings.some((w) => w.includes("not yet implemented"))).toBe(false);
+    });
+
+    it("uses equal-interval breaks when requested", () => {
+      const layer: LayerManifest = {
+        id: "eq", kind: "asset", label: "EQ",
+        sourceType: "geojson-static", geometryType: "polygon",
+        style: {
+          markerShape: "circle",
+          mapFamily: "choropleth",
+          colorField: "value",
+          color: { scheme: "viridis" },
+          classification: { method: "equal-interval", classes: 3 },
+        },
+      };
+      const data = fc([
+        poly(rect(0, 0, 1, 1), { value: 1 }),
+        poly(rect(1, 0, 2, 1), { value: 2 }),
+        poly(rect(2, 0, 3, 1), { value: 3 }),
+        poly(rect(3, 0, 4, 1), { value: 100 }),
+      ]);
+      const result = compileLayer(layer, data);
+
+      const fill = result.layers.find((l) => l.id === "eq-fill") as FillLayerSpecification;
+      const expr = fill.paint?.["fill-color"] as unknown[];
+      expect(Array.isArray(expr)).toBe(true);
+      expect(expr[0]).toBe("step");
+      // Equal interval breaks for [1, 100] with 3 classes are 34 and 67.
+      expect(expr[3]).toBeCloseTo(34, 6);
+      expect(expr[5]).toBeCloseTo(67, 6);
     });
   });
 });
