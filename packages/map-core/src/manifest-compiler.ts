@@ -444,6 +444,29 @@ function compilePoint(
   );
 
   const baseColor = typeof colorExpr === "string" ? colorExpr : "#6baed6";
+  let radiusExpr: Expr | number = 5;
+  const sizeField = layer.style.sizeField;
+  if (sizeField) {
+    const vals = numericValues(data, sizeField);
+    if (vals.length > 0) {
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      radiusExpr = [
+        "interpolate",
+        ["linear"],
+        ["sqrt", ["max", ["-", ["get", sizeField], min], 0]],
+        0,
+        3,
+        Math.sqrt(Math.max(max - min, 1)),
+        18,
+      ];
+    } else {
+      warnings.push(`Layer "${layer.id}": sizeField "${sizeField}" has no numeric values; using fixed point radius`);
+    }
+  }
+  const highlightRadiusExpr = typeof radiusExpr === "number"
+    ? radiusExpr + 5
+    : [...(radiusExpr as Expr).slice(0, -1), ((radiusExpr as Expr).at(-1) as number) + 5];
   const layers: LayerSpecification[] = [];
 
   if (hasPolygons) {
@@ -488,7 +511,7 @@ function compilePoint(
         ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
           "circle-color": colorExpr as string,
-          "circle-radius": 5,
+          "circle-radius": radiusExpr as number,
           "circle-stroke-width": 1,
           "circle-stroke-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
           "circle-opacity": layer.style.fillOpacity ?? 0.85,
@@ -501,7 +524,7 @@ function compilePoint(
         ...(hasLines ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
           "circle-color": "transparent",
-          "circle-radius": 10,
+          "circle-radius": highlightRadiusExpr as number,
           "circle-stroke-width": 2,
           "circle-stroke-color": "rgba(255,255,255,0.6)",
           "circle-stroke-opacity": [

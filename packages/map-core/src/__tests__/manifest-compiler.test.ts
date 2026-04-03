@@ -136,6 +136,65 @@ describe("manifest-compiler", () => {
       expect(result.legendItems[0].label).toBe("Simple Points");
       expect(result.legendItems[0].shape).toBe("circle");
     });
+
+    it("uses sizeField to build circle radius interpolation", () => {
+      const layer: LayerManifest = {
+        id: "sized-points",
+        kind: "asset",
+        label: "Sized Points",
+        sourceType: "geojson-static",
+        style: {
+          markerShape: "circle",
+          mapFamily: "point",
+          sizeField: "population",
+          color: { scheme: "blues" },
+        },
+      };
+
+      const data = fc([
+        pt(10, 60, { population: 100 }),
+        pt(11, 61, { population: 400 }),
+      ]);
+
+      const result = compileLayer(layer, data);
+      const pointsLayer = result.layers[0] as CircleLayerSpecification;
+      const highlightLayer = result.layers[1] as CircleLayerSpecification;
+      const pointRadiusExpr = pointsLayer.paint?.["circle-radius"] as unknown[];
+
+      expect(Array.isArray(pointsLayer.paint?.["circle-radius"])).toBe(true);
+      expect(pointRadiusExpr[0]).toBe("interpolate");
+      expect(pointRadiusExpr[1]).toEqual(["linear"]);
+      expect(Array.isArray(highlightLayer.paint?.["circle-radius"])).toBe(true);
+      expect((highlightLayer.paint?.["circle-radius"] as unknown[]).at(-1)).toBe(23);
+    });
+
+    it("falls back to fixed radius when sizeField has no numeric values", () => {
+      const layer: LayerManifest = {
+        id: "invalid-size-points",
+        kind: "asset",
+        label: "Invalid Size Points",
+        sourceType: "geojson-static",
+        style: {
+          markerShape: "circle",
+          mapFamily: "point",
+          sizeField: "population",
+          color: { scheme: "blues" },
+        },
+      };
+
+      const data = fc([
+        pt(10, 60, { population: "high" }),
+        pt(11, 61, { population: "low" }),
+      ]);
+
+      const result = compileLayer(layer, data);
+      const pointsLayer = result.layers[0] as CircleLayerSpecification;
+
+      expect(pointsLayer.paint?.["circle-radius"]).toBe(5);
+      expect(result.warnings).toContain(
+        'Layer "invalid-size-points": sizeField "population" has no numeric values; using fixed point radius',
+      );
+    });
   });
 
   describe("cluster family", () => {
