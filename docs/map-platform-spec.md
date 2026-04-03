@@ -1,3 +1,4 @@
+<!-- last-reviewed: 2026-04-02 -->
 # Map Platform Specification
 
 Operational specification for all maps built on the Atlas platform. Every map page must follow this architecture, interaction model, and design system.

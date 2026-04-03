@@ -1,3 +1,4 @@
+<!-- last-reviewed: 2026-04-02 -->
 # Atlas — Complete Application Flow
 
 ## Architecture Overview
