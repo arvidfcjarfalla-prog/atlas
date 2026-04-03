@@ -18,6 +18,25 @@ import type {
   PxJsonStat2Response,
 } from "./pxweb-client";
 
+// ─── JSON safety ───────────────────────────────────────────
+
+/**
+ * Parse a World Bank API response as JSON, guarding against the
+ * intermittent XML/HTML responses the API returns for some indicators.
+ * Throws on non-JSON so callers' catch blocks can handle it.
+ */
+async function parseWbJson(res: Response): Promise<unknown> {
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("xml") || ct.includes("html")) {
+    throw new Error(`World Bank API returned non-JSON content-type: ${ct}`);
+  }
+  const text = await res.text();
+  if (text.trimStart().startsWith("<")) {
+    throw new Error("World Bank API returned XML/HTML body");
+  }
+  return JSON.parse(text);
+}
+
 // ─── Constants ──────────────────────────────────────────────
 
 const SEARCH_TIMEOUT_MS = 6_000;
@@ -46,10 +65,12 @@ const WB_KEYWORDS: Record<string, string> = {
   // Poverty
   poverty: "SI.POV.DDAY",
   fattigdom: "SI.POV.DDAY",
-  // CO2
-  "co2 emissions": "EN.ATM.CO2E.PC",
-  "co2": "EN.ATM.CO2E.PC",
-  koldioxid: "EN.ATM.CO2E.PC",
+  // CO2 — new AR5 indicators (EN.ATM.CO2E.PC is archived)
+  "co2 emissions per capita": "EN.GHG.CO2.PC.CE.AR5",
+  "co2 per capita": "EN.GHG.CO2.PC.CE.AR5",
+  "co2 emissions": "EN.GHG.CO2.MT.CE.AR5",
+  co2: "EN.GHG.CO2.MT.CE.AR5",
+  koldioxid: "EN.GHG.CO2.MT.CE.AR5",
   // Fertility
   "fertility rate": "SP.DYN.TFRT.IN",
   fertilitet: "SP.DYN.TFRT.IN",
@@ -113,7 +134,7 @@ async function searchTablesWb(
         { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) },
       );
       if (res.ok) {
-        const json = await res.json();
+        const json = await parseWbJson(res);
         const indicators = Array.isArray(json) && json.length >= 2 ? json[1] : [];
         if (indicators.length > 0) {
           const ind = indicators[0] as Record<string, unknown>;
@@ -140,7 +161,7 @@ async function searchTablesWb(
     );
     if (!res.ok) return [];
 
-    const json = await res.json();
+    const json = await parseWbJson(res);
     const indicators = (Array.isArray(json) && json.length >= 2 ? json[1] : []) as Array<Record<string, unknown>>;
 
     // Text-match indicator names
@@ -185,7 +206,7 @@ async function getIndicatorList(baseUrl: string): Promise<Array<Record<string, u
       { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) },
     );
     if (!res.ok) return cachedIndicators ?? [];
-    const json = await res.json();
+    const json = await parseWbJson(res);
     cachedIndicators = (Array.isArray(json) && json.length >= 2 ? json[1] : []) as Array<Record<string, unknown>>;
     cacheTimestamp = Date.now();
     return cachedIndicators;
@@ -209,7 +230,7 @@ async function fetchMetadataWb(
     );
     if (!res.ok) return null;
 
-    const json = await res.json();
+    const json = await parseWbJson(res);
     const indicators = Array.isArray(json) && json.length >= 2 ? json[1] : [];
     if (indicators.length === 0) return null;
 
@@ -286,7 +307,7 @@ async function fetchDataWb(
     );
     if (!res.ok) return null;
 
-    const json = await res.json();
+    const json = await parseWbJson(res);
     const rows = (Array.isArray(json) && json.length >= 2 ? json[1] : []) as Array<Record<string, unknown>>;
     if (rows.length === 0) return null;
 
