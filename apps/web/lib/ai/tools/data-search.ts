@@ -175,6 +175,61 @@ export async function setCache(key: string, entry: CacheEntry): Promise<void> {
 const COUNTRIES_GEO_FILE = "geo/global/admin0_110m.geojson";
 const WB_AI_TIMEOUT_MS = 2_500;
 
+// ─── Scope detection for server-side filtering ────────────────
+
+/** Country group definitions for sub-regional filtering (ISO 3166-1 alpha-3). */
+const COUNTRY_GROUPS: Record<string, Set<string>> = {
+  EU: new Set(["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"]),
+  NORDIC: new Set(["SWE","NOR","DNK","FIN","ISL"]),
+  SCANDINAVIA: new Set(["SWE","NOR","DNK"]),
+  BALTICS: new Set(["EST","LVA","LTU"]),
+  OECD: new Set(["AUS","AUT","BEL","CAN","CHL","COL","CRI","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","ISL","IRL","ISR","ITA","JPN","KOR","LVA","LTU","LUX","MEX","NLD","NZL","NOR","POL","PRT","SVK","SVN","ESP","SWE","CHE","TUR","GBR","USA"]),
+  WESTERN_EUROPE: new Set(["AUT","BEL","FRA","DEU","IRL","LUX","MCO","NLD","CHE","GBR","LIE"]),
+  EASTERN_EUROPE: new Set(["BLR","BGR","CZE","HUN","MDA","POL","ROU","RUS","SVK","UKR"]),
+  SOUTHEAST_ASIA: new Set(["BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","TLS","VNM"]),
+  MIDDLE_EAST: new Set(["BHR","IRN","IRQ","ISR","JOR","KWT","LBN","OMN","PSE","QAT","SAU","SYR","ARE","YEM","TUR"]),
+  SUB_SAHARAN_AFRICA: new Set(["AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","CIV","DJI","GNQ","ERI","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","MDG","MWI","MLI","MRT","MUS","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","UGA","ZMB","ZWE"]),
+};
+
+/** Same groups but in ISO 3166-1 alpha-2 (used by Eurostat NUTS0). */
+export const COUNTRY_GROUPS_ISO2: Record<string, Set<string>> = {
+  EU: new Set(["AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","EL","HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE"]),
+  NORDIC: new Set(["SE","NO","DK","FI","IS"]),
+  SCANDINAVIA: new Set(["SE","NO","DK"]),
+  BALTICS: new Set(["EE","LV","LT"]),
+  OECD: new Set(["AU","AT","BE","CA","CL","CO","CR","CZ","DK","EE","FI","FR","DE","EL","HU","IS","IE","IL","IT","JP","KR","LV","LT","LU","MX","NL","NZ","NO","PL","PT","SK","SI","ES","SE","CH","TR","GB","US"]),
+  WESTERN_EUROPE: new Set(["AT","BE","FR","DE","IE","LU","NL","CH","LI"]),
+  EASTERN_EUROPE: new Set(["BG","CZ","HU","PL","RO","SK","UA"]),
+};
+
+const EU_WORD_RE = /\beu\b/;
+
+/** Scope keyword checks — order matters (specific before broad). */
+const SCOPE_CHECKS: { keywords: string[]; regex?: RegExp; key: string }[] = [
+  { keywords: ["sub-saharan", "sub saharan"], key: "SUB_SAHARAN_AFRICA" },
+  { keywords: ["southeast asia", "south-east asia", "sydostasien", "südostasien"], key: "SOUTHEAST_ASIA" },
+  { keywords: ["western europe", "västeuropa"], key: "WESTERN_EUROPE" },
+  { keywords: ["eastern europe", "östeuropa"], key: "EASTERN_EUROPE" },
+  { keywords: ["middle east", "mellanöstern", "midtøsten"], key: "MIDDLE_EAST" },
+  { keywords: ["scandinavia", "skandinavien"], key: "SCANDINAVIA" },
+  { keywords: ["nordic", "norden"], key: "NORDIC" },
+  { keywords: ["baltic", "baltikum", "baltiske"], key: "BALTICS" },
+  { keywords: ["oecd"], key: "OECD" },
+  { keywords: ["european union", "europeiska unionen", "eu-"], regex: EU_WORD_RE, key: "EU" },
+];
+
+/** Detect a country group scope from a query string. Returns ISO3 set or null. */
+export function detectScope(query: string): { key: string; countries: Set<string> } | null {
+  const lower = query.toLowerCase();
+  for (const { keywords, regex, key } of SCOPE_CHECKS) {
+    if (keywords.some((kw) => lower.includes(kw)) || regex?.test(lower)) {
+      return { key, countries: COUNTRY_GROUPS[key] };
+    }
+  }
+  // Continent-level: return null (no filtering — too broad to be useful)
+  return null;
+}
+
 /** ISO 3166-1 alpha-3 → continent mapping for World Bank data filtering. */
 const ISO_TO_CONTINENT: Record<string, string> = {
   // Europe
@@ -603,7 +658,11 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
     return { found: false, error: "Indicator does not match user intent" };
   }
 
-  const cacheKey = `worldbank-${matched.code}`;
+  // Detect sub-regional scope for server-side filtering
+  const scope = detectScope(query);
+  const cacheKey = scope
+    ? `worldbank-${matched.code}-${scope.key.toLowerCase()}`
+    : `worldbank-${matched.code}`;
   const cached = await getCachedData(cacheKey);
   if (cached) {
     return {
@@ -675,11 +734,16 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
         };
       });
 
-    if (features.length === 0) {
+    // Apply sub-regional scope filter (EU, Nordic, OECD, etc.)
+    const filtered = scope
+      ? features.filter((f) => scope.countries.has(f.properties?.iso_a3 as string))
+      : features;
+
+    if (filtered.length === 0) {
       return { found: false, error: "No countries matched between World Bank and geometry data" };
     }
 
-    const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
+    const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: filtered };
     const profile = profileDataset(fc);
 
     const entry: CacheEntry = {
@@ -695,8 +759,8 @@ export async function searchWorldBank(query: string): Promise<DataSearchResult> 
     return {
       found: true,
       source: "World Bank",
-      description: `${matched.label} by country (${matched.unit}), ${features.length} countries`,
-      featureCount: features.length,
+      description: `${matched.label} by country (${matched.unit}), ${filtered.length} countries${scope ? ` (${scope.key})` : ""}`,
+      featureCount: filtered.length,
       geometryType: "Polygon",
       attributes: profile.attributes.map((a) => a.name),
       cacheKey,

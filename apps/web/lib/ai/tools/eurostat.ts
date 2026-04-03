@@ -17,6 +17,8 @@ import { profileDataset } from "../profiler";
 import {
   getCachedData,
   setCache,
+  detectScope,
+  COUNTRY_GROUPS_ISO2,
   type DataSearchResult,
   type CacheEntry,
 } from "./data-search";
@@ -439,7 +441,11 @@ export async function searchEurostat(
   const config = EUROSTAT_DATASETS[intent.datasetKey];
   if (!config) return { found: false, englishPrompt: intent.englishPrompt };
 
-  const cacheKey = `eurostat-${config.code}`;
+  // Detect sub-regional scope for server-side filtering
+  const scope = detectScope(query);
+  const cacheKey = scope
+    ? `eurostat-${config.code}-${scope.key.toLowerCase()}`
+    : `eurostat-${config.code}`;
 
   // Check cache
   const cached = await getCachedData(cacheKey);
@@ -528,14 +534,37 @@ export async function searchEurostat(
       };
     }
 
+    // Apply sub-regional scope filter (Nordic, Baltics, EU, etc.)
+    // Skip scopes not mapped to ISO2 (e.g. MIDDLE_EAST, SUB_SAHARAN_AFRICA — not in Eurostat)
+    const scopeIso2 = scope ? COUNTRY_GROUPS_ISO2[scope.key] : undefined;
+    if (scope && !scopeIso2) {
+      return {
+        found: false,
+        error: `Scope ${scope.key} is not available in Eurostat`,
+        englishPrompt: intent.englishPrompt,
+      };
+    }
+    const filtered = scopeIso2
+      ? features.filter((f) => scopeIso2.has(f.properties?.nuts_id as string))
+      : features;
+
+    if (filtered.length === 0) {
+      return {
+        found: false,
+        error: `No countries in scope ${scope?.key} had Eurostat data`,
+        englishPrompt: intent.englishPrompt,
+      };
+    }
+
     // Step 5: Build FeatureCollection
     const fc: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
-      features,
+      features: filtered,
     };
     const profile = profileDataset(fc);
 
-    const description = `${config.label} in Europe, ${features.length} countries (Eurostat)`;
+    const scopeLabel = scope ? ` (${scope.key})` : "";
+    const description = `${config.label} in Europe, ${filtered.length} countries${scopeLabel} (Eurostat)`;
 
     // Step 6: Cache
     const entry: CacheEntry = {
@@ -551,7 +580,7 @@ export async function searchEurostat(
       found: true,
       source: "Eurostat",
       description,
-      featureCount: features.length,
+      featureCount: filtered.length,
       geometryType: profile.geometryType,
       attributes: profile.attributes.map((a) => a.name),
       cacheKey,
