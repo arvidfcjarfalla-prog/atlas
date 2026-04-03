@@ -716,11 +716,12 @@ describe("selectDimensionsWithAmbiguity", () => {
     expect(result.contentsDimensionId).toBe("ContentsCode");
   });
 
-  it("always ambiguous when 2+ contents values exist (delegates to AI)", () => {
+  it("not ambiguous when prompt keyword matches a contents label", () => {
     const result = selectDimensionsWithAmbiguity(baseMetadata, "folkmängd i kommuner");
-    expect(result.contentsAmbiguous).toBe(true);
-    expect(result.contentsValues).toHaveLength(3);
-    expect(result.contentsDimensionId).toBe("ContentsCode");
+    expect(result.contentsAmbiguous).toBe(false);
+    // Should pick "Folkmängd" (BE0101N1) via keyword match, not default to first value
+    const contentsSel = result.selections.find((s) => s.dimensionId === "ContentsCode");
+    expect(contentsSel?.valueCodes).toEqual(["BE0101N1"]);
   });
 
   it("not ambiguous when only one contents value exists", () => {

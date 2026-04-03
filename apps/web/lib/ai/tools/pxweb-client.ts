@@ -765,6 +765,89 @@ export function selectDimensions(
 }
 
 /**
+ * Keyword map: prompt words → contents value label fragments.
+ * Covers Swedish, Norwegian, Danish, Finnish, English.
+ * Used by matchContentsToPrompt for deterministic contents selection.
+ */
+const CONTENTS_KEYWORDS: Record<string, string[]> = {
+  // Population / demographics
+  befolkning: ["folkmängd", "folkemengd", "population", "antal", "persons", "invånare", "innbygger", "väestö"],
+  folkmängd: ["folkmängd", "folkemengd", "population", "antal", "persons"],
+  population: ["population", "folkmängd", "folkemengd", "antal", "persons", "inhabitants"],
+  invånare: ["folkmängd", "population", "antal", "persons"],
+  // Income
+  inkomst: ["inkomst", "income", "förvärvs", "sammanräknad", "earnings"],
+  income: ["income", "inkomst", "förvärvs", "earnings", "lön"],
+  medianinkomst: ["median", "inkomst", "income"],
+  medelinkomst: ["medel", "genomsnitt", "average", "inkomst", "income"],
+  löner: ["lön", "wage", "salary", "earnings"],
+  wages: ["wage", "lön", "salary", "earnings"],
+  // Employment / unemployment
+  arbetslöshet: ["arbetslös", "unemploy", "arbeidsledig", "utan arbete"],
+  unemployment: ["unemploy", "arbetslös", "arbeidsledig"],
+  sysselsättning: ["sysselsatt", "sysselsätt", "employ", "förvärvsarbet"],
+  employment: ["employ", "sysselsatt", "förvärvsarbet"],
+  // Housing
+  bostad: ["bostad", "bostäder", "housing", "dwelling", "bolig"],
+  boligpriser: ["pris", "price", "bolig", "bostad"],
+  housing: ["housing", "dwelling", "bostad", "bolig"],
+  // Immigration
+  invandring: ["invandring", "immigration", "innvandring"],
+  immigration: ["immigration", "invandring", "innvandring"],
+  innvandrere: ["innvandr", "immigra", "invandring"],
+  // Education
+  utbildning: ["utbildning", "education", "utdanning"],
+  education: ["education", "utbildning", "utdanning"],
+};
+
+/**
+ * Try to deterministically match a contents value to the prompt.
+ * Returns the code of the best match, or null if no confident match.
+ */
+function matchContentsToPrompt(
+  values: PxDimensionValue[],
+  prompt: string,
+): string | null {
+  if (values.length <= 1) return values[0]?.code ?? null;
+
+  const promptLower = prompt.toLowerCase();
+  const promptWords = promptLower.split(/\s+/).filter((w) => w.length > 2);
+
+  let bestCode: string | null = null;
+  let bestScore = 0;
+
+  for (const value of values) {
+    const label = value.label.toLowerCase();
+    let score = 0;
+
+    // Direct prompt word → label match
+    for (const word of promptWords) {
+      if (label.includes(word)) score += 3;
+    }
+
+    // Keyword expansion: check if any prompt word has keyword entries that match the label
+    for (const word of promptWords) {
+      const fragments = CONTENTS_KEYWORDS[word];
+      if (!fragments) continue;
+      for (const frag of fragments) {
+        if (label.includes(frag)) {
+          score += 2;
+          break; // one match per keyword set is enough
+        }
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestCode = value.code;
+    }
+  }
+
+  // Require minimum confidence — at least one keyword match
+  return bestScore >= 2 ? bestCode : null;
+}
+
+/**
  * Like selectDimensions, but also reports whether the contents dimension
  * selection was ambiguous (keyword matching scored 0 with 2+ values).
  *
@@ -818,11 +901,10 @@ export function selectDimensionsWithAmbiguity(
       }
 
       case "contents": {
-        // Default to first value; AI fallback will override for 2+ values
-        selections.push({ dimensionId: dim.id, valueCodes: [dim.values[0].code] });
-        if (dim.values.length >= 2) {
-          // Always delegate to AI for multi-value contents — keyword heuristics
-          // are too brittle across languages (Estonian, Icelandic, Finnish, etc.)
+        const bestMatch = matchContentsToPrompt(dim.values, _prompt);
+        selections.push({ dimensionId: dim.id, valueCodes: [bestMatch ?? dim.values[0].code] });
+        if (!bestMatch && dim.values.length >= 2) {
+          // No deterministic match — delegate to AI for multi-value contents
           contentsAmbiguous = true;
           contentsValues = dim.values;
           contentsDimensionId = dim.id;
