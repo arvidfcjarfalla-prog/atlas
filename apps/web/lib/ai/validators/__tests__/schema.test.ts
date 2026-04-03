@@ -436,4 +436,139 @@ describe("validateSchema", () => {
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
   });
+
+  it("rejects a non-primary layer with a different sourceUrl", () => {
+    const manifest: MapManifest = {
+      id: "multi-source-map",
+      title: "Multi-source map",
+      description: "Should fail until Atlas supports per-layer data loading",
+      theme: "explore",
+      defaultCenter: [0, 0],
+      defaultZoom: 5,
+      layers: [
+        {
+          id: "layer-1",
+          kind: "asset",
+          label: "Primary",
+          sourceType: "geojson-url",
+          sourceUrl: "https://example.com/a.geojson",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+        {
+          id: "layer-2",
+          kind: "asset",
+          label: "Secondary",
+          sourceType: "geojson-url",
+          sourceUrl: "https://example.com/b.geojson",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+      ],
+    };
+
+    const result = validateSchema(manifest);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Layer "layer-2": sourceUrl differs from the primary layer; Atlas currently supports one primary dataset per map',
+    );
+  });
+
+  it("rejects a non-primary layer sourceUrl when the primary layer has none", () => {
+    const manifest: MapManifest = {
+      id: "late-source-map",
+      title: "Late source map",
+      description: "Secondary layer should not introduce the only URL-backed dataset",
+      theme: "explore",
+      defaultCenter: [0, 0],
+      defaultZoom: 5,
+      layers: [
+        {
+          id: "layer-1",
+          kind: "asset",
+          label: "Primary",
+          sourceType: "geojson-static",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+        {
+          id: "layer-2",
+          kind: "asset",
+          label: "Secondary",
+          sourceType: "geojson-url",
+          sourceUrl: "https://example.com/b.geojson",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+      ],
+    };
+
+    const result = validateSchema(manifest);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      'Layer "layer-2": non-primary layers cannot declare sourceUrl when the primary layer has none; Atlas currently loads one primary dataset per map',
+    );
+  });
+
+  it("warns when a non-primary layer duplicates the primary sourceUrl", () => {
+    const manifest: MapManifest = {
+      id: "duplicate-source-map",
+      title: "Duplicate source map",
+      description: "Redundant per-layer sourceUrl should not be treated as a separate data path",
+      theme: "explore",
+      defaultCenter: [0, 0],
+      defaultZoom: 5,
+      layers: [
+        {
+          id: "layer-1",
+          kind: "asset",
+          label: "Primary",
+          sourceType: "geojson-url",
+          sourceUrl: "https://example.com/a.geojson",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+        {
+          id: "layer-2",
+          kind: "asset",
+          label: "Secondary",
+          sourceType: "geojson-url",
+          sourceUrl: "https://example.com/a.geojson",
+          geometryType: "polygon",
+          style: {
+            markerShape: "circle",
+            mapFamily: "choropleth",
+            colorField: "value",
+          },
+        },
+      ],
+    };
+
+    const result = validateSchema(manifest);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toContain(
+      'Layer "layer-2": sourceUrl duplicates the primary layer and will be ignored at runtime',
+    );
+  });
 });

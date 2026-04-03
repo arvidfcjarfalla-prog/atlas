@@ -27,8 +27,10 @@ export function validateSchema(manifest: MapManifest): ManifestValidation {
   }
 
   const layerIds = new Set<string>();
+  const primarySourceUrl = manifest.layers[0]?.sourceUrl?.trim();
+  const normalizedPrimarySourceUrl = primarySourceUrl && primarySourceUrl.length > 0 ? primarySourceUrl : null;
 
-  for (const layer of manifest.layers) {
+  for (const [index, layer] of manifest.layers.entries()) {
     if (!layer.id) {
       errors.push("Layer missing id");
       continue;
@@ -61,6 +63,24 @@ export function validateSchema(manifest: MapManifest): ManifestValidation {
     // Filter must be an array if present
     if (layer.filter !== undefined && !Array.isArray(layer.filter)) {
       errors.push(`Layer "${layer.id}": filter must be a MapLibre filter expression array`);
+    }
+
+    const layerSourceUrl = layer.sourceUrl?.trim();
+    const normalizedLayerSourceUrl = layerSourceUrl && layerSourceUrl.length > 0 ? layerSourceUrl : null;
+    if (index > 0 && normalizedLayerSourceUrl) {
+      if (!normalizedPrimarySourceUrl) {
+        errors.push(
+          `Layer "${layer.id}": non-primary layers cannot declare sourceUrl when the primary layer has none; Atlas currently loads one primary dataset per map`,
+        );
+      } else if (normalizedLayerSourceUrl !== normalizedPrimarySourceUrl) {
+        errors.push(
+          `Layer "${layer.id}": sourceUrl differs from the primary layer; Atlas currently supports one primary dataset per map`,
+        );
+      } else {
+        warnings.push(
+          `Layer "${layer.id}": sourceUrl duplicates the primary layer and will be ignored at runtime`,
+        );
+      }
     }
 
     // Color scheme must be known

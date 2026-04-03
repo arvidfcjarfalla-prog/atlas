@@ -348,6 +348,13 @@ export interface LayerManifest {
   kind: EntityKind;
   label: string;
   sourceType: "geojson-url" | "geojson-static" | "api" | "pmtiles";
+  /**
+   * Source URL for the map's primary dataset.
+   *
+   * Current Atlas runtime loads one primary data source per map and passes the
+   * resulting data through all layers. Extra layers may style or filter that
+   * shared data, but they cannot yet load independent datasets end-to-end.
+   */
   sourceUrl?: string;
   refreshIntervalMs?: number;
   style: LayerStyle;
