@@ -91,6 +91,19 @@ export const FAMILY_META: Record<string, { label: string; color: string; bg: str
       </svg>
     ),
   },
+  extrusion: {
+    label: "3D", color: "#6366F1",
+    bg: "radial-gradient(ellipse at 45% 55%, rgba(99,102,241,0.10) 0%, transparent 60%)",
+    thumbnail: (
+      <svg width="100%" height="100%" viewBox="0 0 240 135" fill="none" style={{ position: "absolute", inset: 0 }}>
+        <rect x="40" y="60" width="28" height="55" rx="2" fill="rgba(99,102,241,0.35)" stroke="rgba(99,102,241,0.40)" strokeWidth="0.8"/>
+        <rect x="78" y="30" width="28" height="85" rx="2" fill="rgba(99,102,241,0.50)" stroke="rgba(99,102,241,0.45)" strokeWidth="0.8"/>
+        <rect x="116" y="48" width="28" height="67" rx="2" fill="rgba(99,102,241,0.40)" stroke="rgba(99,102,241,0.42)" strokeWidth="0.8"/>
+        <rect x="154" y="72" width="28" height="43" rx="2" fill="rgba(99,102,241,0.25)" stroke="rgba(99,102,241,0.35)" strokeWidth="0.8"/>
+        <line x1="30" y1="115" x2="210" y2="115" stroke="rgba(99,102,241,0.15)" strokeWidth="0.5"/>
+      </svg>
+    ),
+  },
 };
 
 export const FALLBACK_META = FAMILY_META.choropleth;

@@ -20,6 +20,7 @@ import { EditorToolbar } from "@/components/EditorToolbar";
 import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
 import { MapTooltip } from "@/components/MapTooltip";
+import { MapQualityBar } from "@/components/MapQualityBar";
 import { ZoomControls } from "@/components/ZoomControls";
 import { ShareModal } from "@/components/ShareModal";
 import { exportPNG, exportGeoJSON, exportPDF, exportSVG } from "@/lib/utils/export";
@@ -842,6 +843,7 @@ export default function MapPage() {
             >
               <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} onTimelineState={setTimelineState} onChartOverlayMetadata={setChartOverlayMeta} onWarnings={setMapWarnings} />
               <MapTooltip layerId={layer?.id} />
+              <MapQualityBar legendItems={legendItems} data={typeof mapData === "string" ? null : mapData} colorField={layer?.style?.colorField} />
               <ZoomControls />
               <CoordinateWidget />
               <GeocoderControl />
@@ -896,6 +898,7 @@ export default function MapPage() {
         <MapShell manifest={manifest} sidebar={sidebar} sidebarOpen overlay={<LegendOverlay layer={layer} legendItems={legendItems} />}>
           <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} onTimelineState={setTimelineState} onChartOverlayMetadata={setChartOverlayMeta} />
           <MapTooltip layerId={layer?.id} />
+          <MapQualityBar legendItems={legendItems} data={typeof mapData === "string" ? null : mapData} colorField={layer?.style?.colorField} />
           <ZoomControls />
           <CoordinateWidget />
           <GeocoderControl />

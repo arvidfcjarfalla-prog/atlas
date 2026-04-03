@@ -6,13 +6,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/use-auth";
 import { TEMPLATES } from "@/lib/templates";
 import { TemplateCard } from "@/components/TemplateCard";
+import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import type { MapTemplate } from "@/lib/templates";
 
 const SUGGESTIONS = [
-  "Befolkningstäthet i Europa",
-  "Kaffeställen i Stockholm",
-  "Jordbävningar senaste veckan",
-  "BNP per capita i Afrika",
+  "Population density in Europe",
+  "Coffee shops in Stockholm",
+  "Earthquakes last week",
+  "GDP per capita in Africa",
+  "UNESCO heritage sites worldwide",
+  "Crime rates by Swedish municipality",
 ];
 
 export default function AppHomePage() {
@@ -97,6 +100,10 @@ export default function AppHomePage() {
     }
   }
 
+  function handleOnboardingPrompt(prompt: string) {
+    router.push(`/app/map/new?prompt=${encodeURIComponent(prompt)}`);
+  }
+
   return (
     <div
       className="relative h-full"
@@ -106,6 +113,8 @@ export default function AppHomePage() {
         @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
+      <OnboardingOverlay onSelectPrompt={handleOnboardingPrompt} />
+
       {/* Template grid — centered above prompt bar */}
       <div className="absolute left-1/2 -translate-x-1/2 px-6" style={{ bottom: 180, width: "100%", maxWidth: 1060 }}>
         <p style={{
@@ -113,7 +122,7 @@ export default function AppHomePage() {
           color: "#5a5752", letterSpacing: "0.08em", textTransform: "uppercase",
           textAlign: "center", marginBottom: 16,
         }}>
-          Eller börja med en mall
+          Or start from a template
         </p>
         <div style={{
           display: "grid",
@@ -151,7 +160,7 @@ export default function AppHomePage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}
-            placeholder="Beskriv din nästa karta..."
+            placeholder="Describe your next map..."
             className="h-14 flex-1 bg-transparent px-5 text-[15px] outline-none placeholder:text-[#5a5752]"
             style={{
               fontFamily: "'Geist', sans-serif",

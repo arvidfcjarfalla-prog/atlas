@@ -12,6 +12,7 @@ import { EditorToolbar } from "@/components/EditorToolbar";
 import { LayerList } from "@/components/LayerList";
 import { StylePanel } from "@/components/StylePanel";
 import { MapTooltip } from "@/components/MapTooltip";
+import { MapQualityBar } from "@/components/MapQualityBar";
 import { ZoomControls } from "@/components/ZoomControls";
 import { AuthModal } from "@/components/AuthModal";
 import { useAgentChat } from "@/lib/hooks/use-agent-chat";
@@ -871,6 +872,7 @@ function NewMapReady({
         >
           <MapContent manifest={manifest} data={mapData} onLegendItems={setLegendItems} onWarnings={setMapWarnings} />
           <MapTooltip layerId={layer?.id} />
+          <MapQualityBar legendItems={legendItems} data={typeof mapData === "string" ? null : mapData} colorField={layer?.style?.colorField} />
           <ZoomControls />
           <CoordinateWidget />
         </MapShell>
