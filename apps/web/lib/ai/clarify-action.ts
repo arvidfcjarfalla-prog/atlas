@@ -87,7 +87,8 @@ export function decideClarifyAction(
       };
     }
 
-    // map_ready or absent (legacy paths) — auto-generate
+    // map_ready auto-generates.
+    // Absent status is treated as legacy cache compatibility.
     return {
       kind: "generate",
       resolvedPrompt: data.resolvedPrompt ?? fallbackPrompt,

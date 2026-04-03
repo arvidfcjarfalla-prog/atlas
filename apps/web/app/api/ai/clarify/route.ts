@@ -469,6 +469,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         } catch { /* proceed without profile */ }
         const response: ClarifyResponse = {
           ready: true,
+          resolutionStatus: "map_ready",
           resolvedPrompt: fullContext,
           dataUrl: endpointUrl,
           ...(profile ? { dataProfile: profile } : {}),
@@ -522,6 +523,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         const response: ClarifyResponse = {
           ready: true,
+          resolutionStatus: "map_ready",
           resolvedPrompt: fullContext,
           dataUrl: endpointUrl,
           ...(profile ? { dataProfile: profile } : {}),
@@ -542,6 +544,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       if (overpassResult) {
         const response: ClarifyResponse = {
           ready: true,
+          resolutionStatus: "map_ready",
           resolvedPrompt: fullContext,
           dataUrl: overpassResult.dataUrl,
           dataProfile: overpassResult.profile,
@@ -566,6 +569,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             const dataUrl = `/api/geo/cached/${encodeURIComponent(webResResult.cacheKey)}`;
             const response: ClarifyResponse = {
               ready: true,
+              resolutionStatus: "map_ready",
               resolvedPrompt: fullContext,
               dataUrl,
               dataProfile: webResResult.profile,
@@ -632,6 +636,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const dataUrl = `/api/geo/cached/${encodeURIComponent(koladaResult.cacheKey)}`;
         const response: ClarifyResponse = {
           ready: true,
+          resolutionStatus: "map_ready",
           resolvedPrompt: fullContext,
           dataUrl,
           dataProfile: koladaResult.profile,
@@ -661,6 +666,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const dataUrl = `/api/geo/cached/${encodeURIComponent(dcResult.cacheKey)}`;
       const response: ClarifyResponse = {
         ready: true,
+        resolutionStatus: "map_ready",
         resolvedPrompt: dcResult.englishPrompt ?? fullContext,
         dataUrl,
         dataProfile: dcResult.profile,
@@ -684,6 +690,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       const dataUrl = `/api/geo/cached/${encodeURIComponent(eurostatResult.cacheKey)}`;
       const response: ClarifyResponse = {
         ready: true,
+        resolutionStatus: "map_ready",
         resolvedPrompt: eurostatResult.englishPrompt ?? fullContext,
         dataUrl,
         dataProfile: eurostatResult.profile,
@@ -712,6 +719,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
       const response: ClarifyResponse = {
         ready: true,
+        resolutionStatus: "map_ready",
         resolvedPrompt: fullContext,
         dataUrl,
         dataProfile: directSearch.profile,
@@ -733,6 +741,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (registryCached && hasNumericProperties(registryCached.data)) {
           const response: ClarifyResponse = {
             ready: true,
+            resolutionStatus: "map_ready",
             resolvedPrompt: fullContext,
             dataUrl: `/api/geo/cached/${encodeURIComponent(registryHit.cacheKey)}`,
             dataProfile: registryCached.profile,
@@ -746,6 +755,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (refetched.found && refetched.cacheKey) {
           const response: ClarifyResponse = {
             ready: true,
+            resolutionStatus: "map_ready",
             resolvedPrompt: fullContext,
             dataUrl: `/api/geo/cached/${encodeURIComponent(refetched.cacheKey)}`,
             dataProfile: refetched.profile,
@@ -817,6 +827,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           const dataUrl = `/api/geo/cached/${encodeURIComponent(webResResult.cacheKey)}`;
           const response: ClarifyResponse = {
             ready: true,
+            resolutionStatus: "map_ready",
             resolvedPrompt: fullContext,
             dataUrl,
             dataProfile: webResResult.profile,
@@ -866,6 +877,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             const dataUrl = `/api/geo/cached/${encodeURIComponent(webResult.cacheKey)}`;
             const response: ClarifyResponse = {
               ready: true,
+              resolutionStatus: "map_ready",
               resolvedPrompt: fullContext,
               dataUrl,
               dataProfile: webResult.profile,
@@ -1005,6 +1017,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           }
           const response: ClarifyResponse = {
             ready: true,
+            resolutionStatus: "map_ready",
             resolvedPrompt: parsed.resolvedPrompt ?? fullContext,
             dataUrl: endpointUrl,
           };
@@ -1022,6 +1035,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             const dataUrl = `/api/geo/overpass?type=${encodeURIComponent(query.value)}&bbox=${city.bbox.join(",")}`;
             const response: ClarifyResponse = {
               ready: true,
+              resolutionStatus: "map_ready",
               resolvedPrompt: parsed.resolvedPrompt ?? fullContext,
               dataUrl,
             };
@@ -1039,6 +1053,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           const dataUrl = `/api/geo/cached/${encodeURIComponent(parsed.searchedData.cacheKey)}`;
           const response: ClarifyResponse = {
             ready: true,
+            resolutionStatus: "map_ready",
             resolvedPrompt: parsed.resolvedPrompt ?? fullContext,
             dataUrl,
             dataProfile: cachedData.profile,
