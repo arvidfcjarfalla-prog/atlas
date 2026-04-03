@@ -620,8 +620,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // ── Fast path 2.1: Kolada (Swedish municipal KPIs) ──────────
     // Runs after PxWeb — catches Swedish municipality prompts that
-    // PxWeb couldn't resolve (arbetslöshet, inkomst, utbildning, etc.)
-    if (!pxTabularFallback) {
+    // PxWeb couldn't resolve or only got tabular data for.
+    // Always runs (even with pxTabularFallback) because Kolada has
+    // pre-joined municipality data that PxWeb's geo join may miss.
+    {
       const koladaResult = await searchKolada(fullContext).catch((e) => {
         logDiagnostic("warning", "clarify", "kolada", e);
         return { found: false as const };
