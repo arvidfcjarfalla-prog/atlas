@@ -17,7 +17,7 @@ import type {
   PxDimensionValue,
   PxJsonStat2Response,
 } from "./pxweb-client";
-import { matchWorldBankCoreKeyword } from "./worldbank-keywords";
+import { resolveWorldBankIndicator } from "./worldbank-indicator-resolver";
 
 // ─── JSON safety ───────────────────────────────────────────
 
@@ -51,12 +51,14 @@ async function searchTablesWb(
   _lang = "en",
   pageSize = 10,
 ): Promise<PxTableInfo[]> {
-  // Try keyword match first (instant, no API call)
-  const kwMatch = matchWorldBankCoreKeyword(query);
-  if (kwMatch) {
+  // Shared resolver: keyword + AI fallback (same logic as data-search path).
+  const resolved = await resolveWorldBankIndicator(query, { allowAiFallback: true });
+  if (!resolved.isCountryLevel) return [];
+  if (resolved.indicator) {
+    const indicatorCode = resolved.indicator.code;
     try {
       const res = await fetch(
-        `${baseUrl}/v2/indicator/${kwMatch}?format=json`,
+        `${baseUrl}/v2/indicator/${indicatorCode}?format=json`,
         { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) },
       );
       if (res.ok) {
@@ -75,7 +77,18 @@ async function searchTablesWb(
           }];
         }
       }
-    } catch { /* fall through to API search */ }
+    } catch { /* fall through */ }
+
+    // Fallback when metadata endpoint fails but resolver had a known indicator
+    return [{
+      id: indicatorCode,
+      label: resolved.indicator.label || indicatorCode,
+      description: "",
+      variableNames: [],
+      firstPeriod: "",
+      lastPeriod: "",
+      source: "World Bank",
+    }];
   }
 
   // API text search — fetch all indicators and filter client-side
