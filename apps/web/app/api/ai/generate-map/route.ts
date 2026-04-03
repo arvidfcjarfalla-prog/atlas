@@ -290,7 +290,6 @@ async function fetchAndProfile(url: string): Promise<DatasetProfile | null> {
  */
 export async function POST(request: Request) {
   const t0 = Date.now();
-  const evalMode = request.headers.get("x-atlas-eval") === "1";
   let prompt: string | undefined;
   try {
     const body = await request.json();
