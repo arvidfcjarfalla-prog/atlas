@@ -360,7 +360,7 @@ const WORLD_BANK_INDICATORS: Record<string, { code: string; label: string; unit:
   // ── Environment ───────────────────────────────────────────
   co2: { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
   "co2 emissions": { code: "EN.GHG.CO2.MT.CE.AR5", label: "CO2 Emissions (Mt CO2e, excl. LULUCF)", unit: "Mt CO2e" },
-  "co2 per capita": { code: "EN.ATM.CO2E.PC", label: "CO2 Emissions Per Capita", unit: "metric tons" },
+  "co2 per capita": { code: "EN.GHG.CO2.PC.CE.AR5", label: "CO2 Emissions Per Capita", unit: "metric tons CO2e" },
   "renewable energy": { code: "EG.FEC.RNEW.ZS", label: "Renewable Energy Consumption", unit: "% of total" },
   "förnybar energi": { code: "EG.FEC.RNEW.ZS", label: "Renewable Energy Consumption", unit: "% of total" },
   "forest area": { code: "AG.LND.FRST.ZS", label: "Forest Area", unit: "% of land area" },
