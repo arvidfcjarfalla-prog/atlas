@@ -12,6 +12,7 @@ import { searchWebResearch } from "../../../../lib/ai/tools/web-research";
 import { classifyIntent, type PromptIntent } from "../../../../lib/ai/tools/intent-classifier";
 import { searchDataCommons } from "../../../../lib/ai/tools/data-commons";
 import { searchEurostat } from "../../../../lib/ai/tools/eurostat";
+import { searchKolada } from "../../../../lib/ai/tools/kolada-client";
 import { extractIntent, checkRegistry } from "../../../../lib/ai/tools/dataset-registry";
 import { resolveOfficialStatsSources, type ResolvedSource } from "../../../../lib/ai/tools/official-stats-resolver";
 import { resolvePxWeb } from "../../../../lib/ai/tools/pxweb-resolution";
@@ -614,6 +615,28 @@ export async function POST(request: Request): Promise<NextResponse> {
           log("clarify.error", { error: errMsg, phase: "pxweb", latencyMs: Date.now() - t0 });
           // PxWeb resolution failed — continue to next fast path
         }
+      }
+    }
+
+    // ── Fast path 2.1: Kolada (Swedish municipal KPIs) ──────────
+    // Runs after PxWeb — catches Swedish municipality prompts that
+    // PxWeb couldn't resolve (arbetslöshet, inkomst, utbildning, etc.)
+    if (!pxTabularFallback) {
+      const koladaResult = await searchKolada(fullContext).catch((e) => {
+        logDiagnostic("warning", "clarify", "kolada", e);
+        return { found: false as const };
+      });
+      if (koladaResult.found && koladaResult.cacheKey) {
+        const dataUrl = `/api/geo/cached/${encodeURIComponent(koladaResult.cacheKey)}`;
+        const response: ClarifyResponse = {
+          ready: true,
+          resolvedPrompt: fullContext,
+          dataUrl,
+          dataProfile: koladaResult.profile,
+        };
+        log("clarify.resolved", { source: "kolada", featureCount: koladaResult.profile?.featureCount ?? 0, latencyMs: Date.now() - t0 });
+        storeSuccess(response, "kolada");
+        return NextResponse.json(response);
       }
     }
 
