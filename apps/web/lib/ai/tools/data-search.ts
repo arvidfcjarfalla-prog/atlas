@@ -191,14 +191,15 @@ const COUNTRY_GROUPS: Record<string, Set<string>> = {
   SUB_SAHARAN_AFRICA: new Set(["AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","CIV","DJI","GNQ","ERI","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","MDG","MWI","MLI","MRT","MUS","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","UGA","ZMB","ZWE"]),
 };
 
-/** Same groups but in ISO 3166-1 alpha-2 (used by Eurostat NUTS0). */
+/** Same groups but in ISO 3166-1 alpha-2 / NUTS0 codes (used by Eurostat). */
+// Note: Eurostat uses "EL" for Greece (not "GR") and covers EEA (incl. NO, IS, CH, LI).
 export const COUNTRY_GROUPS_ISO2: Record<string, Set<string>> = {
   EU: new Set(["AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","EL","HU","IE","IT","LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE"]),
   NORDIC: new Set(["SE","NO","DK","FI","IS"]),
   SCANDINAVIA: new Set(["SE","NO","DK"]),
   BALTICS: new Set(["EE","LV","LT"]),
-  OECD: new Set(["AU","AT","BE","CA","CL","CO","CR","CZ","DK","EE","FI","FR","DE","EL","HU","IS","IE","IL","IT","JP","KR","LV","LT","LU","MX","NL","NZ","NO","PL","PT","SK","SI","ES","SE","CH","TR","GB","US"]),
-  WESTERN_EUROPE: new Set(["AT","BE","FR","DE","IE","LU","NL","CH","LI"]),
+  OECD: new Set(["AU","AT","BE","CA","CL","CO","CR","CZ","DK","EE","FI","FR","DE","EL","HU","IS","IE","IL","IT","JP","KR","LV","LT","LU","MX","NL","NZ","NO","PL","PT","SK","SI","ES","SE","CH","TR","UK","US"]),
+  WESTERN_EUROPE: new Set(["AT","BE","FR","DE","IE","LU","NL","CH","LI","UK"]),
   EASTERN_EUROPE: new Set(["BG","CZ","HU","PL","RO","SK","UA"]),
 };
 
