@@ -12,6 +12,11 @@ import {
 } from "./manifest-compiler";
 import { useDeckOverlay } from "./use-deck-overlay";
 
+// Stable empty arrays to prevent render loops in consumers that
+// depend on reference equality (e.g. useEffect dependencies).
+const EMPTY_LEGEND: CompiledLegendItem[] = [];
+const EMPTY_WARNINGS: string[] = [];
+
 interface UseManifestRendererOptions {
   /** Layer manifest to render. */
   layer: LayerManifest;
@@ -447,13 +452,13 @@ export function useManifestRenderer({
     };
   }, [map, compiled]);
 
-  return {
-    legendItems: compiled?.legendItems ?? [],
+  return useMemo(() => ({
+    legendItems: compiled?.legendItems ?? EMPTY_LEGEND,
     timelineMetadata: compiled?._timeline ?? null,
     animatable: compiled?._animatable ?? false,
     imageFillMetadata: (compiled?._imageFill as ImageFillMetadata | undefined) ?? null,
     chartOverlayMetadata: (compiled?._chartOverlay as ChartOverlayMetadata | undefined) ?? null,
-    warnings: compiled?.warnings ?? [],
+    warnings: compiled?.warnings ?? EMPTY_WARNINGS,
     renderError,
-  };
+  }), [compiled, renderError]);
 }
