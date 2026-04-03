@@ -9,7 +9,7 @@ import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
-import { saveCase, findRelevantLessons, formatLessons } from "../../../../lib/ai/case-memory";
+import { saveCase } from "../../../../lib/ai/case-memory";
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 import { applyGeometryGuards } from "../../../../lib/ai/geometry-guards";
@@ -360,7 +360,7 @@ export async function POST(request: Request) {
       const suggestions = getSuggestions(quality, manifest);
 
       const caseId = crypto.randomUUID();
-      if (!evalMode) {
+      if (!evalMode && quality.total >= 60) {
         saveCase({
           id: caseId,
           timestamp: new Date().toISOString(),
@@ -409,11 +409,6 @@ export async function POST(request: Request) {
 
     log("generate.start", { promptLength: prompt.length, genSkill });
 
-    // Retrieve lessons from past cases (non-blocking — empty on first run)
-    const geoType = profile?.geometryType;
-    const lessons = await findRelevantLessons(prompt, geoType).catch(() => []);
-    const lessonsBlock = formatLessons(lessons);
-
     // Self-correction loop: generate → validate → retry on errors
     const messages: ModelMessage[] = [
       { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint, preferences) },
@@ -430,7 +425,7 @@ export async function POST(request: Request) {
       const result = await generateTextWithRetry({
         model: MODELS.generation(),
         maxOutputTokens: MAX_TOKENS,
-        system: buildSystemPrompt(profile, lessonsBlock, genSkill),
+        system: buildSystemPrompt(profile, undefined, genSkill),
         messages,
       });
 
@@ -523,7 +518,7 @@ export async function POST(request: Request) {
         const fallbackResult = await generateTextWithRetry({
           model: MODELS.fallback(),
           maxOutputTokens: MAX_TOKENS,
-          system: buildSystemPrompt(profile, lessonsBlock, genSkill),
+          system: buildSystemPrompt(profile, undefined, genSkill),
           messages: [
             { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint, preferences) },
           ],
@@ -576,7 +571,7 @@ export async function POST(request: Request) {
     // Save case record (fire-and-forget — never delays response, skipped in eval mode)
     const caseId = crypto.randomUUID();
     const parentCaseId: string | undefined = body.parentCaseId;
-    if (!evalMode) {
+    if (!evalMode && quality.total >= 60) {
       saveCase({
         id: caseId,
         ...(parentCaseId ? { parentCaseId } : {}),

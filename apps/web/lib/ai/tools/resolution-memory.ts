@@ -113,30 +113,14 @@ export async function recordResolution(record: {
 /**
  * Find proven table IDs for a given source + topic keywords.
  *
- * Returns table IDs sorted by relevance (keyword overlap × successCount).
- * Only returns tables with ≥50% coverage and at least 1 keyword match.
+ * STUBBED: Returns [] until durable learning storage (Phase C.1 VIEW) is wired.
+ * The ephemeral .next/cache store is unreliable (wiped on deploy, no auth,
+ * everything auto-accepted) and may be steering toward wrong PxWeb tables.
+ * Keeping writes intact for future audit; reads disabled to establish clean baseline.
  */
 export async function getLearnedTables(
-  sourceId: string,
-  topicKeywords: string[],
+  _sourceId: string,
+  _topicKeywords: string[],
 ): Promise<string[]> {
-  const records = await loadMemory();
-  if (records.length === 0) return [];
-
-  const keywordSet = new Set(topicKeywords.map((k) => k.toLowerCase()));
-
-  const scored = records
-    .filter((r) => r.sourceId === sourceId && r.coverageRatio >= 0.5)
-    .map((r) => {
-      // Count keyword overlap
-      const overlap = r.keywords.filter((k) => keywordSet.has(k)).length;
-      if (overlap === 0) return null;
-      // Score: keyword overlap × log(successCount + 1) for diminishing returns
-      const score = overlap * Math.log2(r.successCount + 1);
-      return { tableId: r.tableId, score };
-    })
-    .filter((r): r is { tableId: string; score: number } => r !== null)
-    .sort((a, b) => b.score - a.score);
-
-  return scored.map((r) => r.tableId);
+  return [];
 }

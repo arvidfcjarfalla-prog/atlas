@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { updateCaseOutcome, appendRefinement, listCases } from "../../../../lib/ai/case-memory";
+import { createClient } from "../../../../lib/supabase/server";
+
+function unauthorized() {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+async function requireAuth(): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * PATCH /api/ai/case-memory
@@ -10,6 +25,7 @@ import { updateCaseOutcome, appendRefinement, listCases } from "../../../../lib/
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
   try {
+    if (!(await requireAuth())) return unauthorized();
     const body = await request.json();
     const { id, outcome } = body ?? {};
 
@@ -43,6 +59,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    if (!(await requireAuth())) return unauthorized();
     const body = await request.json();
     const { id, event } = body ?? {};
 
@@ -81,6 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    if (!(await requireAuth())) return unauthorized();
     const limit = Number(request.nextUrl.searchParams.get("limit") ?? "50");
     const cases = await listCases(limit);
     return NextResponse.json({ cases, count: cases.length });

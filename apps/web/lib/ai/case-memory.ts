@@ -67,143 +67,31 @@ export async function appendRefinement(
   return true;
 }
 
-// ─── Case retrieval for learning ─────────────────────────────
+// ─── Case retrieval — STUBBED ───────────────────────────────
+// Reads disabled until durable learning storage (Phase C.2) is wired.
+// Exports preserved for test mock compatibility.
 
-/** Condensed lesson from a past case, injected into the system prompt. */
 export interface CaseLesson {
-  /** Original user prompt (truncated). */
   prompt: string;
-  /** Map family that was generated. */
   family: string;
-  /** Quality score achieved. */
   score: number;
-  /** Deductions the AI should avoid repeating. */
   deductions: string[];
-  /** Key manifest fields that worked well. */
   keyFields: Record<string, unknown>;
-  /** Number of retry attempts needed. */
   attempts: number;
 }
 
-/**
- * Score how relevant a past case is to a new prompt.
- * Uses simple keyword overlap — fast, no external dependencies.
- */
-function relevanceScore(
-  caseRecord: CaseRecord,
-  promptWords: Set<string>,
-  geometryType?: string,
-): number {
-  let score = 0;
-
-  // Word overlap between prompts
-  const caseWords = caseRecord.prompt.toLowerCase().split(/\s+/);
-  for (const word of caseWords) {
-    if (word.length > 2 && promptWords.has(word)) score += 1;
-  }
-
-  // Geometry type match
-  if (geometryType) {
-    const caseGeo = caseRecord.manifest.layers?.[0]?.geometryType;
-    if (caseGeo === geometryType) score += 3;
-  }
-
-  // Prefer high-quality cases (the AI got it right)
-  if (caseRecord.quality.total >= 80) score += 2;
-
-  // Prefer cases that needed retries (lessons learned)
-  if (caseRecord.attempts > 1) score += 1;
-
-  // Prefer cases with refinements (user corrected something)
-  if (caseRecord.refinements.length > 0) score += 2;
-
-  return score;
-}
-
-/**
- * Extract a compact lesson from a case record.
- * Keeps only the fields that matter for future generation.
- */
-function extractLesson(record: CaseRecord): CaseLesson {
-  const layer = record.manifest.layers?.[0];
-  const style = layer?.style;
-
-  const keyFields: Record<string, unknown> = {};
-  if (style?.mapFamily) keyFields.mapFamily = style.mapFamily;
-  if (style?.colorField) keyFields.colorField = style.colorField;
-  if (style?.sizeField) keyFields.sizeField = style.sizeField;
-  if (style?.classification) keyFields.classification = style.classification;
-  if (style?.color?.scheme) keyFields.colorScheme = style.color.scheme;
-  if (style?.normalization) keyFields.normalization = style.normalization;
-  if (layer?.legend) keyFields.legend = layer.legend;
-
-  return {
-    prompt: record.prompt.slice(0, 120),
-    family: style?.mapFamily ?? "unknown",
-    score: record.quality.total,
-    deductions: record.quality.deductions,
-    keyFields,
-    attempts: record.attempts,
-  };
-}
-
-/**
- * Find past cases relevant to a new prompt and extract lessons.
- * Returns up to `limit` lessons, sorted by relevance.
- *
- * Reads at most 100 recent cases to keep latency low.
- */
+/** STUBBED: Returns [] — ephemeral .next/cache store disabled. */
 export async function findRelevantLessons(
-  prompt: string,
-  geometryType?: string,
-  limit = 2,
+  _prompt: string,
+  _geometryType?: string,
+  _limit = 2,
 ): Promise<CaseLesson[]> {
-  const cases = await listCases(100);
-  if (cases.length === 0) return [];
-
-  const promptWords = new Set(
-    prompt.toLowerCase().split(/\s+/).filter((w) => w.length > 2),
-  );
-
-  const scored = cases
-    .map((c) => ({ case: c, score: relevanceScore(c, promptWords, geometryType) }))
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-  return scored.map((s) => extractLesson(s.case));
+  return [];
 }
 
-/**
- * Format case lessons as an XML block for injection into the system prompt.
- * Returns empty string if no lessons available.
- */
-export function formatLessons(lessons: CaseLesson[]): string {
-  if (lessons.length === 0) return "";
-
-  const blocks = lessons.map((l) => {
-    const parts = [`  <lesson>`, `    <prompt>${l.prompt}</prompt>`];
-    parts.push(`    <family>${l.family}</family>`);
-    parts.push(`    <score>${l.score}/100</score>`);
-    parts.push(`    <attempts>${l.attempts}</attempts>`);
-    if (l.deductions.length > 0) {
-      parts.push(`    <deductions-to-avoid>`);
-      for (const d of l.deductions) {
-        parts.push(`      - ${d}`);
-      }
-      parts.push(`    </deductions-to-avoid>`);
-    }
-    parts.push(`    <key-fields>${JSON.stringify(l.keyFields)}</key-fields>`);
-    parts.push(`  </lesson>`);
-    return parts.join("\n");
-  });
-
-  return `<past-cases>
-These are lessons from previous map generations. Use them to avoid repeating
-mistakes and to follow patterns that scored well.
-
-${blocks.join("\n\n")}
-</past-cases>`;
+/** STUBBED: Returns "" — no lessons to format. */
+export function formatLessons(_lessons: CaseLesson[]): string {
+  return "";
 }
 
 /** List recent cases, sorted newest first. */
