@@ -32,6 +32,7 @@ export async function storeResolution(
   dataUrl: string,
   sourceType: string,
 ): Promise<void> {
+  if (process.env.ATLAS_ENABLE_CLARIFY_CACHE !== "true") return;
   const client = getServiceClient();
   if (!client) return;
   const keywords = extractKeywords(promptOriginal);
@@ -68,6 +69,7 @@ export async function findSimilarResolutions(
   prompt: string,
   limit = 3,
 ): Promise<ResolutionExample[]> {
+  if (process.env.ATLAS_ENABLE_CLARIFY_CACHE !== "true") return [];
   const client = getServiceClient();
   if (!client) return [];
   const keywords = extractKeywords(prompt);

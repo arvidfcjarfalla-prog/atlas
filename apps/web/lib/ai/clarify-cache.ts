@@ -2,6 +2,15 @@ import { getServiceClient, withTimeout } from "../supabase/service";
 import type { ClarifyResponse } from "./types";
 import type { Json } from "../supabase/types";
 
+/**
+ * Clarify cache is disabled until the learning phase is activated.
+ * Set ATLAS_ENABLE_CLARIFY_CACHE=true to re-enable.
+ * Without this, code improvements are masked by stale cached results.
+ */
+function isCacheEnabled(): boolean {
+  return process.env.ATLAS_ENABLE_CLARIFY_CACHE === "true";
+}
+
 /** Normalize a prompt for cache keying — lowercase, trim, collapse whitespace. */
 export function normalizePrompt(prompt: string): string {
   return prompt.toLowerCase().trim().replace(/\s+/g, " ");
@@ -36,8 +45,9 @@ export interface CacheHit {
   hitCount: number;
 }
 
-/** Look up a cached clarify result. Returns null on miss, error, expired, or timeout. */
+/** Look up a cached clarify result. Returns null on miss, error, expired, timeout, or disabled. */
 export async function getCachedClarify(promptKey: string): Promise<CacheHit | null> {
+  if (!isCacheEnabled()) return null;
   const client = getServiceClient();
   if (!client) return null;
   try {
@@ -65,6 +75,7 @@ export async function storeClarifyResult(
   promptKey: string,
   response: ClarifyResponse,
 ): Promise<void> {
+  if (!isCacheEnabled()) return;
   const client = getServiceClient();
   if (!client) return;
   const ttlHours = classifyTTL(response);
@@ -87,6 +98,7 @@ export async function storeClarifyResult(
 
 /** Increment the hit counter. Fire-and-forget. */
 export async function incrementCacheHit(promptKey: string): Promise<void> {
+  if (!isCacheEnabled()) return;
   const client = getServiceClient();
   if (!client) return;
   try {
