@@ -1,4 +1,4 @@
-import { getServiceClient } from "../supabase/service";
+import { getServiceClient, withTimeout } from "../supabase/service";
 import type { ClarifyResponse } from "./types";
 import type { Json } from "../supabase/types";
 
@@ -36,16 +36,20 @@ export interface CacheHit {
   hitCount: number;
 }
 
-/** Look up a cached clarify result. Returns null on miss, error, or expired. */
+/** Look up a cached clarify result. Returns null on miss, error, expired, or timeout. */
 export async function getCachedClarify(promptKey: string): Promise<CacheHit | null> {
   const client = getServiceClient();
   if (!client) return null;
   try {
-    const { data, error } = await client
-      .from("clarify_cache")
-      .select("response, hit_count, expires_at")
-      .eq("prompt_key", promptKey)
-      .maybeSingle();
+    const result = await withTimeout(
+      client
+        .from("clarify_cache")
+        .select("response, hit_count, expires_at")
+        .eq("prompt_key", promptKey)
+        .maybeSingle(),
+    );
+    if (!result) return null; // timeout
+    const { data, error } = result;
     if (error || !data) return null;
     // Reject expired entries. Legacy rows without expires_at are treated as expired
     // to avoid serving stale dataUrls that point to purged data_cache entries.

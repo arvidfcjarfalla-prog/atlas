@@ -65,10 +65,6 @@ export const DATA_CATALOG: CatalogEntry[] = [
       "continent",
       "länder",
       "land",
-      "population",
-      "befolkning",
-      "gdp",
-      "bnp",
     ],
     attributes: [
       "name",

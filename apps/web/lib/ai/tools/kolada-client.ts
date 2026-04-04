@@ -301,7 +301,7 @@ async function fetchKoladaData(
   kpiId: string,
   year: number,
 ): Promise<KoladaObservation[] | null> {
-  const url = `${KOLADA_API}/data/kpi/${kpiId}/municipality/all/year/${year}`;
+  const url = `${KOLADA_API}/data/kpi/${kpiId}/year/${year}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
   if (!res.ok) return null;
 

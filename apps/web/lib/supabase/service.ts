@@ -13,6 +13,18 @@ export function getServiceClient() {
   if (!url || !key) return null;
   _client = createClient<Database>(url, key, {
     auth: { persistSession: false },
+    global: { fetch: (...args) => fetch(args[0], { ...args[1], signal: args[1]?.signal ?? AbortSignal.timeout(8_000) }) },
   });
   return _client;
+}
+
+/**
+ * Race a Supabase query against a timeout. Returns null on timeout.
+ * Prevents the clarify pipeline from hanging when Supabase is unreachable.
+ */
+export function withTimeout<T>(promise: PromiseLike<T>, ms = 5_000): Promise<T | null> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
 }

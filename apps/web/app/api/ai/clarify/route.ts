@@ -778,15 +778,23 @@ export async function POST(request: Request): Promise<NextResponse> {
       // Find an unconnected source that matched the prompt's topic.
       // Only short-circuit when no connected source covers the same tags —
       // otherwise let the connected source try first (it may just be slow).
-      const connectedTags = new Set(
-        officialSources
+      // Include tags covered by hardcoded fast paths (WB, Eurostat, DC, Kolada)
+      // that don't go through the StatsApiAdapter system.
+      const HARDCODED_FAST_PATH_TAGS = new Set([
+        "economy", "population", "environment", "health", "education",
+        "labor", "social", "development", "trade", "energy", "agriculture",
+      ]);
+      const connectedTags = new Set([
+        ...officialSources
           .filter((s) => getStatsAdapter(s.source) !== null)
           .flatMap((s) => s.source.coverageTags),
-      );
+        ...HARDCODED_FAST_PATH_TAGS,
+      ]);
       const unconnectedWithTopic = officialSources.find((s) => {
         if (getStatsAdapter(s.source) !== null) return false;
-        // Only short-circuit if this source covers a tag that no connected source covers
-        return s.source.coverageTags.some((t) => !connectedTags.has(t));
+        // Only short-circuit if ALL of this source's tags are uncovered —
+        // if any tag overlaps with fast paths that already ran, skip the hint.
+        return s.source.coverageTags.every((t) => !connectedTags.has(t));
       });
       if (unconnectedWithTopic) {
         const src = unconnectedWithTopic.source;
