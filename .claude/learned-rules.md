@@ -42,3 +42,7 @@ Format: [CATEGORY] NEVER/ALWAYS X because Y
 [DOCS] ALWAYS check docs against actual code when reading them. Blueprint v3.2 described migrations 013/014 as resolution_outcomes/generation_records but the actual files are data_cache_pinned_and_meta/durable_dataset_storage. Following the blueprint blindly would have produced wrong migration numbers (2026-04-03).
 
 [DISCOVERABILITY] ALWAYS link new files/directories from CLAUDE.md Key Files section. crosswalks/ with 15 JSON files was invisible until explicitly added. If CLAUDE.md doesn't mention it, future sessions won't find it (2026-04-03).
+
+[CACHE] NEVER enable clarify cache (`ATLAS_ENABLE_CLARIFY_CACHE`) until the learning phase is activated. The cache masks code improvements — same prompt returns stale results instead of running the improved pipeline. This burned debugging time twice (2026-04-04). Gate: `ATLAS_ENABLE_CLARIFY_CACHE=true` in `.env.local`.
+
+[SUPABASE] ALWAYS have timeouts on Supabase calls. The Supabase JS client has no default request timeout — if PostgREST hangs (connection pool saturated, egress throttled), every route that touches Supabase hangs forever with zero bytes returned. Fixed via `AbortSignal.timeout(8_000)` on the global fetch in `lib/supabase/service.ts` + `withTimeout()` wrapper for critical-path queries (2026-04-04).

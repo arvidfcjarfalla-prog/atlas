@@ -46,6 +46,8 @@ Each has a dedicated compiler in `packages/map-core/src/manifest-compiler.ts`.
 - `apps/web/lib/ai/tools/pxweb-resolution.ts` — PxWeb table resolution (skip Haiku selection when plugin provides known tables)
 - `apps/web/lib/ai/tools/pxweb-client.ts` — PxWeb client (wildcard threshold: URL string length >1500 chars instead of fixed count)
 - `apps/web/app/api/ai/clarify/route.ts` — Agency hint UX (short-circuit web search for unconnected sources, <5s response)
+- `apps/web/lib/ai/clarify-cache.ts` — Clarify cache (DISABLED until learning phase — gated by `ATLAS_ENABLE_CLARIFY_CACHE=true`)
+- `apps/web/lib/supabase/service.ts` — Supabase client with 8s request timeout + `withTimeout()` helper
 - `apps/web/lib/ai/tools/official-stats-resolver.ts` — Global stats registry with crime/justice topic tags
 - `apps/web/lib/ai/tools/crosswalks/` — 15 static JSON crosswalk tables (ISO2↔ISO3, M49→ISO3, FIPS, JIS, KOSIS, IBGE, INEGI, BPS, INDEC, AGS→NUTS, CCAA→NUTS, TERYT→NUTS, dept→NUTS3, NUTS2016→2021, WB aggregate blocklist)
 - `apps/web/lib/ai/tools/DATA_SOURCE_RESEARCH.md` — Comprehensive research on ~50 non-PxWeb data sources (API details, auth, rate limits, geographic codes, per-source implementation notes)
