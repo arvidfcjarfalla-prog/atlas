@@ -89,12 +89,12 @@ export const STAGES: Stage[] = [
     num: "05",
     eyebrow: "05 / 05 · Export",
     title: "Ship what you built.",
-    body: "You described, sourced, rendered, and refined — now the result goes where it needs to. A slide deck, a live embed, a PDF for a brief. The map carries every choice you made along the way.",
+    body: "Share a link, embed it live, or download for print. The map carries its data, sources, and every choice you made.",
     bullets: [
-      { num: "5.1", text: "Export to PNG, SVG, or PDF in one click" },
+      { num: "5.1", text: "Share with a public or private link" },
       { num: "5.2", text: "Embed live — the map stays interactive" },
-      { num: "5.3", text: "Every layer, animation, and source travels with it" },
-      { num: "5.4", text: "From first prompt to final artifact — one conversation" },
+      { num: "5.3", text: "Export to PNG, SVG, or PDF" },
+      { num: "5.4", text: "Sources and attribution travel with the export" },
     ],
   },
 ];

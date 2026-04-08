@@ -69,7 +69,7 @@ export function MapBlueprint({ stage }: Props) {
     value: "",
   });
 
-  const canHover = stage === 3 || stage === 4 || stage === 5;
+  const canHover = stage === 3 || stage === 4;
 
   const onPathEnter = useCallback(
     (e: React.MouseEvent<SVGPathElement>) => {

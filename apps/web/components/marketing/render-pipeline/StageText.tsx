@@ -184,11 +184,37 @@ function VizChat() {
   );
 }
 
-// Stage 5 — Export: three destination mockups with tiny Sweden silhouettes
+// Stage 5 — Export: four outcome-focused destination cards
 function VizDestinations() {
   return (
     <div className="arp-subviz">
       <div className="arp-viz-destinations" aria-label="Export destinations">
+        {/* Embed it live — browser frame with interactive map */}
+        <div className="arp-dest">
+          <div className="arp-dest-preview">
+            <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x={6} y={6} width={148} height={68} rx={3} fill="#fafaf7" stroke="#dcdbd4" strokeWidth={0.8} />
+              {/* Browser chrome */}
+              <circle cx={14} cy={13} r={2} fill="#dcdbd4" />
+              <circle cx={21} cy={13} r={2} fill="#dcdbd4" />
+              <circle cx={28} cy={13} r={2} fill="#dcdbd4" />
+              <rect x={36} y={11} width={60} height={4} rx={2} fill="#f0eeea" />
+              <line x1={6} y1={19} x2={154} y2={19} stroke="#dcdbd4" strokeWidth={0.5} />
+              {/* Map area */}
+              <rect x={12} y={24} width={136} height={44} rx={1} fill="#f0e6d2" stroke="#c4915a" strokeWidth={0.4} />
+              <g transform="translate(58 26) scale(0.07)" fill="#c4915a" stroke="#9a6f3f" strokeWidth={1}>
+                <path d={TINY_SWEDEN_PATH} />
+              </g>
+              {/* Play indicator */}
+              <circle cx={142} cy={30} r={3.5} fill="#c4915a" opacity={0.8} />
+              <polygon points="141,28.5 141,31.5 143.5,30" fill="#fafaf7" />
+            </svg>
+          </div>
+          <div className="arp-dest-label">Embed it live</div>
+          <div className="arp-dest-meta">INTERACTIVE · IFRAME</div>
+        </div>
+
+        {/* Drop into a deck — slide frame with map */}
         <div className="arp-dest">
           <div className="arp-dest-preview">
             <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -198,32 +224,16 @@ function VizDestinations() {
               <g transform="translate(86 24) scale(0.08)" fill="#c4915a" stroke="#9a6f3f" strokeWidth={1}>
                 <path d={TINY_SWEDEN_PATH} />
               </g>
+              {/* Slide number */}
+              <rect x={134} y={64} width={14} height={6} rx={1} fill="#f0eeea" />
+              <rect x={137} y={66} width={8} height={2} rx={0.5} fill="#9a968e" />
             </svg>
           </div>
-          <div className="arp-dest-label">Slide deck</div>
+          <div className="arp-dest-label">Drop into a deck</div>
           <div className="arp-dest-meta">KEYNOTE · PPTX</div>
         </div>
 
-        <div className="arp-dest">
-          <div className="arp-dest-preview">
-            <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <rect x={6} y={6} width={148} height={68} rx={3} fill="#fafaf7" stroke="#dcdbd4" strokeWidth={0.8} />
-              <rect x={12} y={11} width={60} height={3.5} rx={0.5} fill="#1a1f1c" />
-              <rect x={12} y={18} width={50} height={1.8} rx={0.5} fill="#9a968e" />
-              <rect x={12} y={22} width={55} height={1.8} rx={0.5} fill="#9a968e" />
-              <rect x={12} y={26} width={48} height={1.8} rx={0.5} fill="#9a968e" />
-              <rect x={80} y={18} width={68} height={42} rx={1.5} fill="#f0e6d2" stroke="#c4915a" strokeWidth={0.6} />
-              <g transform="translate(104 22) scale(0.06)" fill="#9a6f3f">
-                <path d={TINY_SWEDEN_PATH} />
-              </g>
-              <rect x={12} y={64} width={40} height={1.8} rx={0.5} fill="#9a968e" />
-              <rect x={12} y={68} width={36} height={1.8} rx={0.5} fill="#9a968e" />
-            </svg>
-          </div>
-          <div className="arp-dest-label">News article</div>
-          <div className="arp-dest-meta">EMBED · IMAGE</div>
-        </div>
-
+        {/* Drop into a report — document page with map block */}
         <div className="arp-dest">
           <div className="arp-dest-preview">
             <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -241,8 +251,34 @@ function VizDestinations() {
               <rect x={42} y={68} width={52} height={1.5} rx={0.5} fill="#9a968e" />
             </svg>
           </div>
-          <div className="arp-dest-label">Report or paper</div>
-          <div className="arp-dest-meta">PDF · SVG</div>
+          <div className="arp-dest-label">Drop into a report</div>
+          <div className="arp-dest-meta">PNG · SVG · PDF</div>
+        </div>
+
+        {/* Share a link — URL preview / unfurl card */}
+        <div className="arp-dest">
+          <div className="arp-dest-preview">
+            <svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x={6} y={6} width={148} height={68} rx={3} fill="#fafaf7" stroke="#dcdbd4" strokeWidth={0.8} />
+              {/* Link icon */}
+              <g transform="translate(14 14)" stroke="#c4915a" strokeWidth={1.5} fill="none" strokeLinecap="round">
+                <path d="M6 0 L0 0 C-3 0 -5 2 -5 5 L-5 11 C-5 14 -3 16 0 16 L6 16" />
+                <path d="M10 0 L16 0 C19 0 21 2 21 5 L21 11 C21 14 19 16 16 16 L10 16" />
+                <line x1={5} y1={8} x2={11} y2={8} />
+              </g>
+              {/* OG preview card */}
+              <rect x={12} y={36} width={136} height={32} rx={2} fill="#f0eeea" stroke="#dcdbd4" strokeWidth={0.5} />
+              <rect x={52} y={42} width={50} height={3} rx={0.5} fill="#3c4149" />
+              <rect x={52} y={48} width={70} height={1.8} rx={0.5} fill="#9a968e" />
+              <rect x={52} y={53} width={60} height={1.8} rx={0.5} fill="#9a968e" />
+              <rect x={16} y={40} width={30} height={24} rx={1} fill="#f0e6d2" stroke="#c4915a" strokeWidth={0.4} />
+              <g transform="translate(22 42) scale(0.04)" fill="#9a6f3f">
+                <path d={TINY_SWEDEN_PATH} />
+              </g>
+            </svg>
+          </div>
+          <div className="arp-dest-label">Share a link</div>
+          <div className="arp-dest-meta">URL · COLLABORATE</div>
         </div>
       </div>
     </div>

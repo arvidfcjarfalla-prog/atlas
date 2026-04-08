@@ -190,6 +190,15 @@ const CSS = `
     0 0 0 7px rgba(26, 31, 28, 0.08),
     0 32px 80px rgba(26, 31, 28, 0.16);
 }
+/* Stage 5: scale-down + desaturate — map becomes a print-ready artifact */
+.arp-map-card[data-stage="5"] svg.arp-blueprint {
+  transform: scale(0.92);
+  filter: saturate(0.93);
+  transition: transform 0.8s var(--ease), filter 0.8s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .arp-map-card[data-stage="5"] svg.arp-blueprint { transition: none; }
+}
 .arp-map-card::before {
   content: "";
   position: absolute;
@@ -249,11 +258,9 @@ svg.arp-blueprint {
 .arp-map-card[data-stage="5"] .arp-layer-b { stroke-opacity: 0.55; }
 
 .arp-map-card[data-stage="3"] .arp-layer-c path,
-.arp-map-card[data-stage="4"] .arp-layer-c path,
-.arp-map-card[data-stage="5"] .arp-layer-c path { cursor: pointer; }
+.arp-map-card[data-stage="4"] .arp-layer-c path { cursor: pointer; }
 .arp-map-card[data-stage="3"] .arp-layer-c path:hover,
-.arp-map-card[data-stage="4"] .arp-layer-c path:hover,
-.arp-map-card[data-stage="5"] .arp-layer-c path:hover { fill-opacity: 0.7; }
+.arp-map-card[data-stage="4"] .arp-layer-c path:hover { fill-opacity: 0.7; }
 
 /* Refine filter: scroll-driven saturation split on kommuner.
    Range 0.58→0.68 (stage 3→4 transition).
@@ -965,7 +972,7 @@ svg.arp-blueprint {
 /* Export destinations (stage 5) */
 .arp-viz-destinations {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   max-inline-size: 48ch;
 }
