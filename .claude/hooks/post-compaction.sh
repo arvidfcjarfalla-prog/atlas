@@ -18,11 +18,14 @@ if [ -n "$BRANCH" ]; then
   CTX+="- Branch: $BRANCH"$'\n'
 fi
 
+# Point to latest handover if one exists
+LATEST_HANDOVER=$(ls -t "$CLAUDE_PROJECT_DIR/.claude/handovers/"*.md 2>/dev/null | head -1 || true)
+if [ -n "$LATEST_HANDOVER" ]; then
+  CTX+="- Latest handover: $LATEST_HANDOVER — read it for session context."$'\n'
+fi
+
 jq -n --arg ctx "$CTX" '{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": $ctx
-  }
+  "systemMessage": $ctx
 }'
 
 exit 0

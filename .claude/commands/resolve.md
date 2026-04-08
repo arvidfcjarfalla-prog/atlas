@@ -25,6 +25,10 @@ You did NOT write the original code. You did NOT write the review. You have no b
    - Fix unless the fix adds complexity disproportionate to the benefit
    - If declining, explain why
 
+   **If the reviewer's concern is valid but fixing it would be net-negative:**
+   - WONTFIX: Explain why the fix adds complexity, hurts performance, or is out of scope
+   - WONTFIX issues are excluded from re-review to prevent oscillating loops
+
    **If severity is nit:**
    - Fix only if trivial (< 1 line change). Otherwise skip.
 
@@ -37,11 +41,12 @@ You did NOT write the original code. You did NOT write the review. You have no b
 RESOLUTION SUMMARY:
 - Fixed: N issues
 - Declined: N issues
+- Wontfix: N issues
 
 For each issue:
 ISSUE: {reviewer's description}
 SEVERITY: {critical|major|minor|nit}
-ACTION: FIXED | DECLINED
+ACTION: FIXED | DECLINED | WONTFIX
 CHANGE: {the exact code change, or reason for declining}
 
 COMPLETE CORRECTED CODE:

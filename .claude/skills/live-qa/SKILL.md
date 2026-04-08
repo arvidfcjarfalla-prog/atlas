@@ -167,6 +167,22 @@ SCREENSHOT TRAIL:
 [List all screenshot paths for manual inspection]
 ```
 
+### 5.5. Aggregate results
+
+Append to `tmp/experience/visual-qa.md`:
+
+```markdown
+## {date} — {N scenarios}
+| Family | Verdict | Failed checks |
+|---|---|---|
+| {family} | {PASS/ISSUES/FAIL} | {failed check IDs or "—"} |
+```
+
+Check recurring failures: read previous entries in `visual-qa.md`. If any universal check (U1-U8) or family-specific check has failed >3 times for the same family across all entries, note:
+```
+RECURRING: {check} has failed {N} times for {family}. Consider adding a validator rule.
+```
+
 ### 6. Fix loop (if user approves)
 
 After presenting the report, ask: "Ska jag fixa de identifierade problemen?"

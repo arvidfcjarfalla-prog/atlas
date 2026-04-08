@@ -4,11 +4,12 @@ dist/
 .turbo/
 *.tsbuildinfo
 .env
-.env.local
+.env.*
 .vercel
 playwright-report/
 test-results/
 supabase/.temp/
 supabase/.branches/
 tmp/
+.claude/handovers/
 apps/web/supabase/

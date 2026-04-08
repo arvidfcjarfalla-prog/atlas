@@ -11,15 +11,28 @@
             "statusMessage": "Loading Atlas session context..."
           }
         ]
-      },
+      }
+    ],
+    "PostCompact": [
       {
-        "matcher": "compact",
         "hooks": [
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-compaction.sh",
             "timeout": 10,
             "statusMessage": "Re-injecting critical context..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Classify this prompt for a software project. Respond with ONLY a JSON object. No markdown, no code fences, no text outside the JSON.\n\nQUICK = greeting, question, conversation, trivial fix, typo, style tweak, status check, reading files, short request, anything under 5 min. DEFAULT MODE — use when uncertain.\nBUILD = new feature, major refactor, multi-file architecture change, complex bug fix needing investigation and a plan.\n\nPrompt: $ARGUMENTS\n\nQUICK: {\"ok\":true,\"reason\":\"CLASSIFIER: QUICK — Proceed directly. No /build pipeline needed.\"}\nBUILD: {\"ok\":true,\"reason\":\"CLASSIFIER: BUILD — Use /build pipeline (contract → plan → build → test → review). Do NOT skip the contract step.\"}",
+            "timeout": 15,
+            "statusMessage": "Classifying prompt..."
           }
         ]
       }
@@ -32,6 +45,60 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-doc-staleness.sh",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh",
+            "timeout": 15,
+            "statusMessage": "Saving session context before compaction..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-handover.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for auto-handover..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-checkpoint.sh",
+            "timeout": 15,
+            "statusMessage": "Auto-committing checkpoint..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if source code files (.ts, .tsx, .js, .jsx) were modified in this turn. If yes, check if typecheck or test commands (pnpm typecheck, pnpm test, npx vitest, npx tsc) were run. If code was modified but NO verification was run, respond {\"ok\": false, \"reason\": \"Code changed but typecheck/tests not run. Run: pnpm typecheck && pnpm test\"}. If no code was modified, or verification was run, respond {\"ok\": true}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "model": "claude-sonnet-4-6",
+            "prompt": "You are a claim verifier with fresh context. You have never seen the conversation that produced this response. Your sole job is to find evidence AGAINST categorical claims, not to confirm them.\n\nThe assistant's response and session metadata are provided as JSON after the --- INPUT --- marker at the end of this prompt.\n\nFIRST: Check the \"stop_hook_active\" field in the input JSON. If it is true, respond {\"ok\": true} immediately.\n\nFAST PATH: If the \"last_assistant_message\" field is under 500 characters AND contains no file path patterns (strings with / separators like path/to/file, or backtick-quoted filenames ending in .ts, .tsx, .js, .md, .json, .sh), respond {\"ok\": true} immediately without using any tools. Most casual responses, confirmations, and questions contain no verifiable claims.\n\nSTEP 1 — SCAN the \"last_assistant_message\" value for categorical claims about file contents, code structure, or the codebase.\n\nCategorical claims are firm assertions, in any language (English or Swedish). They fall into these categories:\n\nA. REMOVAL / DEAD CODE:\n- \"X is duplicated/redundant/equivalent\" / \"X är duplicerad/redundant/ekvivalent\"\n- \"X is unnecessary/dead code/unused\" / \"X är onödig/död kod/används inte\"\n- \"X should be removed/can be deleted\" / \"X borde tas bort/kan tas bort\"\n- \"X does not exist/is never called\" / \"X finns inte/anropas aldrig\"\n- \"X is already covered by Y\" / \"X täcks redan av Y\"\n\nB. SYMBOL / FILE EXISTENCE:\n- \"Function/class/variable X exists in file Y\" / \"X finns i Y\"\n- \"File X contains Y\" / \"Filen X innehåller Y\"\n- \"X is defined/declared/implemented in Y\" / \"X är definierad i Y\"\n\nC. IMPORT / EXPORT:\n- \"X is exported from module Y\" / \"X exporteras från Y\"\n- \"Y imports X from Z\" / \"Y importerar X från Z\"\n- \"X is the only export\" / \"X är enda exporten\"\n\nD. TYPE / SIGNATURE:\n- \"Type T has field F\" / \"Typen T har fältet F\"\n- \"Function F takes parameters (X, Y)\" / \"Funktionen tar parametrarna (X, Y)\"\n- \"F returns type T\" / \"F returnerar T\"\n- \"Interface I requires method M\" / \"Interfacet kräver metoden M\"\n\nE. CONFIGURATION / CONSTANTS:\n- \"The value of X is Y\" / \"Värdet på X är Y\"\n- \"Config X defaults to Y\" / \"X har default Y\"\n- \"Constant X equals Y\" / \"Konstanten X är Y\"\n\nF. CALL-SITE / USAGE:\n- \"X is called/used in file Y\" / \"X anropas/används i Y\"\n- \"X is the only caller of Y\" / \"X är enda anroparen av Y\"\n- \"All call sites have been updated\" / \"Alla anrop är uppdaterade\"\n\nG. INHERITANCE / STRUCTURE:\n- \"Class X extends/implements Y\" / \"Klass X ärver/implementerar Y\"\n- \"X overrides method M from Y\" / \"X överlagrar M från Y\"\n\nH. TEST COVERAGE:\n- \"X already has tests\" / \"X har redan tester\"\n- \"X is tested in file Y\" / \"X testas i Y\"\n\nNOT claims: hedged language (\"seems\", \"might\", \"probably\", \"verkar\", \"kanske\", \"troligen\"), questions, proposals, future plans, or opinions not about file contents.\n\nIf NO categorical claims found, respond {\"ok\": true} immediately — no tools needed.\n\nSTEP 2 — For each claim found:\n1. DECONTEXTUALIZE: Rewrite with explicit file paths and identifiers. Replace all pronouns and vague references.\n2. CLASSIFY as HARD (existence, absence, value equality, signature shape — binary verifiable) or SOFT (necessity, equivalence, redundancy, completeness — requires semantic judgment).\n3. SPLIT compound claims into atomic subclaims (max 5 per original claim).\n\nSTEP 3 — VERIFY each subclaim using Read and Grep tools only. Prioritize HARD claims first.\n\nFor each subclaim:\n1. Reformulate as a file-answerable question.\n2. Answer from files only. Never reference the original analysis.\n3. Verdict: VERIFIED (positive file evidence supports it) | CONTRADICTED (file evidence disproves it) | UNVERIFIABLE (no evidence found).\n\n\"Cannot find counter-evidence\" is NOT the same as verified. You must find POSITIVE evidence that the claim is true.\n\nEARLY BAIL: If any HARD claim is CONTRADICTED, immediately return {\"ok\": false} without checking remaining claims.\n\nAGGREGATION:\n- All subclaims VERIFIED → {\"ok\": true}\n- Any HARD claim CONTRADICTED or UNVERIFIABLE → {\"ok\": false, \"reason\": \"...\"}\n- Any SOFT claim CONTRADICTED or UNVERIFIABLE → {\"ok\": false, \"reason\": \"...\"}\n\nReason format: \"[CATEGORY]: Claim '[claim text]' ([HARD/SOFT]) failed. Evidence: [file]:[line] shows [content] which [contradicts/does not support] the claim.\"\n\n--- INPUT ---\n$ARGUMENTS",
+            "timeout": 90,
+            "statusMessage": "Verifying claims against source files..."
           }
         ]
       }

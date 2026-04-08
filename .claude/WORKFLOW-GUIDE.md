@@ -163,13 +163,35 @@ ny skill: performance benchmarking
 
 ---
 
+## Spara session (handoff)
+
+```
+/handoff
+spara session
+```
+
+**Vad som händer:** Agenten skriver en strukturerad sammanfattning av sessionen till `.claude/handovers/`. Nästa session kan läsa filen och fortsätta där du slutade.
+
+**När:** Innan du stänger en lång session, innan en paus, eller när kontext börjar bli lång.
+
+---
+
 ## Saker som sker automatiskt
 
-- **Learned rules** — när du korrigerar agenten sparas en regel i `.claude/learned-rules.md`. Nästa session läser den reglerna först.
-- **Experience docs** — när du svarar på clarify-frågor sparas Q&A till `tmp/experience/{domain}.md`. Nästa gång du jobbar med samma domän läser agenten filen först och skippar redan besvarade frågor. Flywheel: varje uppgift gör nästa snabbare.
+- **Auto-commit** — efter varje svar committas alla ändringar lokalt som en checkpoint. Du tappar aldrig arbete. Push förblir manuellt.
+- **Auto-handover** — om >3 filer ändrats och ingen handover skrivits senaste 30 min, sparas en mini-handover automatiskt. Safety net, inte ersättning för `/handoff`.
+- **Session-start** — vid sessionstart injiceras: hela `learned-rules.md`, senaste handovern, `key-files-reference.md`, `ai-tools-reference.md`, och en pekare till `STATUS.md`. Staleness-varning visas om >10 okompilerade learned rules.
+- **Prompt-routing** — varje prompt klassificeras automatiskt som QUICK eller BUILD via AI-classifier. Quick: direkt action. Build: kör /build-pipeline. Båda returnerar ok:true (aldrig ok:false — det blockerar prompten helt). QUICK är default vid osäkerhet.
+- **Verifierings-nudge** — om kod ändras utan att typecheck/test körs, påminns agenten automatiskt.
+- **Smart test-routing** — `smart-test.sh` mappar ändrade filer till minimalt testset. Full suite körs bara vid final verification.
+- **Eval regression gate** — vid `/build`, om AI-pipeline-filer ändrats (compiler, scorer, validators, examples), körs `pnpm eval` automatiskt och jämförs mot baseline. Flaggar vid >2 poängs nedgång.
+- **Kontextbevarande** — innan kontext komprimeras sparas en snapshot till `.claude/handovers/`.
+- **Path-scoped regler** — PxWeb-regler laddas bara när PxWeb-filer redigeras. Eval-regler bara vid eval-arbete. Etc.
+- **Learned rules** — när du korrigerar agenten sparas en regel med P0-P3 severity i `.claude/learned-rules.md`. P0 = data/security, P1 = build/pipeline, P2 = quality, P3 = style. Nästa session injicerar hela filen vid start.
+- **Handover pruning** — handovers äldre än 7 dagar raderas automatiskt vid session-start.
+- **Experience docs** — clarify-svar sparas till `tmp/experience/{domain}.md` med `last-verified` datum. Staleness-varning efter 14 dagar. Flywheel: varje uppgift gör nästa snabbare.
 - **Contract verification** — vid `/build` bockas varje FAILURE-villkor av med bevis innan leverans.
 - **Resolver** — om reviewern hittar issues, spawnas en separat resolver-agent som ser både originalkod och kritik.
-- **Session start** — CLAUDE.md instruerar agenten att läsa learned-rules.md innan den gör något.
 
 ---
 
@@ -197,15 +219,41 @@ atlas/.claude/
 ├── skills/
 │   ├── build/SKILL.md     # Full pipeline (inkl. live QA steg 5.5)
 │   ├── quick/SKILL.md     # Snabb pipeline
+│   ├── handoff/SKILL.md   # Spara session för nästa session
 │   ├── live-qa/SKILL.md   # Reverse prompt från localhost
 │   ├── parallel-build/SKILL.md
 │   ├── reviewer/SKILL.md  # Reviewer-beskrivning
 │   ├── documenter/SKILL.md
 │   ├── meta-agent/SKILL.md
 │   ├── consensus/SKILL.md
-│   └── debate/SKILL.md
-├── learned-rules.md       # Ackumulerade regler
-└── WORKFLOW-GUIDE.md      # ← denna fil
+│   ├── debate/SKILL.md
+│   ├── subagent-tasks/SKILL.md
+│   ├── auto-research/SKILL.md
+│   ├── connect-datasource/SKILL.md
+│   ├── connect-geography/SKILL.md
+│   ├── systematic-debugging/SKILL.md
+│   └── ... (+ external framework skills)
+├── hooks/
+│   ├── session-start.sh       # Injicerar full kontext: learned rules, handover, key-files, ai-tools
+│   ├── post-compaction.sh     # Återinjecterar kontext efter komprimering
+│   ├── check-doc-staleness.sh # Varnar om docs >60 dagar gamla
+│   ├── stop-checkpoint.sh     # Auto-committar efter varje svar
+│   ├── auto-handover.sh       # Skriver mini-handover om >3 filer ändrats
+│   └── pre-compact.sh         # Sparar kontext innan komprimering
+├── scripts/
+│   └── smart-test.sh          # Mappar ändrade filer → minimalt testset
+├── rules/                     # Path-scoped regler (laddas bara vid behov)
+│   ├── eval-modes.md          # Offline/online eval-semantik
+│   ├── testing-workflow.md    # Fokuserade tester, verifieringsgate
+│   ├── node-script-imports.md # Barrel import-caveat
+│   ├── pxweb-geography.md    # PxWeb + geography-plugin regler
+│   └── editorial-landing.md   # Editorial tokens, thumbnails, animation
+├── docs/
+│   ├── key-files-reference.md # Alla viktiga filer i projektet
+│   └── ai-tools-reference.md  # AI-verktyg per kategori
+├── handovers/                 # Session-överlämningar (gitignored)
+├── learned-rules.md           # Ackumulerade regler
+└── WORKFLOW-GUIDE.md          # ← denna fil
 
 atlas/tmp/
 ├── experience/            # Flywheel — ackumulerad domänkunskap

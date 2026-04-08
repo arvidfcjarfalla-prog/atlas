@@ -41,6 +41,18 @@ Task C (compiler.ts) ─── parallel with A/B
 Task D (validators/) ─── parallel with A/B and C
 ```
 
+### 2.5. Assemble Context Bundle
+
+For each task, based on FILES TO MODIFY, assemble relevant project rules:
+- Always include: CLAUDE.md, last 10 entries from `.claude/learned-rules.md`
+- If files match `pxweb*`, `geography*` → include `.claude/rules/pxweb-geography.md`
+- If files match `marketing/`, `landing*`, `editorial*` → include `.claude/rules/editorial-landing.md`
+- If files match `eval*`, `scorer*`, `example-bank*` → include `.claude/rules/eval-modes.md`
+- If files match `test*`, `e2e*`, `playwright*` → include `.claude/rules/testing-workflow.md`
+- If files match `*.mjs` Node scripts → include `.claude/rules/node-script-imports.md`
+
+Pass as CONTEXT BUNDLE in the agent prompt alongside TASK, FILES, ACCEPTANCE CRITERIA.
+
 ### 3. Dispatch Implementer
 
 Spawn one Agent per task with this context:
