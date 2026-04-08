@@ -191,9 +191,6 @@ const CSS = `
     0 32px 80px rgba(26, 31, 28, 0.16);
 }
 /* Stage 5: scale-down + desaturate — map becomes a print-ready artifact */
-svg.arp-blueprint {
-  transform-origin: center center;
-}
 .arp-map-card[data-stage="5"] svg.arp-blueprint {
   transform: scale(0.86);
   filter: saturate(0.88);
@@ -215,6 +212,7 @@ svg.arp-blueprint {
   display: block;
   height: min(74vh, 680px);
   aspect-ratio: 230 / 420;
+  transform-origin: center center;
   width: auto;
   max-width: 100%;
   overflow: visible;
