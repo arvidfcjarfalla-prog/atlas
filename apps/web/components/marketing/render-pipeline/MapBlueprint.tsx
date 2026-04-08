@@ -134,6 +134,9 @@ export function MapBlueprint({ stage }: Props) {
         {/* Export shimmer sweep — stage 5 */}
         <div className="arp-export-shimmer" aria-hidden="true" />
 
+        {/* Capture flash — brief white pulse on stage 5 entry */}
+        <div className="arp-export-flash" aria-hidden="true" />
+
         <svg
           className="arp-blueprint"
           viewBox="200 0 230 420"

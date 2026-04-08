@@ -294,6 +294,32 @@ svg.arp-blueprint {
 .arp-map-card[data-stage="5"] .arp-layer-e {
   opacity: 1;
 }
+/* Stage 5: circles go solid — no longer editable, finalized */
+.arp-map-card[data-stage="5"] .arp-layer-e {
+  fill-opacity: 1;
+  stroke-width: 0.8;
+  transition: fill-opacity var(--dur-in) var(--ease), stroke-width var(--dur-in) var(--ease);
+}
+
+/* Stage 5: restore ALL kommuner to full color — the "final" complete map */
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="0"],
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="1"],
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="2"] {
+  fill-opacity: 1 !important;
+  filter: saturate(1) !important;
+  transition: fill-opacity var(--dur-in) var(--ease), filter var(--dur-in) var(--ease);
+}
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="3"],
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="4"],
+.arp-map-card[data-stage="5"] .arp-layer-c path[data-rank="5"] {
+  filter: saturate(1) !important;
+  transition: filter var(--dur-in) var(--ease);
+}
+
+/* Stage 5: disable all map interaction */
+.arp-map-card[data-stage="5"] svg.arp-blueprint {
+  pointer-events: none;
+}
 
 /* Stockholm marker — stage 3+ */
 .arp-stockholm { opacity: 0; transition: opacity var(--dur-in) var(--ease); }
@@ -309,19 +335,26 @@ svg.arp-blueprint {
   100% { transform: scale(2.6); opacity: 0; }
 }
 .arp-map-card[data-stage="3"] .arp-stockholm-ring-1,
-.arp-map-card[data-stage="4"] .arp-stockholm-ring-1,
-.arp-map-card[data-stage="5"] .arp-stockholm-ring-1 {
+.arp-map-card[data-stage="4"] .arp-stockholm-ring-1 {
   transform-box: fill-box;
   transform-origin: center;
   animation: arp-stockholm-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 .arp-map-card[data-stage="3"] .arp-stockholm-ring-2,
-.arp-map-card[data-stage="4"] .arp-stockholm-ring-2,
-.arp-map-card[data-stage="5"] .arp-stockholm-ring-2 {
+.arp-map-card[data-stage="4"] .arp-stockholm-ring-2 {
   transform-box: fill-box;
   transform-origin: center;
   animation: arp-stockholm-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
   animation-delay: 1.2s;
+}
+/* Stage 5: freeze ping — rings stay at full size, no animation */
+.arp-map-card[data-stage="5"] .arp-stockholm-ring-1,
+.arp-map-card[data-stage="5"] .arp-stockholm-ring-2 {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(2.2);
+  opacity: 0.15;
+  transition: transform var(--dur-in) var(--ease), opacity var(--dur-in) var(--ease);
 }
 
 /* Scan line (stage 1) — fades out with scroll */
@@ -581,6 +614,28 @@ svg.arp-blueprint {
 .arp-map-card[data-stage="5"] .arp-format-chip {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+/* Capture flash — brief white pulse signaling "screenshot taken" */
+.arp-export-flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: inherit;
+}
+@keyframes arp-capture-flash {
+  0%   { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+.arp-map-card[data-stage="5"] .arp-export-flash {
+  animation: arp-capture-flash 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: 0.1s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arp-map-card[data-stage="5"] .arp-export-flash { animation: none; }
 }
 
 /* Shimmer sweep — thin gold line that moves bottom-up across the card */

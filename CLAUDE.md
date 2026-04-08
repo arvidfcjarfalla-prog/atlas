@@ -75,3 +75,10 @@ pnpm 9.15 + Turborepo · TypeScript 5.8 strict · Next.js 14 App Router · MapLi
 - Preserve backward compatibility unless explicitly asked to break it.
 - Solve problems we have, not problems we might have.
 - Read relevant files before changing code. Smallest change, highest ROI.
+
+## Quality Over Speed
+
+- **A good result beats a fast result.** Don't take the easy path when the plan calls for more. Quick hacks erode trust — thoughtful implementation builds it.
+- **Plan compliance:** When implementing from an approved plan, cross-check every item before declaring done. Enumerate each plan item and show evidence it was implemented. Never silently drop items.
+- **Read before writing:** Before implementing a feature, read the surrounding code to find the optimal place and approach. Don't bolt things on — integrate them properly.
+- **Match the ambition:** If consensus/research recommended a rich solution, implement the rich solution. Don't downgrade to the minimum viable version without asking.
