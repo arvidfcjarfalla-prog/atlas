@@ -174,7 +174,7 @@ const CSS = `
     0 20px 52px rgba(26, 31, 28, 0.10);
   width: fit-content;
   max-width: 100%;
-  transition: box-shadow 560ms var(--ease);
+  transition: box-shadow 560ms var(--ease), border-radius 600ms var(--ease);
 }
 /* Stage 4: subtle gold ring — "active editing" */
 .arp-map-card[data-stage="4"] {
@@ -192,14 +192,12 @@ const CSS = `
     0 32px 80px rgba(26, 31, 28, 0.16);
   transition: border-radius 600ms var(--ease) 400ms, box-shadow 560ms var(--ease);
 }
-/* Stage 5: scale-down + desaturate — map becomes a print-ready artifact */
+/* Stage 5: scale-down + desaturate + disable interaction */
 .arp-map-card[data-stage="5"] svg.arp-blueprint {
   transform: scale(0.86);
   filter: saturate(0.88);
+  pointer-events: none;
   transition: transform 0.8s var(--ease), filter 0.8s var(--ease);
-}
-@media (prefers-reduced-motion: reduce) {
-  .arp-map-card[data-stage="5"] svg.arp-blueprint { transition: none; }
 }
 .arp-map-card::before {
   content: "";
@@ -316,10 +314,6 @@ svg.arp-blueprint {
   transition: filter var(--dur-in) var(--ease);
 }
 
-/* Stage 5: disable all map interaction */
-.arp-map-card[data-stage="5"] svg.arp-blueprint {
-  pointer-events: none;
-}
 
 /* Stockholm marker — stage 3+ */
 .arp-stockholm { opacity: 0; transition: opacity var(--dur-in) var(--ease); }
@@ -793,7 +787,7 @@ svg.arp-blueprint {
   gap: 10px;
   z-index: 5;
   opacity: 0;
-  transform: translateX(12px);
+  transform: translateX(-12px);
   transition: opacity var(--dur-in) var(--ease), transform 560ms var(--ease);
   pointer-events: none;
 }
