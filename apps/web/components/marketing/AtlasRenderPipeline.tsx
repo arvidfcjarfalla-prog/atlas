@@ -191,9 +191,12 @@ const CSS = `
     0 32px 80px rgba(26, 31, 28, 0.16);
 }
 /* Stage 5: scale-down + desaturate — map becomes a print-ready artifact */
+svg.arp-blueprint {
+  transform-origin: center center;
+}
 .arp-map-card[data-stage="5"] svg.arp-blueprint {
-  transform: scale(0.92);
-  filter: saturate(0.93);
+  transform: scale(0.86);
+  filter: saturate(0.88);
   transition: transform 0.8s var(--ease), filter 0.8s var(--ease);
 }
 @media (prefers-reduced-motion: reduce) {
