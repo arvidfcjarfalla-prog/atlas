@@ -183,12 +183,14 @@ const CSS = `
     0 1px 2px rgba(26, 31, 28, 0.04),
     0 20px 52px rgba(26, 31, 28, 0.10);
 }
-/* Stage 5: white document ring — "ready for export" */
+/* Stage 5: white document ring + docked radius */
 .arp-map-card[data-stage="5"] {
+  border-radius: 6px;
   box-shadow:
     0 0 0 6px rgba(255, 255, 255, 0.85),
     0 0 0 7px rgba(26, 31, 28, 0.08),
     0 32px 80px rgba(26, 31, 28, 0.16);
+  transition: border-radius 600ms var(--ease) 400ms, box-shadow 560ms var(--ease);
 }
 /* Stage 5: scale-down + desaturate — map becomes a print-ready artifact */
 .arp-map-card[data-stage="5"] svg.arp-blueprint {
@@ -700,6 +702,161 @@ svg.arp-blueprint {
 .arp-map-card[data-stage="5"] .arp-export-corner-bl { transition-delay: 120ms; }
 .arp-map-card[data-stage="5"] .arp-export-corner-br { transition-delay: 180ms; }
 
+/* ── Dashboard shell (stage 5): BI dashboard builds around the map ── */
+
+.arp-dash-plate {
+  position: absolute;
+  top: -52px;
+  left: -56px;
+  right: -8px;
+  bottom: -8px;
+  background: var(--paper);
+  border: 1px solid var(--hairline-2);
+  border-radius: 14px;
+  z-index: -1;
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 600ms var(--ease), transform 600ms var(--ease);
+  box-shadow: 0 2px 4px rgba(26, 31, 28, 0.03), 0 20px 60px rgba(26, 31, 28, 0.08);
+  pointer-events: none;
+}
+.arp-map-card[data-stage="5"] .arp-dash-plate {
+  opacity: 1;
+  transform: scale(1);
+  transition-delay: 400ms;
+}
+
+.arp-dash-header {
+  position: absolute;
+  left: -56px;
+  right: -8px;
+  top: -52px;
+  height: 40px;
+  background: var(--paper-3);
+  border-bottom: 1px solid var(--hairline-2);
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  z-index: 5;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--dur-in) var(--ease), transform 560ms var(--ease);
+  pointer-events: none;
+}
+.arp-map-card[data-stage="5"] .arp-dash-header {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 500ms;
+}
+.arp-dash-logo {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.arp-dash-logo-text {
+  font-family: "Geist", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.arp-dash-crumb {
+  font-family: "Geist", sans-serif;
+  font-size: 10px;
+  color: var(--ink-4);
+  flex: 1;
+}
+.arp-dash-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--hairline-2);
+  flex-shrink: 0;
+}
+
+.arp-dash-sidebar {
+  position: absolute;
+  left: -56px;
+  top: -12px;
+  bottom: -8px;
+  width: 48px;
+  background: var(--paper-2);
+  border-right: 1px solid var(--hairline-1);
+  border-radius: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0;
+  gap: 10px;
+  z-index: 5;
+  opacity: 0;
+  transform: translateX(12px);
+  transition: opacity var(--dur-in) var(--ease), transform 560ms var(--ease);
+  pointer-events: none;
+}
+.arp-map-card[data-stage="5"] .arp-dash-sidebar {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 600ms;
+}
+.arp-dash-nav-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--hairline-1);
+}
+.arp-dash-nav-icon.arp-active {
+  background: rgba(196, 145, 90, 0.12);
+  border: 1px solid rgba(196, 145, 90, 0.3);
+}
+
+.arp-dash-kpis {
+  position: absolute;
+  left: 0;
+  right: -8px;
+  top: -8px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-in) var(--ease), transform 520ms var(--ease-bounce);
+  pointer-events: none;
+}
+.arp-map-card[data-stage="5"] .arp-dash-kpis {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 700ms;
+}
+.arp-dash-kpi {
+  flex: 1;
+  height: 44px;
+  background: var(--paper-3);
+  border: 1px solid var(--hairline-2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.arp-dash-kpi-value {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1;
+}
+.arp-dash-kpi-label {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--ink-4);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
 /* Cursor tooltip */
 .arp-cursor-tooltip {
   position: absolute;
@@ -1204,6 +1361,8 @@ svg.arp-blueprint {
 @media (max-width: 1024px) {
   .arp-grid { grid-template-columns: 1fr; gap: 0; }
   .arp-step-list { display: none; }
+  .arp-dash-plate, .arp-dash-header, .arp-dash-sidebar, .arp-dash-kpis { display: none; }
+  .arp-map-card[data-stage="5"] { border-radius: 14px; }
   .arp-map-col {
     position: -webkit-sticky;
     position: sticky;

@@ -287,6 +287,37 @@ export function MapBlueprint({ stage }: Props) {
           <span className="arp-format-chip arp-delay-2">PDF</span>
         </div>
 
+        {/* Dashboard shell — stage 5: BI dashboard builds around the map */}
+        <div className="arp-dash-plate" aria-hidden="true" />
+        <div className="arp-dash-header" aria-hidden="true">
+          <span className="arp-dash-logo" />
+          <span className="arp-dash-logo-text">Analytics</span>
+          <span className="arp-dash-crumb">Maps / Population</span>
+          <span className="arp-dash-avatar" />
+        </div>
+        <div className="arp-dash-sidebar" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <span
+              key={i}
+              className={`arp-dash-nav-icon${i === 2 ? " arp-active" : ""}`}
+            />
+          ))}
+        </div>
+        <div className="arp-dash-kpis" aria-hidden="true">
+          <div className="arp-dash-kpi">
+            <span className="arp-dash-kpi-value">290</span>
+            <span className="arp-dash-kpi-label">Regions</span>
+          </div>
+          <div className="arp-dash-kpi">
+            <span className="arp-dash-kpi-value">5.4k</span>
+            <span className="arp-dash-kpi-label">Peak density</span>
+          </div>
+          <div className="arp-dash-kpi">
+            <span className="arp-dash-kpi-value">SCB</span>
+            <span className="arp-dash-kpi-label">Source</span>
+          </div>
+        </div>
+
         {/* Cursor tooltip */}
         <div
           className={`arp-cursor-tooltip${tooltip.visible ? " arp-visible" : ""}`}
