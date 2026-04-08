@@ -8,9 +8,9 @@ export default function HubLayout({ children }: { children: ReactNode }) {
   const { open, toggle } = useSidebar();
 
   return (
-    <div className="flex h-full" style={{ backgroundColor: "#0d1217" }}>
+    <div className="relative h-full" style={{ backgroundColor: "#111820" }}>
       <AppSidebar mobileOpen={open} onMobileToggle={toggle} />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="h-full overflow-auto md:pl-64">{children}</main>
     </div>
   );
 }

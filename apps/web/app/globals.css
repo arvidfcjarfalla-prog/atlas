@@ -10,6 +10,17 @@
     @apply border-border;
   }
 
+  html, body {
+    /* overflow-x: clip prevents horizontal scroll from over-wide sections without creating a scroll container — critical so position: sticky children (e.g. AtlasRenderPipeline map column) can stick to the viewport. Using "hidden" here propagates to the viewport and breaks sticky. */
+    overflow-x: clip;
+    scrollbar-width: none;           /* Firefox */
+    -ms-overflow-style: none;        /* Edge */
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;                   /* Chrome/Safari */
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
   }

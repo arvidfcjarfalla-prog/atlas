@@ -115,10 +115,11 @@ function NavItem({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 ${active ? "backdrop-blur-sm" : "hover:bg-white/[0.05]"}`}
       style={{
-        color: active ? "#8ecba0" : "#908c85",
-        backgroundColor: active ? "rgba(142,203,160,0.08)" : "transparent",
+        color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.45)",
+        backgroundColor: active ? "rgba(255,255,255,0.08)" : "transparent",
+        border: active ? "1px solid rgba(255,255,255,0.08)" : "1px solid transparent",
       }}
     >
       {icon}
@@ -133,8 +134,8 @@ function RecentItem({ map }: { map: MapRow }) {
   return (
     <Link
       href={`/app/map/${map.id}`}
-      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-white/[0.04]"
-      style={{ color: "#e4e0d8" }}
+      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-white/[0.08]"
+      style={{ color: "rgba(255,255,255,0.7)" }}
     >
       <div
         className="h-8 w-8 flex-shrink-0 rounded"
@@ -191,7 +192,7 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
         <Link
           href="/app"
           className="flex items-center gap-2 text-base tracking-tight"
-          style={{ fontFamily: "Georgia, serif", color: "#e4e0d8" }}
+          style={{ fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.85)" }}
         >
           <span
             className="inline-block h-2 w-2 rounded-full"
@@ -231,7 +232,7 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
         <div className="mt-6 px-2">
           <div
             className="mb-2 px-3 text-xs uppercase tracking-widest"
-            style={{ color: "#5a5752" }}
+            style={{ color: "rgba(255,255,255,0.3)" }}
           >
             Senaste
           </div>
@@ -273,20 +274,23 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* New map CTA */}
-      <div className="px-3 pb-3">
-        <Link
-          href="/app/map/new"
-          className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:brightness-110"
-          style={{
-            backgroundColor: "#d4a574",
-            color: "#0d1217",
-          }}
-        >
-          <IconPlus />
-          Ny karta
-        </Link>
-      </div>
+      {/* New map CTA — hidden on hub home where prompt bar serves this purpose */}
+      {!isHome && (
+        <div className="px-3 pb-3">
+          <Link
+            href="/app/map/new"
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:brightness-110"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.8)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <IconPlus />
+            Ny karta
+          </Link>
+        </div>
+      )}
 
       {/* User menu */}
       {user ? (
@@ -322,8 +326,8 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
         >
           <Link
             href="/auth/login"
-            className="block text-center text-sm transition-colors hover:brightness-125"
-            style={{ color: "#8ecba0" }}
+            className="block text-center text-sm transition-colors hover:text-white/70"
+            style={{ color: "rgba(255,255,255,0.35)" }}
           >
             Logga in
           </Link>
@@ -350,14 +354,15 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
         <IconMenu />
       </button>
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — fixed dark glass panel */}
       <aside
-        className="hidden md:flex h-full w-64 flex-shrink-0 flex-col"
+        className="hidden md:flex fixed inset-y-0 left-0 z-30 w-64 flex-col"
         style={{
-          backgroundColor: "rgba(16,22,30,0.72)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderRight: "1px solid rgba(255,255,255,0.05)",
+          backgroundColor: "rgba(10, 15, 22, 0.65)",
+          backdropFilter: "blur(40px) saturate(1.3)",
+          WebkitBackdropFilter: "blur(40px) saturate(1.3)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "4px 0 32px rgba(0,0,0,0.20), 1px 0 0 rgba(255,255,255,0.03)",
         }}
       >
         {sidebarContent}
@@ -373,10 +378,11 @@ export function AppSidebar({ mobileOpen, onMobileToggle }: AppSidebarProps) {
           <aside
             className="fixed inset-y-0 left-0 z-50 w-64 md:hidden"
             style={{
-              backgroundColor: "rgba(16,22,30,0.95)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              borderRight: "1px solid rgba(255,255,255,0.05)",
+              backgroundColor: "rgba(12, 18, 26, 0.80)",
+              backdropFilter: "blur(32px) saturate(1.2)",
+              WebkitBackdropFilter: "blur(32px) saturate(1.2)",
+              borderRight: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "4px 0 24px rgba(0,0,0,0.25)",
             }}
           >
             {sidebarContent}

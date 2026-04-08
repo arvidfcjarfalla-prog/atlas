@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+// Generate a real Swedish-municipality choropleth preview SVG from GeoJSON.
+// Output: apps/web/components/generated/sweden-choropleth.ts
+// Run: node apps/web/scripts/generate-choropleth-preview.mjs
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
+
+const INPUT = path.join(ROOT, "public/geo/se/municipalities.geojson");
+const OUTPUT = path.join(ROOT, "components/generated/sweden-choropleth.ts");
+
+const VIEW_W = 560;
+const VIEW_H = 420;
+const PADDING = 24;
+
+// Gold sequential palette, 6 classes (matches editorial-tokens)
+const CLASSES = [
+  "#3d2f28",
+  "#6b4a2b",
+  "#a86d30",
+  "#d89a3a",
+  "#f0c56b",
+  "#f7e3a8",
+];
+
+// Deterministic hash → class index
+function hashClass(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) | 0;
+  }
+  // Bias toward middle classes so the map has visual variety, not extremes
+  const raw = Math.abs(h) % 100;
+  if (raw < 8) return 0;
+  if (raw < 22) return 1;
+  if (raw < 42) return 2;
+  if (raw < 64) return 3;
+  if (raw < 85) return 4;
+  return 5;
+}
+
+// ─── Load GeoJSON ────────────────────────────────────────────────
+const raw = fs.readFileSync(INPUT, "utf8");
+const data = JSON.parse(raw);
+console.log(`Loaded ${data.features.length} features`);
+
+// ─── Compute bounds ──────────────────────────────────────────────
+let minLon = Infinity;
+let maxLon = -Infinity;
+let minLat = Infinity;
+let maxLat = -Infinity;
+
+for (const f of data.features) {
+  const polygons =
+    f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  for (const poly of polygons) {
+    for (const ring of poly) {
+      for (const [lon, lat] of ring) {
+        if (lon < minLon) minLon = lon;
+        if (lon > maxLon) maxLon = lon;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+    }
+  }
+}
+
+console.log(`Bounds: lon ${minLon.toFixed(2)}..${maxLon.toFixed(2)}, lat ${minLat.toFixed(2)}..${maxLat.toFixed(2)}`);
+
+// ─── Projection: equirectangular with cos(mean lat) correction ───
+const meanLat = (minLat + maxLat) / 2;
+const cosLat = Math.cos((meanLat * Math.PI) / 180);
+const lonRange = (maxLon - minLon) * cosLat;
+const latRange = maxLat - minLat;
+
+const availW = VIEW_W - PADDING * 2;
+const availH = VIEW_H - PADDING * 2;
+const scale = Math.min(availW / lonRange, availH / latRange);
+const scaledW = lonRange * scale;
+const scaledH = latRange * scale;
+const offsetX = (VIEW_W - scaledW) / 2;
+const offsetY = (VIEW_H - scaledH) / 2;
+
+function project(lon, lat) {
+  const x = offsetX + (lon - minLon) * cosLat * scale;
+  const y = offsetY + (maxLat - lat) * scale;
+  return [x, y];
+}
+
+// ─── Simplify ring: drop consecutive near-duplicate points ───────
+function simplifyRing(ring) {
+  const MIN_DIST_SQ = 0.4; // pixels²
+  const out = [];
+  let prev = null;
+  for (const [lon, lat] of ring) {
+    const [x, y] = project(lon, lat);
+    if (prev) {
+      const dx = x - prev[0];
+      const dy = y - prev[1];
+      if (dx * dx + dy * dy < MIN_DIST_SQ) continue;
+    }
+    out.push([x, y]);
+    prev = [x, y];
+  }
+  return out;
+}
+
+function ringArea(ring) {
+  let a = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[(i + 1) % ring.length];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
+
+// ─── Build paths ─────────────────────────────────────────────────
+const MIN_AREA = 3; // drop tiny islands (< 3 pixels²)
+const features = [];
+let totalPoints = 0;
+let droppedRings = 0;
+
+for (const f of data.features) {
+  const id = String(f.properties.scb_code ?? f.properties.name);
+  const cls = hashClass(id);
+  const color = CLASSES[cls];
+
+  const polygons =
+    f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+
+  const rings = [];
+  for (const poly of polygons) {
+    for (const ring of poly) {
+      const simplified = simplifyRing(ring);
+      if (simplified.length < 3) continue;
+      if (ringArea(simplified) < MIN_AREA) {
+        droppedRings++;
+        continue;
+      }
+      rings.push(simplified);
+    }
+  }
+
+  if (rings.length === 0) continue;
+
+  let d = "";
+  for (const ring of rings) {
+    d += `M${ring[0][0].toFixed(1)} ${ring[0][1].toFixed(1)}`;
+    for (let i = 1; i < ring.length; i++) {
+      d += `L${ring[i][0].toFixed(1)} ${ring[i][1].toFixed(1)}`;
+    }
+    d += "Z";
+    totalPoints += ring.length;
+  }
+
+  features.push({ d, color });
+}
+
+console.log(`Generated ${features.length} features, ${totalPoints} points total, dropped ${droppedRings} tiny rings`);
+
+// ─── Write output ────────────────────────────────────────────────
+const outDir = path.dirname(OUTPUT);
+if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+const header = `// Auto-generated by scripts/generate-choropleth-preview.mjs
+// Source: public/geo/se/municipalities.geojson
+// ${features.length} Swedish municipalities, projected to ${VIEW_W}x${VIEW_H} viewBox.
+// DO NOT EDIT — regenerate with: node apps/web/scripts/generate-choropleth-preview.mjs
+
+export const SWEDEN_CHOROPLETH_VIEW_BOX = "0 0 ${VIEW_W} ${VIEW_H}";
+
+export const SWEDEN_CHOROPLETH_PATHS: readonly { readonly d: string; readonly f: string }[] = [
+`;
+
+const body = features
+  .map((f) => `  { d: "${f.d}", f: "${f.color}" },`)
+  .join("\n");
+
+const footer = "\n];\n";
+
+fs.writeFileSync(OUTPUT, header + body + footer);
+
+const stats = fs.statSync(OUTPUT);
+console.log(`Wrote ${OUTPUT} (${(stats.size / 1024).toFixed(1)} KB)`);

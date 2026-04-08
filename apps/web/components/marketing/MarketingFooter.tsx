@@ -2,38 +2,35 @@ import Link from "next/link";
 
 const sage = "#8ecba0";
 const tx = "#e4e0d8";
-const tx2 = "#908c85";
-const tx3 = "#5a5752";
+const tx2 = "#b0aca5";
+const tx3 = "#9a968e";
 const bd = "rgba(255,255,255,0.05)";
 
-const mono: React.CSSProperties = { fontFamily: "'Courier New', monospace" };
+const mono: React.CSSProperties = { fontFamily: "'Geist Mono', ui-monospace, monospace" };
 
-const COLUMNS = [
+type FooterLink = { label: string; href: string; soon?: boolean };
+
+const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "PRODUCT",
     links: [
       { label: "Use Cases", href: "/use-cases" },
       { label: "Pricing", href: "/pricing" },
       { label: "Enterprise", href: "/enterprise" },
-      { label: "Docs", href: "#" },
     ],
   },
   {
     title: "RESOURCES",
     links: [
-      { label: "API Reference", href: "#" },
-      { label: "Changelog", href: "#" },
-      { label: "Status", href: "#" },
-      { label: "Blog", href: "#" },
+      { label: "Changelog", href: "#", soon: true },
+      { label: "Status", href: "#", soon: true },
     ],
   },
   {
     title: "COMPANY",
     links: [
-      { label: "About", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
-      { label: "Security", href: "#" },
+      { label: "About", href: "#", soon: true },
+      { label: "Contact", href: "#", soon: true },
     ],
   },
 ];
@@ -41,7 +38,15 @@ const COLUMNS = [
 export function MarketingFooter() {
   return (
     <footer style={{ padding: "40px 36px 24px", borderTop: `1px solid ${bd}`, maxWidth: 1060, margin: "0 auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 32, marginBottom: 32 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.2fr 1fr 1fr 1fr",
+          gap: 32,
+          marginBottom: 32,
+        }}
+        className="mkt-footer-grid"
+      >
         {/* Logo column */}
         <div>
           <div className="flex items-center gap-2 mb-[14px]">
@@ -61,12 +66,21 @@ export function MarketingFooter() {
             </p>
             {col.links.map((link) => (
               <p key={link.label} style={{ marginBottom: 6 }}>
-                <Link
-                  href={link.href}
-                  style={{ ...mono, fontSize: 11, color: tx2, textDecoration: "none" }}
-                >
-                  {link.label}
-                </Link>
+                {link.soon ? (
+                  <span
+                    style={{ ...mono, fontSize: 11, color: `${tx2}66`, cursor: "default" }}
+                    aria-disabled="true"
+                  >
+                    {link.label}
+                  </span>
+                ) : (
+                  <Link
+                    href={link.href}
+                    style={{ ...mono, fontSize: 11, color: tx2, textDecoration: "none" }}
+                  >
+                    {link.label}
+                  </Link>
+                )}
               </p>
             ))}
           </div>
@@ -82,12 +96,18 @@ export function MarketingFooter() {
           borderTop: `1px solid ${bd}`,
           ...mono,
           fontSize: 9,
-          color: tx3 + "66",
+          color: tx3,
         }}
       >
         <span>&copy; 2026 Atlas</span>
         <span>MapLibre GL JS</span>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media(max-width:640px){
+          .mkt-footer-grid{grid-template-columns:1fr 1fr!important;row-gap:28px!important}
+        }
+      ` }} />
     </footer>
   );
 }

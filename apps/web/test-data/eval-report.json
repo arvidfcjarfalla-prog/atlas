@@ -1,10 +1,10 @@
 {
   "mode": "online",
-  "timestamp": "2026-03-20T21:59:51.669Z",
-  "total": 12,
-  "passed": 12,
-  "failed": 0,
-  "avgQualityScore": 87,
+  "timestamp": "2026-04-03T13:29:30.990Z",
+  "total": 32,
+  "passed": 16,
+  "failed": 16,
+  "avgQualityScore": 89,
   "results": [
     {
       "id": "point-capitals",
@@ -12,22 +12,21 @@
       "pass": true,
       "manifest": {
         "version": 2,
-        "id": "european-capitals-by-region",
-        "title": "European Capital Cities by Region",
-        "description": "Capital cities of Europe categorized by geographic region (Western, Nordic, Eastern) with distinct colors for each subregion.",
+        "id": "europe-capitals-regions",
+        "title": "European Capitals by Region",
+        "description": "Major European capital cities colored by geographic region (Western, Nordic, Eastern Europe).",
         "theme": "editorial",
         "defaultCenter": [
-          54.5,
-          15.2
+          50,
+          10
         ],
         "defaultZoom": 4,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": true,
-          "terrain": false,
-          "tectonic": false,
           "labelsVisible": true
         },
         "layers": [
@@ -35,7 +34,7 @@
             "id": "capitals",
             "kind": "asset",
             "label": "Capital Cities",
-            "sourceType": "api",
+            "sourceType": "geojson-url",
             "sourceUrl": "/api/geo/world-cities",
             "geometryType": "point",
             "filter": [
@@ -59,18 +58,18 @@
                   [
                     "Norway",
                     "Sweden",
-                    "Finland",
                     "Denmark",
+                    "Finland",
                     "Iceland",
-                    "United Kingdom",
-                    "Ireland",
-                    "France",
                     "Germany",
+                    "France",
                     "Netherlands",
                     "Belgium",
                     "Luxembourg",
-                    "Switzerland",
                     "Austria",
+                    "Switzerland",
+                    "United Kingdom",
+                    "Ireland",
                     "Spain",
                     "Portugal",
                     "Italy",
@@ -81,12 +80,20 @@
                     "Romania",
                     "Bulgaria",
                     "Greece",
-                    "Croatia",
-                    "Slovenia",
-                    "Serbia",
                     "Estonia",
                     "Latvia",
-                    "Lithuania"
+                    "Lithuania",
+                    "Ukraine",
+                    "Belarus",
+                    "Russia",
+                    "Serbia",
+                    "Croatia",
+                    "Slovenia",
+                    "Bosnia and Herzegovina",
+                    "Albania",
+                    "North Macedonia",
+                    "Montenegro",
+                    "Kosovo"
                   ]
                 ]
               ]
@@ -94,11 +101,11 @@
             "style": {
               "markerShape": "circle",
               "mapFamily": "point",
-              "colorField": "subregion",
+              "colorField": "region",
               "clusterEnabled": false,
               "classification": {
                 "method": "categorical",
-                "classes": 5
+                "classes": 3
               },
               "color": {
                 "scheme": "set2",
@@ -116,7 +123,6 @@
               "tooltipFields": [
                 "name",
                 "country",
-                "subregion",
                 "pop_max"
               ],
               "clickBehavior": "popup",
@@ -132,15 +138,15 @@
         },
         "intent": {
           "userPrompt": "Show European capitals as colored points by region (Western, Nordic, Eastern). Use a categorical color scheme.",
-          "taskType": "browse-places",
-          "confidence": 0.88,
+          "taskType": "compare-regions",
+          "confidence": 0.85,
           "assumptions": [
-            "Using built-in world-cities dataset from Natural Earth which includes capital status and subregion classification",
-            "Filter applied to limit to European countries only — Natural Earth's 'subregion' attribute provides categorization (Northern Europe = Nordic, Western Europe, Eastern Europe, Southern Europe)",
-            "The subregion field in Natural Earth data will map approximately to user's Western/Nordic/Eastern categories, though Southern Europe is also present",
-            "Feature count after filtering will be ~40-45 European capitals — small enough for point rendering without clustering",
-            "Categorical classification with set2 scheme provides distinct colors for each subregion",
-            "Basemap labels enabled to help users identify countries alongside capital points"
+            "Using built-in world-cities dataset filtered to European countries with capital status",
+            "Region classification (Western/Nordic/Eastern) must be derived from country attribute or added to dataset",
+            "Filter targets primary capitals only to avoid duplicate entries",
+            "Set2 categorical scheme provides distinct colors for 3 regions",
+            "defaultCenter [50, 10] positions map on central Europe",
+            "Zoom 4 shows continental extent"
           ]
         },
         "validation": {
@@ -155,14 +161,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -176,17 +183,18 @@
         "version": 2,
         "id": "pacific-ring-of-fire-earthquakes",
         "title": "Earthquakes — Pacific Ring of Fire",
-        "description": "Seismic activity along the Pacific Ring of Fire, clustered at low zoom levels to show regional patterns and individual events at high zoom.",
+        "description": "Clustered earthquake events across the Pacific Ring of Fire, showing seismic activity patterns along tectonic plate boundaries.",
         "theme": "explore",
         "defaultCenter": [
-          0,
-          -140
+          10,
+          -155
         ],
         "defaultZoom": 3,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
-          "nightlights": true,
+          "nightlights": false,
           "landMask": true,
           "terrain": false,
           "tectonic": true,
@@ -194,7 +202,7 @@
         },
         "layers": [
           {
-            "id": "earthquakes",
+            "id": "ring-of-fire-quakes",
             "kind": "event",
             "label": "Earthquakes",
             "sourceType": "api",
@@ -208,7 +216,7 @@
               "clusterEnabled": true,
               "clusterRadius": 60,
               "classification": {
-                "method": "natural-breaks",
+                "method": "equal-interval",
                 "classes": 5
               },
               "color": {
@@ -216,7 +224,7 @@
                 "colorblindSafe": true
               },
               "fillOpacity": 0.8,
-              "strokeColor": "rgba(255,255,255,0.5)",
+              "strokeColor": "rgba(255,255,255,0.4)",
               "strokeWidth": 1
             },
             "legend": {
@@ -228,13 +236,13 @@
                 "title",
                 "mag",
                 "depth",
-                "place",
                 "time"
               ],
               "clickBehavior": "detail-panel",
-              "hoverEffect": "highlight"
+              "hoverEffect": "enlarge"
             },
-            "attribution": "USGS Earthquake Hazards Program"
+            "attribution": "USGS Earthquake Hazards Program",
+            "attributionUrl": "https://earthquake.usgs.gov"
           }
         ],
         "accessibility": {
@@ -247,17 +255,14 @@
           "taskType": "monitor-events",
           "confidence": 0.95,
           "assumptions": [
-            "Using built-in USGS earthquake API endpoint — provides recent global seismic data",
-            "User specifies 'thousands of events' → clustering is mandatory (clusterEnabled: true)",
-            "clusterRadius: 60 provides good aggregation at continental scale without over-clustering",
-            "mag (magnitude) used for both color and size to emphasize seismic severity",
-            "natural-breaks classification handles skewed magnitude distribution (most events are low magnitude)",
-            "reds color scheme is conventional for seismic hazard visualization",
-            "defaultCenter [-140, 0] centers on Pacific Ocean to frame the Ring of Fire arc",
-            "defaultZoom 3 shows Pacific basin at continental scale — appropriate for initial view",
-            "tectonic basemap layer adds relevant tectonic plate boundaries",
-            "nightlights basemap provides ocean context without overwhelming detail",
-            "detail-panel interaction chosen because clustered events benefit from expanded data views when clicked"
+            "Using USGS earthquake API as data source — provides recent global seismic activity",
+            "Clustering enabled with radius 60 to aggregate thousands of events at low zoom",
+            "Magnitude used for both color and size encoding — highlights significant quakes",
+            "reds color scheme conveys seismic hazard severity",
+            "Tectonic basemap layer enabled to show plate boundaries",
+            "defaultCenter [10, -155] focuses on Pacific Ocean center",
+            "defaultZoom 3 shows entire Ring of Fire extent (Alaska to New Zealand)",
+            "equal-interval classification for magnitude — creates intuitive size/color breaks"
           ]
         },
         "validation": {
@@ -272,14 +277,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -293,21 +299,23 @@
         "version": 2,
         "id": "europe-population-density",
         "title": "Population Density by Country — Europe",
-        "description": "Choropleth map showing population density (people per km²) across European countries, normalized by land area.",
+        "description": "Population per square kilometer across European countries, normalized by area to show true density patterns.",
         "theme": "decision",
         "defaultCenter": [
-          54.5,
-          15
+          50,
+          10
         ],
         "defaultZoom": 4,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
-          "landMask": true,
+          "landMask": false,
           "terrain": false,
           "tectonic": false,
-          "labelsVisible": false
+          "labelsVisible": false,
+          "contourLines": false
         },
         "layers": [
           {
@@ -317,20 +325,12 @@
             "sourceType": "geojson-url",
             "sourceUrl": "/api/geo/world-countries",
             "geometryType": "polygon",
-            "filter": [
-              "==",
-              [
-                "get",
-                "continent"
-              ],
-              "Europe"
-            ],
             "style": {
               "markerShape": "circle",
               "mapFamily": "choropleth",
               "colorField": "pop_est",
               "classification": {
-                "method": "natural-breaks",
+                "method": "quantile",
                 "classes": 5
               },
               "color": {
@@ -342,7 +342,7 @@
                 "method": "per-area"
               },
               "fillOpacity": 0.85,
-              "strokeColor": "rgba(255,255,255,0.4)",
+              "strokeColor": "rgba(255,255,255,0.3)",
               "strokeWidth": 1,
               "labelField": "name"
             },
@@ -354,12 +354,22 @@
               "tooltipFields": [
                 "name",
                 "pop_est",
-                "subregion"
+                "area_sqkm",
+                "continent"
               ],
               "clickBehavior": "detail-panel",
               "hoverEffect": "highlight"
             },
-            "attribution": "Natural Earth"
+            "filter": [
+              "==",
+              [
+                "get",
+                "continent"
+              ],
+              "Europe"
+            ],
+            "attribution": "Natural Earth — ne_110m_admin_0_countries",
+            "attributionUrl": "https://www.naturalearthdata.com"
           }
         ],
         "accessibility": {
@@ -372,13 +382,14 @@
           "taskType": "compare-regions",
           "confidence": 0.95,
           "assumptions": [
-            "Using built-in world-countries dataset filtered to continent=Europe",
-            "pop_est field contains population estimates suitable for density calculation",
-            "area_sqkm assumed to exist in dataset for normalization — this normalizes population by land area to produce density",
-            "natural-breaks classification chosen because population density is typically skewed-right across countries",
-            "blues sequential scheme as explicitly requested — appropriate for continuous density data",
-            "labelField set to 'name' because Europe has ~50 countries — at zoom 4 labels will be legible without excessive overlap",
-            "Filter applied to subset global dataset to Europe only"
+            "Using built-in world-countries dataset from Natural Earth",
+            "Filtering to continent='Europe' to focus on European countries",
+            "pop_est is total population estimate — normalized by area_sqkm to compute density",
+            "Quantile classification with 5 classes as requested — ensures balanced color distribution",
+            "Blues sequential scheme as requested — appropriate for density magnitude",
+            "Assumed area_sqkm field exists in world-countries dataset for normalization",
+            "labelField set to 'name' since Europe has ≤50 countries and labels won't clutter",
+            "defaultCenter [50, 10] centers on Europe, overriding global bounds of world-countries dataset"
           ]
         },
         "validation": {
@@ -393,14 +404,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -413,8 +425,8 @@
       "manifest": {
         "version": 2,
         "id": "stockholm-crime-heatmap",
-        "title": "Crime Incident Density — Central Stockholm",
-        "description": "Heatmap visualization of reported crime incidents in Stockholm's city center, weighted by severity to highlight high-risk areas.",
+        "title": "Crime Density — Central Stockholm",
+        "description": "Heatmap of reported crime incidents in central Stockholm, weighted by severity score to emphasize serious offenses.",
         "theme": "decision",
         "defaultCenter": [
           59.33,
@@ -423,18 +435,19 @@
         "defaultZoom": 13,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": true,
           "terrain": false,
           "tectonic": false,
-          "labelsVisible": true
+          "labelsVisible": false
         },
         "layers": [
           {
             "id": "crime-incidents",
             "kind": "event",
-            "label": "Crime Incidents",
+            "label": "Crime incidents",
             "sourceType": "geojson-url",
             "sourceUrl": "/api/user-data/current",
             "geometryType": "point",
@@ -442,25 +455,26 @@
               "markerShape": "circle",
               "mapFamily": "heatmap",
               "colorField": "severity_score",
+              "maxZoom": 11,
               "classification": {
-                "method": "natural-breaks",
-                "classes": 5
+                "method": "quantile",
+                "classes": 7
               },
               "color": {
                 "scheme": "reds",
                 "colorblindSafe": true
               },
-              "fillOpacity": 0.6
+              "fillOpacity": 0.8
             },
             "legend": {
-              "title": "Crime Severity",
+              "title": "Crime severity",
               "type": "gradient"
             },
             "interaction": {
               "clickBehavior": "none",
               "hoverEffect": "none"
             },
-            "attribution": "Polismyndigheten"
+            "attribution": "Polismyndigheten / BRÅ"
           }
         ],
         "accessibility": {
@@ -470,17 +484,17 @@
         },
         "intent": {
           "userPrompt": "Visualize reported crime incidents in central Stockholm as a heatmap. Weight by severity score.",
-          "taskType": "find-hotspots",
-          "confidence": 0.88,
+          "taskType": "density-analysis",
+          "confidence": 0.85,
           "assumptions": [
-            "Data must be provided by user — no built-in crime incident dataset in Atlas",
-            "Point geometry expected with latitude/longitude coordinates for each incident",
-            "Dataset must contain a 'severity_score' field (numeric) to weight the heatmap intensity",
-            "Central Stockholm geographic scope keeps feature count manageable",
-            "Heatmap renderer will use severity_score as weight parameter to emphasize high-severity incidents",
-            "Natural-breaks classification chosen assuming severity scores have a skewed distribution",
-            "defaultZoom 13 appropriate for city-center analysis — high enough to see neighborhood patterns",
-            "Interaction disabled (clickBehavior: none) because heatmaps aggregate data and individual incident details are not accessible at the heatmap level"
+            "Data must be provided by user — no built-in crime incident dataset",
+            "Assumes point geometry with 'severity_score' numeric field for weighting",
+            "Heatmap chosen to show concentration patterns — user explicitly requested heatmap",
+            "maxZoom 11 prevents noisy rendering at street level while maintaining visibility in central Stockholm",
+            "reds color scheme emphasizes danger/severity connotation",
+            "Central Stockholm area suggests zoom 13 for neighborhood-level view",
+            "Severity score acts as implicit weight in heatmap intensity calculation",
+            "labelsVisible: false to reduce clutter on crime heatmap where basemap labels may interfere with density visualization"
           ]
         },
         "validation": {
@@ -495,14 +509,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -516,7 +531,7 @@
         "version": 2,
         "id": "world-cities-population",
         "title": "Major World Cities by Population",
-        "description": "Global cities with circle sizes proportional to population estimates, colored by continent.",
+        "description": "Global cities with circle sizes proportional to population, colored by continent for regional comparison.",
         "theme": "editorial",
         "defaultCenter": [
           20,
@@ -525,18 +540,17 @@
         "defaultZoom": 2,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
-          "nightlights": false,
-          "landMask": true,
-          "terrain": false,
-          "tectonic": false,
+          "nightlights": true,
+          "landMask": false,
           "labelsVisible": true
         },
         "layers": [
           {
-            "id": "cities",
+            "id": "world-cities",
             "kind": "asset",
-            "label": "World Cities",
+            "label": "Cities",
             "sourceType": "api",
             "sourceUrl": "/api/geo/world-cities",
             "geometryType": "point",
@@ -555,23 +569,23 @@
               },
               "fillOpacity": 0.75,
               "strokeColor": "rgba(255,255,255,0.6)",
-              "strokeWidth": 1
+              "strokeWidth": 1.5
             },
             "legend": {
-              "title": "Population & Continent",
+              "title": "Continent",
               "type": "proportional"
             },
             "interaction": {
               "tooltipFields": [
                 "name",
                 "country",
-                "pop_max",
-                "continent"
+                "pop_max"
               ],
               "clickBehavior": "popup",
               "hoverEffect": "enlarge"
             },
-            "attribution": "Natural Earth"
+            "attribution": "Natural Earth",
+            "attributionUrl": "https://www.naturalearthdata.com"
           }
         ],
         "accessibility": {
@@ -585,11 +599,12 @@
           "confidence": 0.95,
           "assumptions": [
             "Using built-in world-cities dataset from Natural Earth (~240 major cities)",
-            "pop_max field contains population estimates suitable for sizing circles",
-            "continent field assumed available in the dataset for categorical coloring",
-            "Feature count < 500, so no clustering needed",
-            "Categorical color scheme (set2) provides distinct continental groupings",
-            "Global extent → defaultZoom 2, centered at equator"
+            "pop_max field is the maximum population estimate for each city",
+            "continent field exists in the dataset for categorical coloring",
+            "Proportional symbol sizing makes population differences visually obvious",
+            "Categorical color scheme (set2) provides clear continental distinctions",
+            "Global extent → defaultZoom 2, defaultCenter [20, 0] for balanced world view",
+            "nightlights basemap adds context without overwhelming the data points"
           ]
         },
         "validation": {
@@ -604,14 +619,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -624,8 +640,8 @@
       "manifest": {
         "version": 2,
         "id": "europe-port-trade-flows",
-        "title": "International Trade Flows — European Ports",
-        "description": "Maritime trade connections between major European ports, with line width proportional to trade volume.",
+        "title": "European Port Trade Flows",
+        "description": "International trade flows between major European ports, with line width proportional to cargo volume in tonnes. Curved arcs visualize maritime trade routes.",
         "theme": "decision",
         "defaultCenter": [
           52,
@@ -634,31 +650,26 @@
         "defaultZoom": 4,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": true,
           "landMask": true,
-          "terrain": false,
-          "tectonic": false,
           "labelsVisible": true
         },
         "layers": [
           {
             "id": "trade-flows",
             "kind": "route",
-            "label": "Trade Routes",
+            "label": "Trade routes",
             "sourceType": "geojson-url",
             "sourceUrl": "/api/user-data/current",
             "geometryType": "line",
             "style": {
               "markerShape": "circle",
               "mapFamily": "flow",
-              "colorField": "trade_volume_tonnes",
-              "classification": {
-                "method": "natural-breaks",
-                "classes": 5
-              },
+              "colorField": "cargo_type",
               "color": {
-                "scheme": "blues",
+                "scheme": "set2",
                 "colorblindSafe": true
               },
               "fillOpacity": 0.75
@@ -666,26 +677,26 @@
             "flow": {
               "originField": "origin_port",
               "destinationField": "destination_port",
-              "weightField": "trade_volume_tonnes",
+              "weightField": "volume_tonnes",
               "arc": true,
               "minWidth": 1,
               "maxWidth": 12
             },
             "legend": {
-              "title": "Trade Volume (tonnes)",
+              "title": "Cargo type",
               "type": "flow"
             },
             "interaction": {
               "tooltipFields": [
                 "origin_port",
                 "destination_port",
-                "trade_volume_tonnes",
-                "primary_commodity"
+                "volume_tonnes",
+                "cargo_type"
               ],
               "clickBehavior": "detail-panel",
               "hoverEffect": "highlight"
             },
-            "attribution": "Eurostat / Port Authority Data"
+            "attribution": "Eurostat — Maritime Transport Statistics"
           }
         ],
         "accessibility": {
@@ -696,17 +707,14 @@
         "intent": {
           "userPrompt": "Map international trade flows between major European ports. Line width should represent trade volume in tonnes. Use curved arcs.",
           "taskType": "show-movement",
-          "confidence": 0.88,
+          "confidence": 0.85,
           "assumptions": [
-            "Data must be provided by user as LineString features with origin/destination port names",
-            "Each feature must have a numeric 'trade_volume_tonnes' field for line width scaling",
-            "arc: true enables curved arcs instead of straight lines",
-            "Flow data represents aggregated annual trade volume between port pairs",
-            "Blues color scheme chosen for maritime trade context — darker blue for higher volumes",
-            "natural-breaks classification handles skewed distribution (major hubs like Rotterdam dominate)",
-            "Assumes data covers major ports: Rotterdam, Hamburg, Antwerp, Le Havre, etc.",
-            "No built-in trade flow dataset exists in Atlas — user must supply pre-processed LineString GeoJSON",
-            "Field names assumed: origin_port, destination_port, trade_volume_tonnes. If actual data uses different names, manifest must be adjusted."
+            "Data must be provided by user as LineString features with origin_port and destination_port fields",
+            "volume_tonnes field drives line width — assuming skewed distribution with major routes (Rotterdam-Hamburg) much thicker than minor ones",
+            "cargo_type field used for categorical coloring to differentiate container, bulk, liquid cargo, etc.",
+            "arc: true specified for curved flow visualization",
+            "Europe center [52, 10] covers North Sea, Baltic, Mediterranean ports",
+            "No dataset profile provided — field names are assumptions (origin_port, destination_port, volume_tonnes, cargo_type)"
           ]
         },
         "validation": {
@@ -721,14 +729,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -741,47 +750,30 @@
       "manifest": {
         "version": 2,
         "id": "stockholm-cycling-isochrone",
-        "title": "Cycling Accessibility — Stockholm Central Station",
-        "description": "Reachability zones showing areas accessible by bicycle from Stockholm Central Station within 10, 20, and 30 minutes.",
-        "theme": "explore",
+        "title": "Cycling Accessibility from Stockholm Central Station",
+        "description": "Reachability zones showing areas accessible within 10, 20, and 30 minutes by bicycle from Stockholm Central Station.",
+        "theme": "decision",
         "defaultCenter": [
-          59.33,
-          18.06
+          59.3293,
+          18.0686
         ],
         "defaultZoom": 12,
-        "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": false,
           "terrain": false,
-          "tectonic": false,
           "labelsVisible": true
         },
         "layers": [
           {
-            "id": "cycling-accessibility",
+            "id": "cycling-isochrones",
             "kind": "zone",
-            "label": "Cycling Zones",
-            "sourceType": "geojson-url",
-            "sourceUrl": "/api/isochrone?origin=59.33,18.06&mode=cycling&breaks=10,20,30",
+            "label": "Cycling accessibility zones",
+            "sourceType": "api",
+            "sourceUrl": "/api/isochrone",
             "geometryType": "polygon",
-            "style": {
-              "markerShape": "circle",
-              "mapFamily": "isochrone",
-              "colorField": "value",
-              "classification": {
-                "method": "categorical",
-                "classes": 3
-              },
-              "color": {
-                "scheme": "greens",
-                "colorblindSafe": true
-              },
-              "fillOpacity": 0.5,
-              "strokeColor": "rgba(255,255,255,0.7)",
-              "strokeWidth": 2
-            },
             "isochrone": {
               "mode": "cycling",
               "breakpoints": [
@@ -791,22 +783,39 @@
               ],
               "unit": "minutes",
               "origin": [
-                59.33,
-                18.06
+                59.3293,
+                18.0686
               ]
             },
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "isochrone",
+              "colorField": "value",
+              "classification": {
+                "method": "equal-interval",
+                "classes": 3
+              },
+              "color": {
+                "scheme": "greens",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.5,
+              "strokeColor": "rgba(255,255,255,0.6)",
+              "strokeWidth": 2
+            },
             "legend": {
-              "title": "Cycling Time (minutes)",
+              "title": "Travel time (minutes)",
               "type": "gradient"
             },
             "interaction": {
               "tooltipFields": [
                 "value"
               ],
-              "clickBehavior": "popup",
+              "clickBehavior": "none",
               "hoverEffect": "highlight"
             },
-            "attribution": "OpenRouteService"
+            "attribution": "OpenRouteService",
+            "attributionUrl": "https://openrouteservice.org"
           }
         ],
         "accessibility": {
@@ -816,16 +825,15 @@
         },
         "intent": {
           "userPrompt": "Show 10, 20, and 30 minute cycling accessibility zones from Stockholm Central Station.",
-          "taskType": "show-accessibility",
-          "confidence": 0.94,
+          "taskType": "accessibility-analysis",
+          "confidence": 0.95,
           "assumptions": [
-            "Isochrone polygons are pre-computed by routing API (OpenRouteService)",
-            "Each polygon feature contains a 'value' property indicating travel time in minutes",
-            "Stockholm Central Station coordinates: 59.33°N, 18.06°E",
-            "Sequential greens color scheme — darker green represents longer travel time zones",
-            "fillOpacity 0.5 allows overlapping zones to be visible",
-            "Three breakpoints create three nested polygons showing progressive accessibility",
-            "Basemap labels enabled for geographic context in urban navigation"
+            "Origin point is Stockholm Central Station (Centralstationen): [59.3293, 18.0686]",
+            "Isochrone API will generate three nested polygons for 10, 20, 30 minute cycling ranges",
+            "Greens color scheme chosen for cycling theme (eco-friendly transportation)",
+            "Equal-interval classification appropriate for evenly spaced time breakpoints",
+            "strokeWidth 2 to clearly delineate zone boundaries",
+            "labelsVisible true to show street names and landmarks within zones"
           ]
         },
         "validation": {
@@ -840,14 +848,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -859,9 +868,9 @@
       "pass": true,
       "manifest": {
         "version": 2,
-        "id": "sweden-election-margins",
-        "title": "Election Results — Vote Margin by Municipality",
-        "description": "Swedish municipal election results showing the vote percentage margin between the two leading parties, with blue-red diverging colors.",
+        "id": "sweden-election-results",
+        "title": "Election Results by Municipality — Sweden",
+        "description": "Vote margin between the two leading parties by municipality. Blue indicates lead for one party, red indicates lead for the other.",
         "theme": "decision",
         "defaultCenter": [
           62.2,
@@ -870,6 +879,7 @@
         "defaultZoom": 5,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": true,
@@ -881,7 +891,7 @@
           {
             "id": "election-results",
             "kind": "zone",
-            "label": "Kommuner",
+            "label": "Election Results",
             "sourceType": "geojson-url",
             "sourceUrl": "/api/user-data/current",
             "geometryType": "multi-polygon",
@@ -898,7 +908,7 @@
                 "colorblindSafe": true
               },
               "fillOpacity": 0.85,
-              "strokeColor": "rgba(0,0,0,0.2)",
+              "strokeColor": "rgba(255,255,255,0.2)",
               "strokeWidth": 0.5
             },
             "legend": {
@@ -928,15 +938,16 @@
           "taskType": "compare-regions",
           "confidence": 0.88,
           "assumptions": [
-            "Data must be provided by user — no built-in election results dataset",
-            "Dataset contains Swedish municipalities as multi-polygons",
-            "vote_margin field contains the percentage point difference between first and second place parties (e.g. +15 means leading party won by 15 points, -10 means trailing by 10 points)",
-            "Diverging blue-red scheme with midpoint at 0 shows competitive (close to 0) vs landslide (far from 0) margins",
-            "Equal-interval classification chosen to create symmetric bins around zero (e.g. -20 to -10, -10 to 0, 0 to 10, 10 to 20)",
-            "7 classes provide granularity for diverging scheme while remaining perceptually distinct",
-            "No normalization needed — margin is already a percentage difference",
-            "Bounds assumed to cover all Sweden → defaultZoom 5",
-            "Field names vote_margin, leading_party, second_party are assumed — user must ensure these exist in the data"
+            "Data must be provided by user — no built-in election results dataset in Atlas",
+            "Municipality boundaries assumed as MultiPolygon geometry with 290 Swedish municipalities",
+            "Assumes dataset contains a 'vote_margin' field: percentage point difference between first and second party (positive if party A leads, negative if party B leads)",
+            "blue-red diverging scheme: blue for positive margin (party A strongholds), red for negative margin (party B strongholds)",
+            "equal-interval classification works well for vote margins which typically span a symmetric range (e.g. -30 to +30)",
+            "7 classes provide fine granularity for competitive vs safe municipalities",
+            "tooltipFields assume 'kommun_namn', 'vote_margin', 'leading_party', 'second_party' exist in dataset",
+            "No normalization needed — vote margin is already a percentage difference",
+            "Bounds cover all of Sweden → defaultCenter [62.20, 17.64], defaultZoom 5",
+            "labelsVisible: false to avoid clutter with 290 polygons"
           ]
         },
         "validation": {
@@ -957,14 +968,15 @@
         ]
       },
       "qualityScore": {
-        "total": 78,
+        "total": 80,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 0,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": [
           "Choropleth without normalization — raw counts may be misleading"
@@ -980,21 +992,23 @@
         "version": 2,
         "id": "paris-wifi-density",
         "title": "Public WiFi Hotspot Density — Paris",
-        "description": "Concentration surface of public WiFi access points across Paris, revealing connectivity hotspots in the city.",
+        "description": "Continuous density surface showing concentration patterns of public WiFi access points across Paris.",
         "theme": "explore",
         "defaultCenter": [
-          48.86,
-          2.35
+          48.8566,
+          2.3522
         ],
         "defaultZoom": 12,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
-          "landMask": true,
+          "landMask": false,
           "terrain": false,
           "tectonic": false,
-          "labelsVisible": true
+          "labelsVisible": true,
+          "contourLines": false
         },
         "layers": [
           {
@@ -1007,21 +1021,28 @@
             "style": {
               "markerShape": "circle",
               "mapFamily": "heatmap",
-              "maxZoom": 11,
+              "colorField": null,
               "color": {
                 "scheme": "viridis",
                 "colorblindSafe": true
-              }
+              },
+              "fillOpacity": 0.6
             },
             "legend": {
-              "title": "WiFi Density",
+              "title": "WiFi Hotspot Density",
               "type": "gradient"
             },
             "interaction": {
-              "clickBehavior": "none",
+              "tooltipFields": [
+                "name",
+                "address",
+                "provider",
+                "free"
+              ],
+              "clickBehavior": "popup",
               "hoverEffect": "none"
             },
-            "attribution": "Open Data Paris"
+            "attribution": "Ville de Paris — Open Data"
           }
         ],
         "accessibility": {
@@ -1031,18 +1052,17 @@
         },
         "intent": {
           "userPrompt": "Create a density surface of public WiFi hotspot locations in Paris.",
-          "taskType": "find-hotspots",
+          "taskType": "identify-hotspots",
           "confidence": 0.88,
           "assumptions": [
-            "Data must be provided by user — no built-in Paris WiFi dataset in Atlas catalog",
-            "Point geometry required for heatmap rendering",
-            "Heatmap chosen because user explicitly requested 'density surface'",
-            "maxZoom 11 prevents noisy rendering at street level while maintaining neighborhood-scale patterns",
-            "viridis color scheme provides perceptually uniform gradient for density visualization",
-            "defaultCenter set to Paris city center (Notre-Dame approximate coordinates)",
-            "defaultZoom 12 shows city-wide context while revealing density variations",
-            "No tooltips or click interaction — heatmap is continuous surface, not discrete features",
-            "User must provide GeoJSON with Point features representing individual hotspot locations"
+            "WiFi hotspot data must be provided by user as point GeoJSON — no built-in Paris WiFi dataset in catalog",
+            "Heatmap family chosen to visualize concentration patterns rather than individual points",
+            "Assumed typical WiFi dataset fields: name, address, provider, free (boolean)",
+            "defaultCenter set to Paris city center (48.8566, 2.3522)",
+            "defaultZoom 12 provides city-scale view suitable for density analysis",
+            "viridis color scheme — works well for density visualization on dark basemap",
+            "Labels visible to provide geographic context (neighborhoods, streets)",
+            "No maxZoom restriction set — platform will apply default heatmap maxZoom of 11"
           ]
         },
         "validation": {
@@ -1057,14 +1077,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -1087,18 +1108,18 @@
         "defaultZoom": 4,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": true,
           "terrain": false,
-          "tectonic": false,
           "labelsVisible": true
         },
         "layers": [
           {
             "id": "migration-flows",
             "kind": "route",
-            "label": "Migration Flows",
+            "label": "Migration flows",
             "sourceType": "geojson-url",
             "sourceUrl": "/api/user-data/current",
             "geometryType": "line",
@@ -1106,12 +1127,12 @@
               "markerShape": "circle",
               "mapFamily": "flow",
               "colorField": "origin_country",
-              "fillOpacity": 0.75,
-              "strokeWidth": 2,
               "color": {
                 "scheme": "set2",
                 "colorblindSafe": true
-              }
+              },
+              "fillOpacity": 0.75,
+              "strokeWidth": 2
             },
             "flow": {
               "originField": "origin_country",
@@ -1123,7 +1144,7 @@
               "maxWidth": 12
             },
             "legend": {
-              "title": "Number of Migrants",
+              "title": "Origin country",
               "type": "flow"
             },
             "interaction": {
@@ -1136,7 +1157,8 @@
               "clickBehavior": "detail-panel",
               "hoverEffect": "highlight"
             },
-            "attribution": "Nordic Council of Ministers / National Statistical Offices"
+            "attribution": "Nordic Statistics Database",
+            "attributionUrl": "https://www.nordicstatistics.org"
           }
         ],
         "accessibility": {
@@ -1149,15 +1171,15 @@
           "taskType": "show-movement",
           "confidence": 0.88,
           "assumptions": [
-            "Data must be provided by user as LineString features — no built-in Nordic migration dataset",
-            "Lines connect country centroids or major cities representing origin-destination pairs",
-            "weightField 'migrants' assumed to be total annual migrants (infer field name from dataset profile if provided)",
-            "directionField expected to indicate uni-directional or bi-directional flows",
-            "arc: true creates curved lines to show directionality more clearly",
-            "colorField set to origin_country to visually distinguish outflows by source country",
-            "Nordic region spans ~55-71°N, 5-31°E → defaultZoom 4 and center at [62, 15]",
-            "Expected countries: Denmark, Finland, Iceland, Norway, Sweden (possibly including Greenland, Faroe Islands, Åland)",
-            "labelsVisible: true because country names are essential geographic reference for flow interpretation"
+            "Data must be provided by user — no built-in Nordic migration dataset",
+            "Data is expected as LineString features with origin/destination properties",
+            "weightField 'migrants' assumed to be numeric count of people",
+            "directionField indicates flow direction (unidirectional vs bidirectional)",
+            "arc: true creates curved lines to show direction clearly and reduce overlap",
+            "Categorical color by origin_country to distinguish source regions",
+            "defaultCenter [62.0, 15.0] approximates geographic center of Nordic region (Sweden/Norway midpoint)",
+            "defaultZoom 4 captures Denmark, Norway, Sweden, Finland, and Iceland",
+            "Field names (origin_country, destination_country, migrants, year, direction) are assumptions — actual dataset may use different names"
           ]
         },
         "validation": {
@@ -1172,14 +1194,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -1191,32 +1214,38 @@
       "pass": true,
       "manifest": {
         "version": 2,
-        "id": "eu-gdp-bubble-map",
-        "title": "EU Member States — GDP Analysis",
-        "description": "European Union countries with bubble sizes proportional to total GDP and colors showing GDP per capita. Combines absolute economic scale with per-capita wealth indicators.",
+        "id": "eu-gdp-comparison",
+        "title": "EU Member States — GDP and GDP per Capita",
+        "description": "Proportional circles sized by total GDP, colored by GDP per capita using a green sequential scheme. Enables comparison of economic size and wealth concentration across the European Union.",
         "theme": "decision",
         "defaultCenter": [
-          50.5,
-          10.5
+          50,
+          10
         ],
         "defaultZoom": 4,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
-          "landMask": true,
+          "landMask": false,
           "terrain": false,
           "tectonic": false,
-          "labelsVisible": true
+          "labelsVisible": true,
+          "contourLines": false
         },
         "layers": [
           {
             "id": "eu-countries",
-            "kind": "zone",
+            "kind": "asset",
             "label": "EU Member States",
             "sourceType": "geojson-url",
             "sourceUrl": "/api/geo/world-countries",
             "geometryType": "polygon",
+            "transform": {
+              "type": "centroid",
+              "keepProperties": true
+            },
             "filter": [
               "in",
               [
@@ -1262,8 +1291,8 @@
               "sizeField": "gdp_md",
               "colorField": "gdp_md",
               "classification": {
-                "method": "natural-breaks",
-                "classes": 5
+                "method": "quantile",
+                "classes": 7
               },
               "color": {
                 "scheme": "greens",
@@ -1275,11 +1304,11 @@
                 "multiplier": 1000000
               },
               "fillOpacity": 0.75,
-              "strokeColor": "rgba(255,255,255,0.7)",
+              "strokeColor": "rgba(255,255,255,0.6)",
               "strokeWidth": 1.5
             },
             "legend": {
-              "title": "GDP per capita (USD)",
+              "title": "GDP per Capita (USD)",
               "type": "proportional"
             },
             "interaction": {
@@ -1288,10 +1317,11 @@
                 "gdp_md",
                 "pop_est"
               ],
-              "clickBehavior": "detail-panel",
+              "clickBehavior": "popup",
               "hoverEffect": "enlarge"
             },
-            "attribution": "Natural Earth / World Bank"
+            "attribution": "Natural Earth — ne_110m_admin_0_countries",
+            "attributionUrl": "https://www.naturalearthdata.com/"
           }
         ],
         "accessibility": {
@@ -1301,18 +1331,18 @@
         },
         "intent": {
           "userPrompt": "Map EU member states with bubbles sized by GDP. Color by GDP per capita using a green sequential scheme.",
-          "taskType": "compare-magnitudes",
-          "confidence": 0.93,
+          "taskType": "compare-magnitudes-and-density",
+          "confidence": 0.88,
           "assumptions": [
-            "Using built-in world-countries dataset with 27 EU member states (post-Brexit)",
-            "gdp_md field is GDP in millions USD — requires multiplier: 1000000 for per-capita calculation",
-            "pop_est is population estimate for normalization denominator",
-            "Filter applied to show only EU-27 member states by ISO A3 codes",
-            "Bubble size shows absolute GDP scale (Germany, France largest)",
-            "Green color intensity shows GDP per capita (Luxembourg, Ireland darkest)",
-            "natural-breaks classification because GDP per capita distribution is skewed",
-            "defaultZoom 4 covers European extent from Portugal to Finland",
-            "Basemap labels enabled for country reference on proportional-symbol maps"
+            "Using world-countries dataset with polygon geometry, converting to centroids via transform",
+            "Filter applied to show only 27 EU member states (as of 2024)",
+            "gdp_md is in millions USD — multiplier: 1000000 converts to base units for per-capita calculation",
+            "pop_est is total population — used as normalization denominator",
+            "Circle size encodes total GDP (gdp_md), color encodes GDP per capita (computed as gdp_md × 1000000 ÷ pop_est)",
+            "quantile classification with 7 classes for fine-grained color distinction across income levels",
+            "greens scheme chosen per user request — sequential scale from light to dark green",
+            "defaultCenter set to Europe [50, 10] to frame EU region, overriding bounds-based center which may include overseas territories",
+            "defaultZoom 4 appropriate for continental Europe view"
           ]
         },
         "validation": {
@@ -1327,14 +1357,15 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
@@ -1346,38 +1377,50 @@
       "pass": true,
       "manifest": {
         "version": 2,
-        "id": "gothenburg-airport-driving-isochrone",
-        "title": "Driving Accessibility — Gothenburg Airport",
-        "description": "Driving time zones from Gothenburg Landvetter Airport at 15 and 30 minute intervals.",
-        "theme": "explore",
+        "id": "gothenburg-airport-isochrones",
+        "title": "Driving Reachability — Gothenburg Airport",
+        "description": "15 and 30 minute driving isochrones from Gothenburg Landvetter Airport, showing areas accessible by car.",
+        "theme": "decision",
         "defaultCenter": [
-          57.67,
-          12.29
+          57.66,
+          12.28
         ],
         "defaultZoom": 9,
         "defaultPitch": 0,
         "basemap": {
+          "style": "dark",
           "hillshade": false,
           "nightlights": false,
           "landMask": true,
           "terrain": false,
-          "tectonic": false,
           "labelsVisible": true
         },
         "layers": [
           {
-            "id": "driving-zones",
+            "id": "airport-isochrones",
             "kind": "zone",
-            "label": "Driving Zones",
-            "sourceType": "geojson-url",
-            "sourceUrl": "/api/isochrone?origin=57.67,12.29&mode=driving&breaks=15,30",
+            "label": "Driving isochrones",
+            "sourceType": "api",
+            "sourceUrl": "/api/isochrone",
             "geometryType": "polygon",
+            "isochrone": {
+              "mode": "driving",
+              "breakpoints": [
+                15,
+                30
+              ],
+              "unit": "minutes",
+              "origin": [
+                57.66,
+                12.28
+              ]
+            },
             "style": {
               "markerShape": "circle",
               "mapFamily": "isochrone",
               "colorField": "value",
               "classification": {
-                "method": "categorical",
+                "method": "equal-interval",
                 "classes": 2
               },
               "color": {
@@ -1388,30 +1431,19 @@
               "strokeColor": "rgba(255,255,255,0.7)",
               "strokeWidth": 2
             },
-            "isochrone": {
-              "mode": "driving",
-              "breakpoints": [
-                15,
-                30
-              ],
-              "unit": "minutes",
-              "origin": [
-                57.67,
-                12.29
-              ]
-            },
             "legend": {
-              "title": "Driving Time (minutes)",
-              "type": "gradient"
+              "title": "Drive time (min)",
+              "type": "categorical"
             },
             "interaction": {
               "tooltipFields": [
                 "value"
               ],
-              "clickBehavior": "popup",
+              "clickBehavior": "none",
               "hoverEffect": "highlight"
             },
-            "attribution": "OpenRouteService"
+            "attribution": "OpenRouteService",
+            "attributionUrl": "https://openrouteservice.org"
           }
         ],
         "accessibility": {
@@ -1421,16 +1453,14 @@
         },
         "intent": {
           "userPrompt": "Show 15 and 30 minute driving isochrones from Gothenburg airport.",
-          "taskType": "show-accessibility",
-          "confidence": 0.94,
+          "taskType": "accessibility-analysis",
+          "confidence": 0.95,
           "assumptions": [
-            "Isochrone polygons are pre-computed by the routing API (OpenRouteService)",
-            "Each polygon feature has a 'value' property matching the breakpoint in minutes (15 or 30)",
-            "Gothenburg Landvetter Airport coordinates: [57.67, 12.29]",
-            "blues sequential scheme — darker blue indicates longer travel time",
-            "fillOpacity 0.5 to handle overlapping zones",
-            "defaultZoom 9 appropriate for regional view covering both zones",
-            "defaultCenter positioned at airport origin"
+            "Gothenburg Landvetter Airport coordinates: [57.66, 12.28]",
+            "Using built-in isochrone API powered by OpenRouteService",
+            "Two breakpoints: 15 and 30 minutes driving time",
+            "Blues color scheme for sequential time intervals",
+            "Zoom level 9 appropriate for regional coverage"
           ]
         },
         "validation": {
@@ -1445,18 +1475,706 @@
         "warnings": []
       },
       "qualityScore": {
-        "total": 88,
+        "total": 90,
         "breakdown": {
           "schemaCompleteness": 18,
-          "familyAppropriateness": 15,
+          "familyAppropriateness": 12,
           "colorSchemeQuality": 20,
           "classificationQuality": 15,
           "normalization": 10,
-          "legendCompleteness": 10
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
         },
         "deductions": []
       },
       "compileSuccess": true
+    },
+    {
+      "id": "extrusion-buildings",
+      "label": "Show building heights in Manhattan as 3D extruded polygons. ",
+      "pass": true,
+      "manifest": {
+        "version": 2,
+        "id": "manhattan-building-heights-3d",
+        "title": "Building Heights — Manhattan",
+        "description": "3D extruded building footprints in Manhattan, colored and elevated by height using viridis gradient.",
+        "theme": "explore",
+        "defaultCenter": [
+          40.76,
+          -73.97
+        ],
+        "defaultZoom": 14,
+        "defaultPitch": 45,
+        "basemap": {
+          "style": "stark",
+          "hillshade": false,
+          "nightlights": true,
+          "landMask": true,
+          "labelsVisible": false
+        },
+        "layers": [
+          {
+            "id": "building-extrusions",
+            "kind": "asset",
+            "label": "Buildings",
+            "sourceType": "geojson-url",
+            "sourceUrl": "/api/user-data/current",
+            "geometryType": "polygon",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "extrusion",
+              "colorField": "height",
+              "classification": {
+                "method": "quantile",
+                "classes": 7
+              },
+              "color": {
+                "scheme": "viridis",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.9,
+              "strokeColor": "rgba(255,255,255,0.1)",
+              "strokeWidth": 0.5
+            },
+            "extrusion": {
+              "heightField": "height",
+              "baseHeight": 0,
+              "scale": 1
+            },
+            "legend": {
+              "title": "Building Height (m)",
+              "type": "gradient"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "name",
+                "height",
+                "year_built",
+                "floors"
+              ],
+              "clickBehavior": "detail-panel",
+              "hoverEffect": "highlight"
+            },
+            "attribution": "NYC Open Data / Microsoft Building Footprints"
+          }
+        ],
+        "accessibility": {
+          "colorblindSafe": true,
+          "contrastTarget": "AA",
+          "locale": "en"
+        },
+        "intent": {
+          "userPrompt": "Show building heights in Manhattan as 3D extruded polygons. Color by height using a viridis palette.",
+          "taskType": "3d-visualization",
+          "confidence": 0.85,
+          "assumptions": [
+            "Data must be provided by user — no built-in Manhattan building dataset",
+            "Assumes polygon geometry with a numeric 'height' field in meters",
+            "extrusion.heightField set to 'height' — adjust if data uses different field name",
+            "defaultPitch 45° for optimal 3D viewing angle",
+            "stark basemap (pure black) maximizes contrast with viridis colors",
+            "nightlights enabled for context without clutter",
+            "Quantile classification chosen to distribute colors evenly across height range",
+            "High fillOpacity (0.9) for solid 3D effect",
+            "Zoom 14 appropriate for neighborhood-scale building detail"
+          ]
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 90,
+        "breakdown": {
+          "schemaCompleteness": 18,
+          "familyAppropriateness": 12,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "extrusion-population",
+      "label": "Create a 3D bar map of population by county in Sweden. Extru",
+      "pass": true,
+      "manifest": {
+        "version": 2,
+        "id": "sweden-population-3d",
+        "title": "Population by County — Sweden (3D)",
+        "description": "3D extrusion map showing population count (height) and population density (color) across Swedish counties.",
+        "theme": "editorial",
+        "defaultCenter": [
+          62.2,
+          17.64
+        ],
+        "defaultZoom": 5,
+        "defaultPitch": 45,
+        "basemap": {
+          "style": "dark",
+          "hillshade": false,
+          "nightlights": false,
+          "landMask": false,
+          "terrain": false,
+          "tectonic": false,
+          "labelsVisible": false,
+          "contourLines": false
+        },
+        "layers": [
+          {
+            "id": "counties",
+            "kind": "zone",
+            "label": "Län",
+            "sourceType": "geojson-url",
+            "sourceUrl": "/api/user-data/current",
+            "geometryType": "polygon",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "extrusion",
+              "colorField": "population_density",
+              "classification": {
+                "method": "quantile",
+                "classes": 7
+              },
+              "color": {
+                "scheme": "viridis",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.9,
+              "strokeColor": "rgba(255,255,255,0.2)",
+              "strokeWidth": 1
+            },
+            "extrusion": {
+              "heightField": "population",
+              "heightScale": 50,
+              "baseHeight": 0
+            },
+            "legend": {
+              "title": "Population Density (per km²)",
+              "type": "gradient"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "county_name",
+                "population",
+                "population_density",
+                "area_km2"
+              ],
+              "clickBehavior": "detail-panel",
+              "hoverEffect": "highlight"
+            },
+            "attribution": "Statistics Sweden (SCB)"
+          }
+        ],
+        "accessibility": {
+          "colorblindSafe": true,
+          "contrastTarget": "AA",
+          "locale": "en"
+        },
+        "intent": {
+          "userPrompt": "Create a 3D bar map of population by county in Sweden. Extrude polygons by population count, color by density.",
+          "taskType": "compare-regions-3d",
+          "confidence": 0.85,
+          "assumptions": [
+            "User must provide county-level GeoJSON with polygon geometry",
+            "Assumed fields: 'population' (numeric count), 'population_density' (numeric per km²), 'area_km2', 'county_name'",
+            "If population_density doesn't exist, user may need to calculate it as population ÷ area_km2",
+            "heightScale set to 50 — may need adjustment based on actual population values",
+            "Quantile classification for density ensures all color classes are visible despite Stockholm's extreme density",
+            "Viridis scheme chosen for scientific/demographic data visualization",
+            "defaultPitch 45 enables clear 3D perspective",
+            "Sweden has 21 counties — small enough for all features to render without performance issues"
+          ]
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 90,
+        "breakdown": {
+          "schemaCompleteness": 18,
+          "familyAppropriateness": 12,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "animated-route-delivery",
+      "label": "Animate a delivery truck route through central London. Show ",
+      "pass": true,
+      "manifest": {
+        "version": 2,
+        "id": "london-delivery-route",
+        "title": "Delivery Route Animation — Central London",
+        "description": "Animated delivery truck route through central London with trailing path effect, showing sequential stops along the journey.",
+        "theme": "editorial",
+        "defaultCenter": [
+          51.5074,
+          -0.1278
+        ],
+        "defaultZoom": 13,
+        "defaultPitch": 30,
+        "basemap": {
+          "style": "dark",
+          "hillshade": false,
+          "nightlights": true,
+          "landMask": false,
+          "terrain": false,
+          "labelsVisible": true
+        },
+        "layers": [
+          {
+            "id": "delivery-route",
+            "kind": "route",
+            "label": "Delivery Route",
+            "sourceType": "geojson-url",
+            "sourceUrl": "/api/user-data/current",
+            "geometryType": "line",
+            "style": {
+              "markerShape": "circle",
+              "mapFamily": "animated-route",
+              "color": {
+                "scheme": "oranges",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.9,
+              "strokeColor": "rgba(255,165,0,0.8)",
+              "strokeWidth": 4
+            },
+            "animatedRoute": {
+              "orderField": "stop_sequence",
+              "durationMs": 15000,
+              "loop": true
+            },
+            "legend": {
+              "title": "Delivery Progress",
+              "type": "categorical"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "stop_name",
+                "stop_sequence",
+                "estimated_time",
+                "address"
+              ],
+              "clickBehavior": "popup",
+              "hoverEffect": "highlight"
+            },
+            "attribution": "User provided delivery route data"
+          }
+        ],
+        "accessibility": {
+          "colorblindSafe": true,
+          "contrastTarget": "AA",
+          "locale": "en"
+        },
+        "intent": {
+          "userPrompt": "Animate a delivery truck route through central London. Show the vehicle moving along the path with a trail effect.",
+          "taskType": "animate-movement",
+          "confidence": 0.88,
+          "assumptions": [
+            "Data must be provided as LineString geometry representing the complete route path",
+            "Route includes a 'stop_sequence' field to order delivery stops sequentially",
+            "Animation duration set to 15 seconds for smooth visualization",
+            "Trail effect is inherent to animated-route family — shows path behind moving marker",
+            "Central London focus → defaultZoom 13, slight pitch for perspective",
+            "Orange color scheme chosen for delivery/logistics theme",
+            "Loop enabled for continuous demonstration",
+            "No dataset profile provided — field names are assumed and stated explicitly"
+          ]
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 90,
+        "breakdown": {
+          "schemaCompleteness": 18,
+          "familyAppropriateness": 12,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "animated-route-flight",
+      "label": "Show an animated flight path from Stockholm to Tokyo with a ",
+      "pass": true,
+      "manifest": {
+        "version": 2,
+        "id": "stockholm-tokyo-flight",
+        "title": "Flight Path — Stockholm to Tokyo",
+        "description": "Animated great circle route from Stockholm Arlanda to Tokyo Narita with moving aircraft marker.",
+        "theme": "editorial",
+        "defaultCenter": [
+          55,
+          90
+        ],
+        "defaultZoom": 3,
+        "defaultPitch": 30,
+        "basemap": {
+          "style": "dark",
+          "hillshade": false,
+          "nightlights": true,
+          "landMask": false,
+          "terrain": false,
+          "labelsVisible": true
+        },
+        "layers": [
+          {
+            "id": "flight-path",
+            "kind": "route",
+            "label": "STO → NRT",
+            "sourceType": "geojson-static",
+            "sourceUrl": "/api/route/stockholm-tokyo",
+            "geometryType": "line",
+            "style": {
+              "markerShape": "icon",
+              "mapFamily": "animated-route",
+              "color": {
+                "scheme": "blues",
+                "colorblindSafe": true
+              },
+              "fillOpacity": 0.8,
+              "strokeColor": "#4A90E2",
+              "strokeWidth": 2.5
+            },
+            "animatedRoute": {
+              "orderField": "sequence",
+              "durationMs": 15000,
+              "loop": true,
+              "icon": "airplane",
+              "iconSize": 1.2,
+              "iconRotation": "auto"
+            },
+            "legend": {
+              "title": "Flight Route",
+              "type": "flow"
+            },
+            "interaction": {
+              "tooltipFields": [
+                "origin",
+                "destination",
+                "distance_km",
+                "duration_hours"
+              ],
+              "clickBehavior": "popup",
+              "hoverEffect": "highlight"
+            },
+            "attribution": "Great Circle Mapper"
+          }
+        ],
+        "accessibility": {
+          "colorblindSafe": true,
+          "contrastTarget": "AA",
+          "locale": "en"
+        },
+        "intent": {
+          "userPrompt": "Show an animated flight path from Stockholm to Tokyo with a moving aircraft icon along a great circle arc.",
+          "taskType": "animate-route",
+          "confidence": 0.95,
+          "assumptions": [
+            "Route geometry must be provided as LineString with sequential coordinates forming a great circle arc",
+            "animated-route family chosen for single-entity path animation (one aircraft)",
+            "orderField 'sequence' required to order waypoints along the route",
+            "durationMs set to 15000 (15 seconds) for smooth visualization — user can adjust",
+            "loop: true to repeat animation continuously",
+            "icon: 'airplane' specifies aircraft marker (platform must support this icon type)",
+            "iconRotation: 'auto' aligns aircraft with route bearing",
+            "defaultCenter [55, 90] is midpoint between Stockholm (59.65, 17.92) and Tokyo (35.76, 140.39)",
+            "defaultZoom 3 shows full route extent across Europe and Asia",
+            "defaultPitch 30 adds perspective for cinematic effect",
+            "nightlights basemap provides context for transcontinental flight",
+            "Data source must be generated or provided — no built-in Stockholm-Tokyo route dataset"
+          ]
+        },
+        "validation": {
+          "valid": true,
+          "errors": [],
+          "warnings": []
+        }
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "qualityScore": {
+        "total": 90,
+        "breakdown": {
+          "schemaCompleteness": 18,
+          "familyAppropriateness": 12,
+          "colorSchemeQuality": 20,
+          "classificationQuality": 15,
+          "normalization": 10,
+          "legendCompleteness": 5,
+          "runtimeQuality": 10
+        },
+        "deductions": []
+      },
+      "compileSuccess": true
+    },
+    {
+      "id": "timeline-earthquakes",
+      "label": "Show earthquake events over the past decade on a timeline. A",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "timeline-urbanization",
+      "label": "Visualize urban growth in Stockholm over the last 50 years a",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "hexbin-taxi",
+      "label": "Aggregate NYC taxi pickup locations into hexagonal bins. Col",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "hexbin-3d-density",
+      "label": "Show restaurant density in Tokyo as 3D hexagonal columns. He",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "screen-grid-tweets",
+      "label": "Visualize geotagged tweet density across Europe as a screen-",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "screen-grid-accidents",
+      "label": "Show traffic accident density in Los Angeles as a screen gri",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "trip-bus",
+      "label": "Animate bus routes in Gothenburg showing multiple vehicles m",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "trip-shipping",
+      "label": "Visualize container ship movements through the Suez Canal ov",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "poi-restaurants",
+      "label": "Show all restaurants in central Stockholm.",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "poi-parks",
+      "label": "Map parks and green spaces in Berlin.",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "poi-cycleway",
+      "label": "Bike lanes in Copenhagen.",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "poi-metro",
+      "label": "Show metro stations in Paris.",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "comparative-gdp",
+      "label": "Compare GDP per capita between Sweden and Finland by municip",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "threshold-income",
+      "label": "Show Swedish municipalities where median income is above the",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "temporal-unemployment",
+      "label": "Show how unemployment in EU countries changed from 2015 to 2",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
+    },
+    {
+      "id": "ambiguous-short",
+      "label": "Crime in Sweden",
+      "pass": false,
+      "validation": {
+        "valid": false,
+        "errors": [
+          "API returned 502"
+        ],
+        "warnings": []
+      },
+      "compileSuccess": false,
+      "error": "HTTP 502: {\"error\":\"Failed to generate map\",\"detail\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"}"
     }
   ]
 }
