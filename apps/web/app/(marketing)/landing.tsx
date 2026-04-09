@@ -255,8 +255,8 @@ export default function LandingClient() {
                   : "0 12px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.10)",
                 transition: "border-color 250ms ease, box-shadow 250ms ease",
               }}>
-                <div className="overflow-y-auto">
-                  <Textarea
+                <div style={{ overflowY: "auto" }}>
+                  <textarea
                     ref={textareaRef}
                     value={value}
                     aria-label="Describe the map you want to create"
@@ -275,50 +275,65 @@ export default function LandingClient() {
                       }
                     }}
                     placeholder={placeholder}
-                    className={cn(
-                      "w-full px-5 py-4 resize-none bg-transparent border-none text-[16px]",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c4915a]/30 focus-visible:ring-offset-0",
-                      "placeholder:text-[#b8b3ac] min-h-[52px]",
-                    )}
                     style={{
+                      width: "100%",
+                      padding: "16px 20px",
+                      resize: "none",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      fontSize: 16,
                       fontFamily: "Georgia, 'Times New Roman', serif",
                       fontStyle: "italic",
                       color: "#1a1a1a",
                       overflow: "hidden",
+                      minHeight: 52,
+                      lineHeight: 1.5,
                     }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "4px 12px 12px",
+                }}>
                   <button
                     type="button"
-                    className="group flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/[0.04]"
                     aria-label="Upload data (coming soon)"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
-                    <Paperclip className="h-4 w-4" style={{ color: "#b8b3ac" }} />
-                    <span
-                      className="hidden text-xs group-hover:inline transition-opacity"
-                      style={{ fontFamily: "'Geist Mono', monospace", color: "#9c9790" }}
-                    >
-                      Upload
-                    </span>
+                    <Paperclip style={{ width: 16, height: 16, color: "#b8b3ac" }} />
                   </button>
                   <button
                     type="button"
                     onClick={handleHeroSubmit}
                     aria-label="Generate map"
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition-all",
-                      value.trim() ? "cursor-pointer" : "cursor-default",
-                    )}
                     style={{
+                      display: "flex",
+                      width: 32,
+                      height: 32,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      border: "none",
                       backgroundColor: value.trim() ? GOLD : "rgba(196,145,90,0.15)",
                       transition: "background-color 160ms ease",
+                      cursor: value.trim() ? "pointer" : "default",
                     }}
                   >
                     <ArrowUpIcon
-                      className="h-4 w-4"
-                      style={{ color: value.trim() ? "#ffffff" : "rgba(196,145,90,0.45)" }}
+                      style={{ width: 16, height: 16, color: value.trim() ? "#ffffff" : "rgba(196,145,90,0.45)" }}
                     />
                   </button>
                 </div>
@@ -326,8 +341,15 @@ export default function LandingClient() {
             </div>
 
             <div
-              className="mt-5 flex flex-wrap items-center justify-center gap-2"
-              style={{ animation: "heroFadeUp 400ms 140ms ease both" }}
+              style={{
+                marginTop: 20,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                animation: "heroFadeUp 400ms 140ms ease both",
+              }}
             >
               {HERO_SUGGESTIONS.map((s) => (
                 <button
@@ -336,19 +358,26 @@ export default function LandingClient() {
                     setValue(s);
                     router.push(`/app/map/new?prompt=${encodeURIComponent(s)}`);
                   }}
-                  className="hero-chip flex items-center gap-2 rounded-full px-4 py-2 text-xs backdrop-blur-md"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    borderRadius: 9999,
+                    padding: "8px 16px",
+                    fontSize: 12,
                     fontFamily: "'Geist Mono', monospace",
                     color: "rgba(255,255,255,0.85)",
                     backgroundColor: "rgba(12,18,26,0.45)",
                     border: "1px solid rgba(255,255,255,0.12)",
                     cursor: "pointer",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
                   }}
                 >
-                  {s.includes("density") && <LucideGlobe className="h-3.5 w-3.5" />}
-                  {s.includes("Coffee") && <MapPin className="h-3.5 w-3.5" />}
-                  {s.includes("Earthquake") && <Layers className="h-3.5 w-3.5" />}
-                  {s.includes("GDP") && <BarChart3 className="h-3.5 w-3.5" />}
+                  {s.includes("density") && <LucideGlobe style={{ width: 14, height: 14 }} />}
+                  {s.includes("Coffee") && <MapPin style={{ width: 14, height: 14 }} />}
+                  {s.includes("Earthquake") && <Layers style={{ width: 14, height: 14 }} />}
+                  {s.includes("GDP") && <BarChart3 style={{ width: 14, height: 14 }} />}
                   {s}
                 </button>
               ))}
