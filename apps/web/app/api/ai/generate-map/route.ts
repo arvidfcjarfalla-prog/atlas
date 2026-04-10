@@ -4,7 +4,7 @@ import { MODELS, generateTextWithRetry } from "../../../../lib/ai/ai-client";
 import type { MapManifest } from "@atlas/data-models";
 import { classify } from "@atlas/data-models";
 import { buildSystemPrompt } from "../../../../lib/ai/system-prompt";
-import { classifyGenSkill } from "../../../../lib/ai/skills/router";
+import { getGenerationSelectionContext } from "../../../../lib/ai/generation-selection";
 import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
@@ -312,8 +312,10 @@ export async function POST(request: Request) {
     // Resolve dataset profile: explicit > fetched > none
     const sourceUrl: string | undefined = body.sourceUrl ?? body.dataUrl;
     let profile: DatasetProfile | null = body.dataProfile ?? null;
+    let profileSource: "explicit" | "fetched" | "none" = profile ? "explicit" : "none";
     if (!profile && sourceUrl && typeof sourceUrl === "string") {
       profile = await fetchAndProfile(sourceUrl);
+      if (profile) profileSource = "fetched";
     }
 
     // Optional artifact ID for cold-start fallback (reads from durable storage
@@ -367,6 +369,13 @@ export async function POST(request: Request) {
         reasons,
         metaSource,
         breaksSource,
+        selectionApplied: false,
+        hasDataProfile: Boolean(profile),
+        profileSource,
+        profileGeometryType: profile?.geometryType ?? null,
+        profileFeatureCount: profile?.featureCount ?? null,
+        selectedExampleIds: [],
+        primaryAnchorId: null,
         latencyMs: Date.now() - t0,
       });
 
@@ -389,10 +398,22 @@ export async function POST(request: Request) {
     // Read optional user preferences from confirmation step
     const preferences: Record<string, string> | undefined = body.preferences;
 
-    // Classify prompt into a generation skill for prompt trimming
-    const genSkill = classifyGenSkill(prompt, profile);
+    // Only AI generation applies few-shot selection. Deterministic requests
+    // must not be logged as if an anchor influenced the manifest.
+    const { genSkill, selectedExampleIds, primaryAnchorId } =
+      getGenerationSelectionContext(prompt, profile);
 
-    log("generate.start", { promptLength: prompt.length, genSkill });
+    log("generate.start", {
+      promptLength: prompt.length,
+      genSkill,
+      selectionApplied: true,
+      hasDataProfile: Boolean(profile),
+      profileSource,
+      profileGeometryType: profile?.geometryType ?? null,
+      profileFeatureCount: profile?.featureCount ?? null,
+      selectedExampleIds,
+      primaryAnchorId,
+    });
 
     // Self-correction loop: generate → validate → retry on errors
     const messages: ModelMessage[] = [
@@ -498,7 +519,15 @@ export async function POST(request: Request) {
       quality.total < QUALITY_THRESHOLD &&
       validation.valid
     ) {
-      log("generate.fallback", { primaryScore: quality.total, attempts });
+      log("generate.fallback", {
+        primaryScore: quality.total,
+        attempts,
+        selectionApplied: true,
+        hasDataProfile: Boolean(profile),
+        profileSource,
+        selectedExampleIds,
+        primaryAnchorId,
+      });
       try {
         const fallbackResult = await generateTextWithRetry({
           model: MODELS.fallback(),
@@ -525,7 +554,12 @@ export async function POST(request: Request) {
                 validation = fallbackValidation;
                 quality = fallbackQuality;
                 usedFallback = true;
-                log("generate.fallback.accepted", { fallbackScore: fallbackQuality.total });
+                log("generate.fallback.accepted", {
+                  fallbackScore: fallbackQuality.total,
+                  selectionApplied: true,
+                  selectedExampleIds,
+                  primaryAnchorId,
+                });
               }
             }
           } catch {
@@ -564,6 +598,15 @@ export async function POST(request: Request) {
       usedFallback,
       metaSource,
       breaksSource,
+      selectionApplied: true,
+      hasDataProfile: Boolean(profile),
+      profileSource,
+      profileGeometryType: profile?.geometryType ?? null,
+      profileFeatureCount: profile?.featureCount ?? null,
+      selectedExampleIds,
+      primaryAnchorId,
+      validationWarnings: validation.warnings.length,
+      qualityDeductions: quality.deductions.length,
       latencyMs: Date.now() - t0,
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,

@@ -131,11 +131,13 @@ import { POST } from "../../../app/api/ai/generate-map/route";
 import { generateText } from "ai";
 import { getCachedData } from "@/lib/ai/tools/data-search";
 import { readArtifactMeta, readDurableDataset } from "@/lib/ai/tools/dataset-storage";
+import { log } from "@/lib/logger";
 
 const mockGenerateText = vi.mocked(generateText);
 const mockGetCachedData = vi.mocked(getCachedData);
 const mockReadArtifactMeta = vi.mocked(readArtifactMeta);
 const mockReadDurableDataset = vi.mocked(readDurableDataset);
+const mockLog = vi.mocked(log);
 
 // ─── Fixtures ────────────────────────────────────────────────────
 
@@ -323,6 +325,15 @@ describe("Fas 3 — cold-start determinism via artifact fallback", () => {
 
     // AI must NOT have been called
     expect(mockGenerateText).not.toHaveBeenCalled();
+
+    expect(mockLog).toHaveBeenCalledWith(
+      "generate.deterministic",
+      expect.objectContaining({
+        selectionApplied: false,
+        selectedExampleIds: [],
+        primaryAnchorId: null,
+      }),
+    );
   });
 
   // ── Scenario 2 ───────────────────────────────────────────────
