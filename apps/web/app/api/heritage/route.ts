@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const UNESCO_API =
   "https://data.unesco.org/api/explore/v2.1/catalog/datasets/whc001/records?limit=100&offset=";
+
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CACHE_CONTROL = "public, s-maxage=86400, stale-while-revalidate=172800";
+
+let cache: { data: GeoJSON.FeatureCollection; timestamp: number } | null = null;
 
 interface UnescoRecord {
   name_en: string;
@@ -20,9 +27,15 @@ interface UnescoRecord {
  *
  * Returns UNESCO World Heritage Sites as GeoJSON.
  * Fetches all ~1248 sites via paginated API calls.
- * Caches for 24 hours (dataset changes rarely).
+ * Uses runtime caching for 24 hours (dataset changes rarely).
  */
 export async function GET() {
+  if (cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cache.data, {
+      headers: { "Cache-Control": CACHE_CONTROL },
+    });
+  }
+
   try {
     const allRecords: UnescoRecord[] = [];
     let offset = 0;
@@ -31,7 +44,6 @@ export async function GET() {
     // Paginate through all records (max ~13 pages)
     for (let page = 0; page < 15; page++) {
       const res = await fetch(`${UNESCO_API}${offset}`, {
-        next: { revalidate: 86400 },
         signal: AbortSignal.timeout(15_000),
       });
 
@@ -45,6 +57,21 @@ export async function GET() {
       offset += pageSize;
 
       if (records.length < pageSize) break;
+    }
+
+    if (allRecords.length === 0) {
+      if (cache) {
+        return NextResponse.json(cache.data, {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400",
+            "X-Atlas-Stale": "1",
+          },
+        });
+      }
+      return NextResponse.json(
+        { error: "UNESCO API unavailable" },
+        { status: 502, headers: { "Cache-Control": "no-store" } },
+      );
     }
 
     const features: GeoJSON.Feature[] = allRecords
@@ -68,14 +95,29 @@ export async function GET() {
         },
       }));
 
+    const fc = {
+      type: "FeatureCollection",
+      features,
+    } as GeoJSON.FeatureCollection;
+
+    cache = { data: fc, timestamp: Date.now() };
+
     return NextResponse.json(
-      { type: "FeatureCollection", features } as GeoJSON.FeatureCollection,
-      { headers: { "Cache-Control": "public, s-maxage=86400" } },
+      fc,
+      { headers: { "Cache-Control": CACHE_CONTROL } },
     );
   } catch {
+    if (cache) {
+      return NextResponse.json(cache.data, {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400",
+          "X-Atlas-Stale": "1",
+        },
+      });
+    }
     return NextResponse.json(
       { error: "UNESCO API unavailable" },
-      { status: 502 },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

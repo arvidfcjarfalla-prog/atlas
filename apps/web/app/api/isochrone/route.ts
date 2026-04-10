@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Isochrone proxy: computes reachability polygons from an origin point.
  *
@@ -38,6 +40,7 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const CACHE_MAX_SIZE = 100;
+const CACHE_CONTROL = "public, s-maxage=1800, stale-while-revalidate=3600";
 
 function getCached(key: string): GeoJSON.FeatureCollection | null {
   const entry = cache.get(key);
@@ -47,6 +50,11 @@ function getCached(key: string): GeoJSON.FeatureCollection | null {
     return null;
   }
   return entry.data;
+}
+
+function getStaleCached(key: string): GeoJSON.FeatureCollection | null {
+  const entry = cache.get(key);
+  return entry?.data ?? null;
 }
 
 function setCache(key: string, data: GeoJSON.FeatureCollection): void {
@@ -150,7 +158,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const cacheKey = `${lat},${lng}|${mode}|${sortedBreaks.join(",")}|${unit}`;
   const cached = getCached(cacheKey);
   if (cached) {
-    return NextResponse.json(cached);
+    return NextResponse.json(cached, {
+      headers: { "Cache-Control": CACHE_CONTROL },
+    });
   }
 
   // Call OpenRouteService
@@ -168,21 +178,40 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         Authorization: apiKey,
       },
       body: JSON.stringify(orsBody),
+      signal: AbortSignal.timeout(20_000),
     });
 
     if (!orsRes.ok) {
       const errText = await orsRes.text().catch(() => "Unknown error");
+      const stale = getStaleCached(cacheKey);
 
       if (orsRes.status === 429) {
+        if (stale) {
+          return NextResponse.json(stale, {
+            headers: {
+              "Cache-Control": "public, s-maxage=60, stale-while-revalidate=1800",
+              "X-Atlas-Stale": "1",
+            },
+          });
+        }
         return NextResponse.json(
           { error: "Rate limit exceeded — try again in a moment" },
-          { status: 429 },
+          { status: 429, headers: { "Cache-Control": "no-store" } },
         );
+      }
+
+      if (stale) {
+        return NextResponse.json(stale, {
+          headers: {
+            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=1800",
+            "X-Atlas-Stale": "1",
+          },
+        });
       }
 
       return NextResponse.json(
         { error: `Routing service error: ${orsRes.status}`, detail: errText },
-        { status: 502 },
+        { status: 502, headers: { "Cache-Control": "no-store" } },
       );
     }
 
@@ -194,14 +223,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Cache the result
     setCache(cacheKey, normalized);
 
-    return NextResponse.json(normalized);
+    return NextResponse.json(normalized, {
+      headers: { "Cache-Control": CACHE_CONTROL },
+    });
   } catch (err) {
+    const stale = getStaleCached(cacheKey);
+    if (stale) {
+      return NextResponse.json(stale, {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=1800",
+          "X-Atlas-Stale": "1",
+        },
+      });
+    }
     return NextResponse.json(
       {
         error: "Failed to reach routing service",
         detail: err instanceof Error ? err.message : "Unknown error",
       },
-      { status: 502 },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

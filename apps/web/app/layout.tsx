@@ -17,11 +17,7 @@ export default function RootLayout({
       <head>
         {/* viewport-fit=cover enables env(safe-area-inset-*) for iOS notch/home-indicator */}
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="stylesheet" href="/fonts/fonts.css" />
         {/*
           FOUC prevention: pages set data-mode directly on their root div.
           This script only applies a fallback on <html> for unmatched pages.

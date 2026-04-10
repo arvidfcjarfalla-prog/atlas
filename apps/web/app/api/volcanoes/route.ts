@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 
 /**
- * Smithsonian Global Volcanism Program — all Holocene volcanoes.
- * Direct GeoJSON from GitHub (pre-processed from GVP database).
- * Falls back to a curated list of major active volcanoes if the
- * primary source is unavailable.
+ * Curated active/notable volcanoes served as a static fallback dataset.
+ * This route no longer fetches an upstream source during build or runtime.
  */
-const GVP_URL =
-  "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_geography_regions_points.geojson";
-
-/** Curated active/notable volcanoes when GVP source is unavailable. */
+/** Curated active/notable volcanoes. */
 const FALLBACK_VOLCANOES = [
   { name: "Mount Etna", lat: 37.751, lng: 14.993, elevation: 3357, country: "Italy", type: "Stratovolcano" },
   { name: "Kilauea", lat: 19.421, lng: -155.287, elevation: 1222, country: "United States", type: "Shield" },

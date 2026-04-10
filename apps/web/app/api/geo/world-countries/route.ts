@@ -1,37 +1,39 @@
+import { readFile } from "fs/promises";
+import { join } from "path";
 import { NextResponse } from "next/server";
 
 /**
  * Serve Natural Earth 110m country boundaries as GeoJSON.
  *
- * Proxied from the Natural Earth GitHub CDN to avoid CORS issues
- * and to normalise attribute names. Cached for 24 hours.
+ * Vendored in the repo and normalised at request/build time.
  *
  * Attributes per feature:
  *   name, iso_a3, continent, subregion, pop_est, gdp_md
  */
 
-const SOURCE_URL =
-  "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson";
-
+const DATA_FILE = join(process.cwd(), "public/geo/vendor/world-countries.geojson");
 let cache: { data: GeoJSON.FeatureCollection; timestamp: number } | null = null;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_CONTROL = "public, s-maxage=86400, stale-while-revalidate=172800";
+
+function jsonWithCache(
+  data: GeoJSON.FeatureCollection,
+  cacheControl = CACHE_CONTROL,
+): NextResponse {
+  return NextResponse.json(data, {
+    headers: { "Cache-Control": cacheControl },
+  });
+}
 
 export async function GET(): Promise<NextResponse> {
   if (cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
-    return NextResponse.json(cache.data);
+    return jsonWithCache(cache.data);
   }
 
   try {
-    const res = await fetch(SOURCE_URL, { next: { revalidate: 86400 } });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch country boundaries" },
-        { status: 502 },
-      );
-    }
-
-    const raw = (await res.json()) as GeoJSON.FeatureCollection;
+    const raw = JSON.parse(
+      await readFile(DATA_FILE, "utf8"),
+    ) as GeoJSON.FeatureCollection;
 
     // Normalise to a slim set of attributes
     const features: GeoJSON.Feature[] = raw.features.map((f) => {
@@ -57,11 +59,14 @@ export async function GET(): Promise<NextResponse> {
 
     cache = { data: fc, timestamp: Date.now() };
 
-    return NextResponse.json(fc);
+    return jsonWithCache(fc);
   } catch {
+    if (cache) {
+      return jsonWithCache(cache.data);
+    }
     return NextResponse.json(
       { error: "Country boundaries unavailable" },
-      { status: 502 },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

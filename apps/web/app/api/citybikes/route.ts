@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const CITYBIKES_URL = "https://api.citybik.es/v2/networks";
 
 interface CityBikesNetwork {
@@ -24,7 +26,6 @@ interface CityBikesNetwork {
 export async function GET() {
   try {
     const res = await fetch(CITYBIKES_URL, {
-      next: { revalidate: 3600 },
       signal: AbortSignal.timeout(10_000),
     });
 

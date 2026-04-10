@@ -45,6 +45,31 @@ export function MarketingNav() {
   const linkHover = isDark ? "rgba(245,244,240,0.85)" : ink;
   const btnBorder = isDark ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(26,31,28,0.15)";
   const btnText = isDark ? "rgba(245,244,240,0.75)" : ink;
+  const navRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 36px",
+    gap: 16,
+  };
+  const logoWrap: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  };
+  const linksWrap: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 22,
+    fontFamily: "'Geist Mono', 'Courier New', monospace",
+    fontSize: 11,
+  };
+  const actionsWrap: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  };
 
   return (
     <nav
@@ -57,9 +82,9 @@ export function MarketingNav() {
         transition: "background 320ms ease, border-color 320ms ease",
       }}
     >
-      <div className="flex items-center justify-between" style={{ padding: "14px 36px" }}>
+      <div style={navRow}>
         {/* Left: logo */}
-        <Link href="/" className="flex items-center gap-2 cursor-pointer">
+        <Link href="/" style={{ ...logoWrap, cursor: "pointer", textDecoration: "none" }}>
           <div
             style={{
               width: 8,
@@ -82,7 +107,7 @@ export function MarketingNav() {
         </Link>
 
         {/* Center: nav links */}
-        <div className="flex gap-[22px]" style={{ fontFamily: "'Geist Mono', 'Courier New', monospace", fontSize: 11 }}>
+        <div style={linksWrap}>
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -107,11 +132,28 @@ export function MarketingNav() {
         </div>
 
         {/* Right: auth buttons */}
-        <div className="flex gap-2">
-          {!loading && (
-            user ? (
+        <div style={actionsWrap}>
+          {user && !loading ? (
+            <Link
+              href="/app"
+              style={{
+                background: "transparent",
+                border: btnBorder,
+                color: btnText,
+                padding: "7px 18px",
+                fontFamily: "'Geist Mono', 'Courier New', monospace",
+                fontSize: 10,
+                borderRadius: 6,
+                textDecoration: "none",
+                transition: "color 320ms ease, border-color 320ms ease",
+              }}
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
               <Link
-                href="/app"
+                href="/login"
                 style={{
                   background: "transparent",
                   border: btnBorder,
@@ -124,48 +166,29 @@ export function MarketingNav() {
                   transition: "color 320ms ease, border-color 320ms ease",
                 }}
               >
-                Dashboard
+                Sign in
               </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  style={{
-                    background: "transparent",
-                    border: btnBorder,
-                    color: btnText,
-                    padding: "7px 18px",
-                    fontFamily: "'Geist Mono', 'Courier New', monospace",
-                    fontSize: 10,
-                    borderRadius: 6,
-                    textDecoration: "none",
-                    transition: "color 320ms ease, border-color 320ms ease",
-                  }}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/app"
-                  style={{
-                    background: gold,
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "7px 20px",
-                    fontFamily: "'Geist Mono', 'Courier New', monospace",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    borderRadius: 6,
-                    boxShadow: isDark
-                      ? `0 0 16px ${gold}33`
-                      : "0 1px 2px rgba(154,111,63,0.2), 0 8px 24px rgba(154,111,63,0.15)",
-                    textDecoration: "none",
-                    transition: "box-shadow 320ms ease",
-                  }}
-                >
-                  Try Atlas free
-                </Link>
-              </>
-            )
+              <Link
+                href="/app"
+                style={{
+                  background: gold,
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "7px 20px",
+                  fontFamily: "'Geist Mono', 'Courier New', monospace",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  boxShadow: isDark
+                    ? `0 0 16px ${gold}33`
+                    : "0 1px 2px rgba(154,111,63,0.2), 0 8px 24px rgba(154,111,63,0.15)",
+                  textDecoration: "none",
+                  transition: "box-shadow 320ms ease",
+                }}
+              >
+                Try Atlas free
+              </Link>
+            </>
           )}
         </div>
       </div>

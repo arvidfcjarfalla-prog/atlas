@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const ISS_URL = "https://api.wheretheiss.at/v1/satellites/25544";
+const MAX_STALE_MS = 5 * 60 * 1000;
+
+let cache: { data: GeoJSON.FeatureCollection; timestamp: number } | null = null;
 
 /**
  * GET /api/iss
@@ -45,13 +50,23 @@ export async function GET() {
       ],
     };
 
+    cache = { data: fc, timestamp: Date.now() };
+
     return NextResponse.json(fc, {
       headers: { "Cache-Control": "no-cache, no-store" },
     });
   } catch {
+    if (cache && Date.now() - cache.timestamp < MAX_STALE_MS) {
+      return NextResponse.json(cache.data, {
+        headers: {
+          "Cache-Control": "no-cache, no-store",
+          "X-Atlas-Stale": "1",
+        },
+      });
+    }
     return NextResponse.json(
       { error: "ISS tracking unavailable" },
-      { status: 502 },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

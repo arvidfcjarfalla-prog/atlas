@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const OPENSKY_URL = "https://opensky-network.org/api/states/all";
 
 interface OpenSkyState {
@@ -49,7 +51,6 @@ interface OpenSkyState {
 export async function GET() {
   try {
     const res = await fetch(OPENSKY_URL, {
-      next: { revalidate: 30 },
       signal: AbortSignal.timeout(15_000),
     });
 

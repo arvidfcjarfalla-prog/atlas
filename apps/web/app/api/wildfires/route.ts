@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * NASA FIRMS VIIRS active fire data — CSV converted to GeoJSON.
  * Source: https://firms.modaps.eosdis.nasa.gov
@@ -8,6 +10,10 @@ import { NextResponse } from "next/server";
  */
 
 const MAX_FEATURES = 5000;
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000;
+const CACHE_CONTROL = "public, s-maxage=10800, stale-while-revalidate=21600";
+
+let cache: { data: GeoJSON.FeatureCollection; timestamp: number } | null = null;
 
 function getFirmsUrl(): string | null {
   const key = process.env.NASA_FIRMS_MAP_KEY;
@@ -16,6 +22,12 @@ function getFirmsUrl(): string | null {
 }
 
 export async function GET() {
+  if (cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cache.data, {
+      headers: { "Cache-Control": CACHE_CONTROL },
+    });
+  }
+
   const firmsUrl = getFirmsUrl();
   if (!firmsUrl) {
     return NextResponse.json(
@@ -25,14 +37,21 @@ export async function GET() {
   }
   try {
     const res = await fetch(firmsUrl, {
-      next: { revalidate: 10800 },
       signal: AbortSignal.timeout(20_000),
     });
 
     if (!res.ok) {
+      if (cache) {
+        return NextResponse.json(cache.data, {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=10800",
+            "X-Atlas-Stale": "1",
+          },
+        });
+      }
       return NextResponse.json(
         { error: `FIRMS API returned ${res.status}` },
-        { status: 502 },
+        { status: 502, headers: { "Cache-Control": "no-store" } },
       );
     }
 
@@ -84,14 +103,29 @@ export async function GET() {
       });
     }
 
+    const fc = {
+      type: "FeatureCollection",
+      features,
+    } as GeoJSON.FeatureCollection;
+
+    cache = { data: fc, timestamp: Date.now() };
+
     return NextResponse.json(
-      { type: "FeatureCollection", features } as GeoJSON.FeatureCollection,
-      { headers: { "Cache-Control": "public, s-maxage=10800" } },
+      fc,
+      { headers: { "Cache-Control": CACHE_CONTROL } },
     );
   } catch {
+    if (cache) {
+      return NextResponse.json(cache.data, {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=10800",
+          "X-Atlas-Stale": "1",
+        },
+      });
+    }
     return NextResponse.json(
       { error: "NASA FIRMS unavailable" },
-      { status: 502 },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
 }
