@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "pre-build", "runs": [{"id": "eval-1-save-maps-with_skill", "prompt": "Spara kartor feature plan", "eval_id": 1, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Map Persistence & \"My Maps\" Gallery\n\n## What We're Building\n\nA \"my maps\" feature where authenticated users can save, organize, and quickly access their map collection. The backend persistence layer (save/load via Supabase) already exists; we're adding a polished gallery page that replaces the placeholder \"Visa alla\" link, improving discoverability and making saved maps the centerpiece of the user's workspace.\n\n**Current state:** Maps POST/GET/PATCH routes exist. Gallery page at `/app/gallery` exists but is incomplete (scaffolding only). Maps are already saved to Supabase on POST.\n\n**What changes:** Users see a full-featured gallery page (`/app/gallery`) with filtering, sorting, bulk actions, and search. Sidebar navigation includes a \"Mina kartor\" link. Maps are easily accessible, shareable, and manageable from one place.\n\n## Approach\n\nKeep the implementation minimal and integrate with existing patterns:\n\n1. **Complete the gallery page** (`apps/web/app/app/(hub)/gallery/page.tsx`) \u2014 expand the scaffolding to a full-featured grid with filtering, sorting, and bulk delete.\n2. **Add sidebar navigation** \u2014 link from home/hub to `/app/gallery` in the app layout.\n3. **Polish the UX** \u2014 loading states, empty state, error handling, toast feedback for actions.\n4. **No schema changes** \u2014 maps table already has all required fields (`id`, `user_id`, `title`, `description`, `is_public`, `created_at`, `updated_at`, `thumbnail_url`).\n5. **Reuse existing API routes** \u2014 GET `/api/maps` (with pagination), PATCH `/api/maps/:id`, DELETE `/api/maps/:id` (already exists but needs verification).\n\nThe feature is **non-breaking** \u2014 the hub page already shows 4 recent maps; gallery just expands that to unlimited with filtering.\n\n## Tasks\n\n### 1. Verify DELETE endpoint exists\n**Files:** `apps/web/app/api/maps/[id]/route.ts`\n**What:** Check if DELETE handler exists in the route file. If not, add a DELETE handler that soft-deletes or removes the map (user-scoped via RLS).\n**Watch out:** RLS policies must prevent users from deleting others' maps. The maps table has RLS enabled; verify the DELETE policy allows owned maps only.\n**Verify:** Check file for DELETE export. If missing, add it and confirm type-safety with TypeScript check.\n\n### 2. Complete gallery page \u2014 fetch and display maps\n**Files:** `apps/web/app/app/(hub)/gallery/page.tsx`\n**What:** Replace the scaffolding with a full client-side gallery. Fetch all maps for the authenticated user via `GET /api/maps?limit=100` (adjust for pagination if needed). Display in a responsive grid with:\n  - Map cards showing thumbnail, title, date, family pill, public/private badge\n  - Loading skeleton state during fetch\n  - Empty state when no maps exist (\"Inga sparade kartor \u00e4nnu\")\n  - Click-to-open behavior (navigate to `/app/map/:id`)\n**Watch out:**\n  - Use the existing `LibraryCard` and `CardThumbnail` components already in the file.\n  - Honor `prefers-reduced-motion` (already partially done in the file).\n  - Pagination: if user has >100 maps, add \"Load more\" or infinite scroll. Start with limit=100 for MVP.\n**Verify:** Run the gallery page manually; verify cards load and clicking opens the map editor.\n\n### 3. Add sorting and filtering UI\n**Files:** `apps/web/app/app/(hub)/gallery/page.tsx`\n**What:** Add controls above the grid for:\n  - **Sort:** \"Senaste \u00e4ndringar\", \"\u00c4ldsta\", \"A\u2013Z title\"\n  - **Filter:** \"Alla\", \"Privata\", \"Delade\" (public/private toggle)\n  - Optional: family-type filter pills (choropleth, heatmap, etc.)\n**Watch out:** State management via `useState`. Sorting/filtering is client-side (data already fetched). Keep controls minimal to avoid cluttering the page.\n**Verify:** Test all sort/filter combinations manually. Confirm counts match (e.g., filtering to \"Delade\" shows only `is_public=true` maps).\n\n### 4. Add delete & bulk-delete actions\n**Files:** `apps/web/app/app/(hub)/gallery/page.tsx`\n**What:**\n  - Each card gets a context menu (\u22ee or hover button) with a \"Radera\" option.\n  - Clicking \"Radera\" shows a confirmation modal: \"\u00c4r du s\u00e4ker? Denna \u00e5tg\u00e4rd kan inte \u00e5ngras.\"\n  - On confirm, call `DELETE /api/maps/:id`, remove from local state, show toast \"Karta borttagen\".\n  - Optional: Multi-select checkbox mode for bulk delete. Lower priority; skip if scope creep.\n**Watch out:**\n  - Destructive action \u2014 must have confirmation.\n  - After delete, update local state to immediately remove the card (optimistic update).\n  - If delete fails, show error toast and re-fetch maps.\n**Verify:** Manually delete a map; confirm it's gone from the gallery and the database.\n\n### 5. Add sidebar navigation link\n**Files:** `apps/web/components/Sidebar.tsx` (or equivalent app layout component)\n**What:** Add a \"Mina kartor\" link in the app navigation that routes to `/app/gallery`. Highlight it as \"active\" when the current route is `/app/gallery`.\n**Watch out:** Find where the sidebar is defined (likely in the `(editor)` or `(hub)` layout). Don't break existing navigation.\n**Verify:** Sidebar renders correctly on both mobile and desktop. Active state highlights on the gallery page.\n\n### 6. Add empty state & error handling\n**Files:** `apps/web/app/app/(hub)/gallery/page.tsx`\n**What:**\n  - If `maps.length === 0` and not loading, show an empty state card with text: \"Du har ingen sparad kartor \u00e4nnu. B\u00f6rja med att [l\u00e4nk 'skapa en ny karta']\" (link to `/app/map/new`).\n  - If fetch fails, show error toast: \"Kunde inte ladda kartor\" with retry button.\n  - If user is not authenticated, redirect to login (useAuth hook should handle, but double-check).\n**Watch out:** Empty state should be visually distinct, not just a blank page.\n**Verify:** Manually delete all maps and check empty state renders. Mock a fetch error and confirm error toast appears.\n\n### 7. Add search input (optional, MVP can skip)\n**Files:** `apps/web/app/app/(hub)/gallery/page.tsx`\n**What:** Optional feature \u2014 add a search input at the top that filters maps by title substring (case-insensitive). Client-side only.\n**Watch out:** Low-value feature if users have <20 maps. Only add if time permits.\n**Verify:** Type in search, confirm only matching maps display.\n\n### 8. Test via existing test suite\n**Files:** Verify with `pnpm test` and map-persistence tests\n**What:** Run `cd apps/web && npx vitest run lib/ai/__tests__/map-persistence.test.ts` to confirm save/open/duplicate/by-slug paths still work.\n**Watch out:** Gallery doesn't affect persistence tests, but verify nothing broke in the maps routes.\n**Verify:** All tests pass green.\n\n## Edge Cases\n\n- **User with no maps:** Empty state is shown instead of broken grid. \u2713 Handled in Task 6.\n- **User deletes a map while viewing gallery:** Confirm modal prevents accidental deletion. \u2713 Handled in Task 4.\n- **Map has no thumbnail_url:** Fall back to family-colored placeholder SVG. \u2713 Existing LibraryCard component handles this.\n- **Map title is very long:** Truncate with ellipsis (overflow: hidden, text-overflow: ellipsis). \u2713 Existing CSS handles this.\n- **Network error during fetch:** Show error toast with retry. \u2713 Handled in Task 6.\n- **User's is_public maps should show \"Delad\" badge:** Already in LibraryCard component. \u2713 No change needed.\n- **Pagination:** If user has >100 maps, need to handle. For MVP, start with `limit=100`; if this is insufficient, add \"Load more\" button that appends to the grid.\n- **RLS policies:** Ensure users can't see other users' maps via the gallery. Supabase RLS on maps table should prevent this automatically, but verify GET /api/maps filters by user_id.\n\n## What We're NOT Doing\n\n- **Folders/tags/collections:** Just a flat list for now. Collections are a v2 feature.\n- **Sharing permissions:** Public/private toggle already exists; no change to sharing model.\n- **Collaborative editing:** Out of scope.\n- **Map versioning UI:** Versions exist in the database but aren't surfaced in the gallery. Skip for MVP.\n- **Bulk upload:** File import is out of scope.\n- **Archive/recover deleted maps:** Deletes are permanent (or soft-delete at database level if policy allows). No undelete UI.\n- **Advanced search (full-text, date range, etc.):** Only title substring search if included.\n\n## Verify Everything Works\n\nAfter all tasks are complete:\n\n1. **Type-check:** `pnpm typecheck` \u2014 no TypeScript errors.\n2. **Build:** `pnpm build` \u2014 all packages compile.\n3. **Unit tests:** `pnpm test` \u2014 all tests pass, especially `map-persistence.test.ts`.\n4. **Manual testing:**\n   - Log in, navigate to `/app/gallery`\n   - Confirm recent maps load in a grid\n   - Test sorting and filtering\n   - Delete a map; confirm it's gone from both gallery and database\n   - Check sidebar link navigates to gallery\n   - Verify empty state shows when no maps exist\n   - Confirm error handling (mock network failure, check toast)\n   - Test on mobile (responsive grid)\n5. **RLS verification:** Attempt to fetch another user's private map via API; confirm 404 or filtered result.\n6. **Performance:** If >50 maps, confirm grid still renders smoothly (no lag). Monitor for N+1 queries on the GET /api/maps endpoint.\n\n---\n\n## Implementation Notes\n\n**Component reuse:** The `LibraryCard` and `CardThumbnail` components already exist in the gallery file. Expand on them; don't duplicate.\n\n**Styling:** All CSS is inlined via `<style dangerouslySetInnerHTML>` with `arp-` prefix (per editorial-landing.md rules). Match the existing dark theme from gallery.tsx.\n\n**Icons:** Use lucide-react (already in the codebase). For delete, use `Trash2` or similar.\n\n**Toast library:** Confirm `useToast` hook exists and works. Already used in gallery.tsx.\n\n**API pagination:** Current GET `/api/maps` supports `limit` and `offset`. Keep pagination simple for MVP.\n\n**Auth:** `useAuth()` hook returns `{ user, loading }`. Check before rendering gallery.\n\n**Testing:** Map persistence tests cover save/open/duplicate. No need for new E2E tests unless gallery needs special coverage (low priority).\n\n---\n\n## Success Criteria\n\n- Users can view all their saved maps in `/app/gallery`\n- Maps display with title, thumbnail, date, type badge, public/private status\n- Users can sort (date, A\u2013Z) and filter (all, public, private)\n- Users can delete maps with confirmation\n- Empty state shows when no maps exist\n- Sidebar has \"Mina kartor\" navigation link\n- All TypeScript checks and tests pass\n- No breaking changes to existing map persistence routes\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": true, "evidence": "All sections present: What/Approach/Tasks/Edge Cases/Not Doing/Verify"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "All 8 tasks specify exact file paths"}, {"text": "Every task has verification step", "passed": true, "evidence": "Each task has Verify: section"}, {"text": "Edge cases identified", "passed": true, "evidence": "8 edge cases listed with handling"}, {"text": "Reads existing code first", "passed": true, "evidence": "Correctly identifies existing gallery scaffold, API routes, RLS policies"}, {"text": "Under 200 lines", "passed": true, "evidence": "162 lines"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}}}, {"id": "eval-1-save-maps-without_skill", "prompt": "Spara kartor feature plan", "eval_id": 1, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Map Persistence and \"My Maps\" Feature\n\n**Requestor:** Arvid (Swedish speaker)\n**Request:** \"Jag vill l\u00e4gga till st\u00f6d f\u00f6r att anv\u00e4ndare ska kunna spara sina kartor och ladda dem igen. Typ som en 'my maps' sida. Beh\u00f6ver persistence i supabase och ett UI f\u00f6r att lista sparade kartor.\"\n\n**Translation:** Add support for users to save their maps and reload them. Like a \"My Maps\" page. Need persistence in Supabase and UI to list saved maps.\n\n---\n\n## Current State Assessment\n\n**What exists:**\n- Supabase `maps` table with full CRUD endpoints (`/api/maps/*`)\n- Gallery page at `/app/gallery` (shows user's maps, templates, empty state)\n- RLS policies (users own their maps, anyone can read public maps)\n- Map versions tracked in `map_versions` table\n- Manifest-based map representation (MapManifest type)\n- Slug-based public sharing via `/api/maps/by-slug/:slug`\n- Thumbnail generation (optional `thumbnail_url`)\n- Chat history persistence per map\n\n**Gap:**\nThe gallery page is **already a working \"My Maps\" feature** \u2014 it lists all user maps, supports templates, shows empty state, displays map metadata (title, date, family type). The feature mentioned in the request appears to be **already implemented**.\n\n---\n\n## Investigation: Is Full Implementation Needed?\n\n### Questions for Clarification (Pre-Build):\n\n1. **Does the current gallery page not meet the need?**\n   - Current behavior: Fetches user's maps from `/api/maps`, displays in grid, allows delete/reopen\n   - UI is complete: responsive grid, loading skeletons, empty state with template suggestions\n   - Does this need enhancement or is it missing entirely from the user's perspective?\n\n2. **What exact functionality is missing?**\n   - List/paginate maps? \u2713 Already exists (`/api/maps?limit=20&offset=0`)\n   - Save maps? \u2713 Already exists (`POST /api/maps`)\n   - Edit/update saved maps? \u2713 Already exists (`PATCH /api/maps/:id`)\n   - Delete maps? \u2713 Already exists (`DELETE /api/maps/:id`)\n   - Open saved maps? \u2713 Already exists (click card \u2192 `/app/map/:id`)\n   - Public sharing? \u2713 Already exists (`is_public` flag + slug)\n\n3. **Where should the page be accessible?**\n   - Currently at: `/app/gallery`\n   - Should it be homepage? Main nav item? Explicit \"My Maps\" route?\n\n4. **Missing enhancements to consider:**\n   - Search/filter by title or map family?\n   - Favorites or collections?\n   - Bulk operations (delete multiple, export)?\n   - Sorting (by date, alphabetical, last opened)?\n   - Map stats/metadata (size, data source, creation date)?\n\n---\n\n## Recommended Plan (Contingent on Clarification)\n\n### Scenario A: Gallery page exists but user is unaware / not discoverable\n\n**Scope:** Navigation & discoverability, minimal implementation\n\n**Changes:**\n1. **Navigation:** Add \"Mina kartor\" (My Maps) to app sidebar as primary nav item linking to `/app/gallery`\n2. **Visibility:** Ensure `/app/gallery` is the default landing page after login (currently users land on `/app`)\n3. **Help text:** Add tooltip/help in map editor showing \"Save map\" option is active\n\n**Deliverables:**\n- Sidebar navigation entry\n- Possibly rename current gallery route or create alias\n- Tests: nav routing, auth redirect\n\n**Effort:** 2\u20133 hours\n\n---\n\n### Scenario B: Gallery page needs UI/UX enhancements\n\n**Scope:** Gallery page improvements (search, filtering, sorting, better empty state)\n\n**Changes:**\n1. **Search bar:** Add client-side search by title/description\n2. **Filter by family:** Dropdown to show only choropleth/flow/point/etc\n3. **Sort options:** By date (newest/oldest), alphabetical, most recent first\n4. **Stats:** Show map count, total size, last edited\n5. **Better empty state:** More prominent call-to-action, inline template previews\n6. **Pagination UI:** Show page numbers / scroll pagination if >50 maps\n7. **Delete confirmation:** Modal before delete instead of immediate removal\n8. **Duplicate map:** Copy button on map cards\n9. **Bulk select:** Checkbox for multi-delete\n\n**Deliverables:**\n- Enhanced `gallery/page.tsx` with state management (search, filter, sort)\n- Modal components (delete confirm, map details)\n- Tests: search/filter logic, delete flow\n\n**Effort:** 8\u201312 hours\n\n---\n\n### Scenario C: Full re-architecture (maps not persisted at all currently)\n\n**This is unlikely** given the existing `/api/maps/*` routes and working gallery, but if maps aren't actually being saved:\n\n**Scope:** Complete persistence layer\n\n**Changes:**\n1. **Ensure Supabase schema is correct:**\n   - `maps` table with user_id FK, manifest (JSONB), is_public, slug\n   - `map_versions` table for history\n   - RLS policies enabled\n\n2. **API routes (all exist, verify working):**\n   - `POST /api/maps` \u2192 create + auto-save\n   - `GET /api/maps` \u2192 list user's maps\n   - `GET /api/maps/:id` \u2192 fetch one\n   - `PATCH /api/maps/:id` \u2192 update\n   - `DELETE /api/maps/:id` \u2192 delete\n   - `GET /api/maps/by-slug/:slug` \u2192 public fetch\n\n3. **Map editor integration:**\n   - \"Save map\" button in `/app/map/new` and `/app/map/:id`\n   - Form modal: title, description, is_public toggle\n   - Auto-slug generation on publish\n\n4. **Gallery page:**\n   - List all user maps (exists at `/app/gallery`)\n   - Click to reopen editor\n   - Show public status badge\n   - Delete button\n\n5. **Supabase migrations:**\n   - Verify existing migrations are applied\n   - Add indexes on `user_id, updated_at` (exists)\n   - Set up RLS (exists)\n\n**Deliverables:**\n- Migrations (already exist, verify)\n- All API routes (already exist, verify)\n- Save modal component\n- Gallery page (already exists)\n- Tests for all CRUD operations\n\n**Effort:** 20\u201330 hours (if building from scratch)\n\n---\n\n## Recommendation\n\n**Before proceeding with any implementation, verify:**\n\n1. Navigate to `http://localhost:3000/app/gallery` \u2014 does the page load and show your maps?\n2. Try creating a map via `/app/map/new`, filling in a title, and clicking \"save\"\n3. Check if the map appears in the gallery after save\n4. Try reopening the map from the gallery\n\n**Most likely outcome:** Gallery page and persistence already work. Plan should focus on:\n- Making it discoverable (sidebar nav, better default landing)\n- Enhancing UX (search, filter, sort, bulk operations)\n- Polish (better empty state, map preview cards)\n\n---\n\n## Implementation Plan (Assuming Gallery Needs Enhancement)\n\n### Phase 1: Foundation (2\u20133 hours)\n\n**Goal:** Ensure map save/load workflow is visible and works\n\n**Tasks:**\n1. Add \"Mina kartor\" nav item to `components/app-sidebar.tsx` pointing to `/app/gallery`\n2. Verify `/api/maps` endpoints are all working (GET, POST, PATCH, DELETE)\n3. Verify RLS policies allow user to see only own + public maps\n4. Check that gallery page loads recent maps correctly\n\n**Tests:**\n- Route navigation test\n- Auth check test (unauthenticated redirects to login)\n- API list test (returns only user's maps)\n\n**Files to touch:**\n- `components/app-sidebar.tsx` \u2014 add nav link\n- `app/app/(hub)/gallery/page.tsx` \u2014 verify existing code\n- Existing test files (map-persistence.test.ts)\n\n---\n\n### Phase 2: Gallery Enhancements (6\u20138 hours)\n\n**Goal:** Add search, filter, sort, better UX\n\n**Tasks:**\n1. **Search:** Client-side filter by title/description\n   - Input field at top of gallery\n   - Real-time filter as user types\n   - Clear button\n\n2. **Filter by map family:** Dropdown menu\n   - Extract family from first layer's mapFamily style property\n   - Show counts per family\n   - Multi-select or single-select\n\n3. **Sort options:** Menu with choices\n   - Newest first (default)\n   - Oldest first\n   - Alphabetical A-Z\n   - Alphabetical Z-A\n\n4. **Pagination or infinite scroll:**\n   - Current: fetches all maps at once\n   - Option A: Pagination (20 per page, show page indicator)\n   - Option B: Scroll load more (auto-fetch next 20 on scroll)\n\n5. **Delete confirmation:**\n   - Modal instead of immediate deletion\n   - Show map preview in modal\n   - Confirm button\n\n6. **Duplicate map:**\n   - Button on each card\n   - POST to `/api/maps/:id/duplicate` (new endpoint)\n   - Copies manifest + title (\"Copy of...\") + geojson_url\n   - Redirects to new map editor\n\n7. **Better empty state:**\n   - Large icon/illustration\n   - \"No maps yet\" message\n   - Show featured templates\n   - \"Create new map\" button\n\n**Tests:**\n- Search filter unit test\n- Family extraction logic test\n- Sort logic test\n- Delete flow test (modal appear/cancel/confirm)\n- Duplicate endpoint test\n\n**Files to touch:**\n- `app/app/(hub)/gallery/page.tsx` \u2014 main page\n- `app/api/maps/[id]/duplicate/route.ts` \u2014 new endpoint\n- New component: `components/MapDeleteModal.tsx`\n- Existing test: `map-persistence.test.ts` \u2014 add duplicate test\n\n---\n\n### Phase 3: Map Editor Integration (2\u20134 hours)\n\n**Goal:** Ensure save is always available in map editor\n\n**Tasks:**\n1. **Save button in `/app/map/new`:**\n   - Floating action button (bottom-right)\n   - Opens modal with form: title, description, is_public toggle\n   - Calls `POST /api/maps`\n   - Shows success toast\n   - Redirects to `/app/map/:id` (editor page)\n\n2. **Save button in `/app/map/:id`:**\n   - Same modal, but PUT/PATCH instead of POST\n   - Disabled if no changes made (track manifest diff)\n   - Shows \"Changes saved\" toast\n\n3. **Keyboard shortcut:** Ctrl+S / Cmd+S to open save modal\n\n4. **Auto-save indicator:** Grey dot \u2192 green checkmark after save\n\n**Tests:**\n- Save modal appears\n- Form validation (title required, max 2000 chars)\n- API call with correct payload\n- Success toast appears\n- Redirect on create\n\n**Files to touch:**\n- `app/app/(editor)/map/new/page.tsx` \u2014 add save button\n- `app/app/(editor)/map/[id]/page.tsx` \u2014 add save button\n- New component: `components/SaveMapModal.tsx`\n- Existing test: `map-persistence.test.ts` \u2014 add save modal test\n\n---\n\n### Phase 4: Polish & Verification (2\u20133 hours)\n\n**Goal:** Ensure entire flow works and is tested\n\n**Tasks:**\n1. **E2E test:** Create map \u2192 save \u2192 view in gallery \u2192 reopen \u2192 edit \u2192 save again\n2. **Auth test:** Unauthenticated user redirected from gallery\n3. **Thumbnail generation:** Verify saved maps show previews (existing feature)\n4. **Public sharing:** Test slug generation on publish\n5. **Mobile responsiveness:** Gallery grid works on mobile\n6. **Accessibility:** Nav items, modals, buttons all keyboard-navigable\n\n**Tests:**\n- E2E: full persistence flow (Playwright)\n- Auth redirect (unit)\n- Responsive layout (visual)\n- WCAG 2.1 AA check (accessibility)\n\n**Files to touch:**\n- `apps/web/e2e/` \u2014 add new E2E test file\n- Existing tests \u2014 verify all pass\n\n---\n\n## Success Criteria\n\nUsers should be able to:\n\n1. \u2713 Click \"Mina kartor\" in sidebar\n2. \u2713 See a grid of all their saved maps (or empty state if new)\n3. \u2713 Search by title\n4. \u2713 Filter by map family type\n5. \u2713 Sort by date/name\n6. \u2713 Click a map to reopen and edit\n7. \u2713 Click \"Delete\" with confirmation modal\n8. \u2713 Click \"Duplicate\" to copy a map\n9. \u2713 Create a new map and click \"Save\"\n10. \u2713 See success toast and be redirected to editor\n11. \u2713 Make changes and \"Save\" again (updates existing map)\n12. \u2713 Toggle \"is_public\" to share map by slug\n\n---\n\n## Database Schema (Verify Existing)\n\n```sql\n-- Maps table (should already exist)\nCREATE TABLE public.maps (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,\n  title TEXT NOT NULL DEFAULT '',\n  description TEXT,\n  prompt TEXT NOT NULL,\n  manifest JSONB NOT NULL,\n  geojson_url TEXT,\n  thumbnail_url TEXT,\n  is_public BOOLEAN DEFAULT false,\n  slug TEXT UNIQUE,\n  chat_history JSONB,\n  artifact_id UUID,\n  data_status TEXT DEFAULT 'ok',\n  created_at TIMESTAMPTZ DEFAULT now(),\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\n\n-- Indexes (should already exist)\nCREATE INDEX idx_maps_user_updated ON maps(user_id, updated_at DESC);\nCREATE INDEX idx_maps_slug ON maps(slug) WHERE slug IS NOT NULL;\n\n-- RLS (should already be enabled)\nALTER TABLE maps ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY maps_owner_all ON maps FOR ALL USING (auth.uid() = user_id);\nCREATE POLICY maps_public_select ON maps FOR SELECT USING (is_public = true);\n\n-- Versions table (tracks map edits)\nCREATE TABLE public.map_versions (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  map_id UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,\n  version INT NOT NULL,\n  prompt TEXT,\n  manifest JSONB NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT now()\n);\n```\n\n---\n\n## API Contracts (Verify Existing)\n\n### GET /api/maps\n```\nQuery: ?limit=20&offset=0\nResponse: { maps: MapRow[], total: number }\nAuth: Required (returns only user's maps)\n```\n\n### POST /api/maps\n```\nBody: {\n  title?: string,\n  description?: string,\n  prompt: string,\n  manifest: object,\n  geojson_url?: string,\n  thumbnail_url?: string,\n  is_public?: boolean\n}\nResponse: { map: { id, title, artifact_id, created_at } }\nAuth: Required\n```\n\n### PATCH /api/maps/:id\n```\nBody: { title?, description?, is_public?, manifest?, geojson_url?, chat_history? }\nResponse: { map: { id, title, is_public, slug, updated_at } }\nAuth: Required (owner only)\n```\n\n### DELETE /api/maps/:id\n```\nResponse: 204 No Content\nAuth: Required (owner only)\n```\n\n### GET /api/maps/:id\n```\nResponse: { map: MapRow }\nAuth: Required (owner or if is_public=true)\n```\n\n### GET /api/maps/by-slug/:slug\n```\nResponse: { map: MapRow, status: \"public\" | \"owner\" | \"not_found\" }\nAuth: Not required\n```\n\n---\n\n## File Structure (Existing & New)\n\n```\napps/web/\n\u251c\u2500\u2500 app/\n\u2502   \u251c\u2500\u2500 app/(hub)/\n\u2502   \u2502   \u251c\u2500\u2500 gallery/\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 page.tsx           \u2190 ENHANCE (add search/filter/sort)\n\u2502   \u2502   \u251c\u2500\u2500 profile/\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 page.tsx\n\u2502   \u2502   \u2514\u2500\u2500 layout.tsx             \u2190 Sidebar with nav\n\u2502   \u251c\u2500\u2500 (editor)/\n\u2502   \u2502   \u251c\u2500\u2500 map/\n\u2502   \u2502   \u2502   \u251c\u2500\u2500 new/\n\u2502   \u2502   \u2502   \u2502   \u2514\u2500\u2500 page.tsx       \u2190 ADD: Save button\n\u2502   \u2502   \u2502   \u2514\u2500\u2500 [id]/\n\u2502   \u2502   \u2502       \u2514\u2500\u2500 page.tsx       \u2190 ADD: Save button\n\u2502   \u2502   \u2514\u2500\u2500 layout.tsx\n\u2502   \u2514\u2500\u2500 api/\n\u2502       \u2514\u2500\u2500 maps/\n\u2502           \u251c\u2500\u2500 route.ts           \u2713 GET/POST (already exist)\n\u2502           \u251c\u2500\u2500 [id]/\n\u2502           \u2502   \u251c\u2500\u2500 route.ts       \u2713 GET/PATCH/DELETE (already exist)\n\u2502           \u2502   \u2514\u2500\u2500 duplicate/\n\u2502           \u2502       \u2514\u2500\u2500 route.ts   \u2190 NEW ENDPOINT\n\u2502           \u251c\u2500\u2500 by-slug/\n\u2502           \u2502   \u2514\u2500\u2500 [slug]/\n\u2502           \u2502       \u2514\u2500\u2500 route.ts   \u2713 GET (already exists)\n\u2502           \u251c\u2500\u2500 public/\n\u2502           \u2514\u2500\u2500 [id]/versions/\n\u251c\u2500\u2500 components/\n\u2502   \u251c\u2500\u2500 app-sidebar.tsx            \u2190 ADD: \"Mina kartor\" nav\n\u2502   \u251c\u2500\u2500 SaveMapModal.tsx           \u2190 NEW\n\u2502   \u251c\u2500\u2500 MapDeleteModal.tsx         \u2190 NEW\n\u2502   \u2514\u2500\u2500 ...\n\u251c\u2500\u2500 lib/\n\u2502   \u251c\u2500\u2500 auth/\n\u2502   \u2502   \u2514\u2500\u2500 use-auth.ts            \u2713 (already exists)\n\u2502   \u2514\u2500\u2500 supabase/\n\u2502       \u251c\u2500\u2500 types.ts               \u2713 (already exists)\n\u2502       \u2514\u2500\u2500 server.ts              \u2713 (already exists)\n\u2514\u2500\u2500 __tests__/\n    \u2514\u2500\u2500 lib/ai/\n        \u2514\u2500\u2500 __tests__/\n            \u251c\u2500\u2500 map-persistence.test.ts    \u2190 ADD: duplicate, save modal tests\n            \u2514\u2500\u2500 ...\ne2e/\n\u2514\u2500\u2500 map-persistence.e2e.ts         \u2190 NEW: full flow E2E test\n```\n\n---\n\n## Testing Strategy\n\n### Unit Tests\n\n**File:** `apps/web/lib/ai/__tests__/map-persistence.test.ts` (extend existing)\n\n```typescript\ndescribe(\"Map Persistence\", () => {\n  describe(\"Save flow\", () => {\n    // Test POST /api/maps with valid payload\n    // Test modal opens/closes\n    // Test slug generation on publish\n  });\n\n  describe(\"Delete flow\", () => {\n    // Test DELETE /api/maps/:id\n    // Test confirmation modal\n    // Test optimistic UI update\n  });\n\n  describe(\"Duplicate flow\", () => {\n    // Test POST /api/maps/:id/duplicate\n    // Test title gets \"Copy of...\" prefix\n    // Test new map inherits manifest + geojson_url\n  });\n\n  describe(\"Gallery search/filter/sort\", () => {\n    // Test filter by family\n    // Test search by title\n    // Test sort orders\n  });\n});\n```\n\n### E2E Tests\n\n**File:** `apps/web/e2e/map-persistence.e2e.ts` (new)\n\n```typescript\ndescribe(\"Map Persistence E2E\", () => {\n  test(\"Create \u2192 Save \u2192 Gallery \u2192 Reopen \u2192 Edit \u2192 Save\", async ({ page }) => {\n    // Navigate to /app\n    // Click \"Create map\"\n    // Fill in prompt, generate manifest\n    // Click Save button\n    // Fill save modal (title, description)\n    // Verify redirect to /app/map/:id\n    // Navigate to /app/gallery\n    // Find map in grid\n    // Click to reopen\n    // Make changes\n    // Click Save\n    // Verify success toast\n  });\n\n  test(\"Duplicate map\", async ({ page }) => {\n    // Navigate to gallery\n    // Click duplicate on a map\n    // Verify new map appears with \"Copy of...\" title\n    // Verify in editor\n  });\n\n  test(\"Delete with confirmation\", async ({ page }) => {\n    // Navigate to gallery\n    // Click delete\n    // Verify modal appears\n    // Click cancel (nothing happens)\n    // Click delete again, confirm\n    // Verify map removed from grid\n  });\n\n  test(\"Public sharing by slug\", async ({ page }) => {\n    // Save a map\n    // Toggle is_public\n    // Verify slug generated\n    // Copy slug link\n    // Open in new incognito window\n    // Verify map loads\n  });\n});\n```\n\n---\n\n## Risks & Mitigations\n\n| Risk | Mitigation |\n|------|-----------|\n| User doesn't know where to find saved maps | Add prominent \"Mina kartor\" nav item + default landing |\n| Race condition on save (user clicks save twice) | Debounce save button, show loading state |\n| Slow load on gallery with 1000+ maps | Pagination (20 per page) or infinite scroll |\n| Delete without confirmation | Modal confirmation required |\n| Slug collisions on publish | Auto-retry with suffix (existing code handles this) |\n| Storage limits (maps table grows large) | Archive old maps after 6 months? (future feature) |\n\n---\n\n## Definition of Done\n\n- [ ] All existing API routes verified working\n- [ ] Gallery page accessible from sidebar\n- [ ] Search/filter/sort UI complete and tested\n- [ ] Delete modal implemented and tested\n- [ ] Duplicate endpoint working\n- [ ] Save modal in map editor working\n- [ ] E2E test passes (create \u2192 save \u2192 gallery \u2192 reopen \u2192 edit)\n- [ ] All unit tests pass (`pnpm test`)\n- [ ] All TypeScript strict mode checks pass (`pnpm typecheck`)\n- [ ] No console errors in dev\n- [ ] Mobile responsive (tested on 375px and 1440px)\n- [ ] Accessibility: WCAG 2.1 AA (tested with axe)\n- [ ] Documentation updated (CLAUDE.md if new files)\n- [ ] Code review (peer review by Arvid)\n\n---\n\n## Effort Estimate\n\n| Phase | Hours | Priority |\n|-------|-------|----------|\n| Phase 1: Foundation (verify + nav) | 2\u20133 | P0 (blocking) |\n| Phase 2: Gallery enhancements (search/filter) | 6\u20138 | P1 (core feature) |\n| Phase 3: Editor integration (save button) | 2\u20134 | P1 (core feature) |\n| Phase 4: Polish & E2E tests | 2\u20133 | P2 (quality) |\n| **Total** | **12\u201318** | |\n\n---\n\n## Next Steps\n\n1. **Clarify with Arvid:**\n   - Is the gallery page already visible to users?\n   - What specific enhancements are needed?\n   - Is \"My Maps\" about discoverability or missing features?\n\n2. **Verify existing implementation:**\n   - Test `/app/gallery` in running dev server\n   - Test save/load flow end-to-end\n   - Verify all API routes work\n\n3. **Decide scope:**\n   - Scenario A: Navigation & discoverability (2\u20133 hours)\n   - Scenario B: Gallery enhancements (6\u20138 additional hours)\n   - Scenario C: Full rebuild (if nothing exists, 20\u201330 hours)\n\n4. **Build Phase 1 (Foundation):**\n   - Add nav link\n   - Verify API + RLS\n   - Write verification tests\n\n5. **Iterate Phases 2\u20134 based on feedback**\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": false, "evidence": "Uses custom structure: Scenarios A/B/C, 4 Phases, Success Criteria"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "File paths included in phases"}, {"text": "Every task has verification step", "passed": false, "evidence": "Verification is at end only, not per-task"}, {"text": "Edge cases identified", "passed": true, "evidence": "Risk mitigation table included"}, {"text": "Reads existing code first", "passed": true, "evidence": "Correctly identifies existing API routes and gallery scaffold"}, {"text": "Under 200 lines", "passed": false, "evidence": "623 lines \u2014 over 3x the target"}], "summary": {"passed": 3, "failed": 3, "total": 6, "pass_rate": 0.5}}}, {"id": "eval-2-density-family-with_skill", "prompt": "New density map family plan", "eval_id": 2, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Add 'density' Map Family\n\n## What We're Building\n\nThe 'density' family is a new map type similar to heatmap but using contour lines instead of blur/gradient blending. It visualizes concentrations of points through isolines (contours at regular intervals) rather than smooth color transitions. Use case: showing population clusters, traffic hotspots, or point density without the gradient smoothing of heatmaps.\n\n## Approach\n\nThe density family will follow the existing pattern established by heatmap, proportional-symbol, and other families:\n\n1. **Type definition:** Add `\"density\"` as a string literal to the `MapFamily` union in `packages/data-models/src/manifest.ts`\n2. **Config structure:** Create `DensityConfig` interface in manifest.ts to hold contour-specific options (e.g., interval spacing, max contours)\n3. **Compiler function:** Write `compileDensity()` in `packages/map-core/src/manifest-compiler.ts` that uses the existing turf.js contour tooling (likely turf-isolines or similar)\n4. **Switch case:** Add a case in the family switch statement in `compileLayer()` to dispatch to `compileDensity()`\n5. **Legend registration:** Return appropriate legend items showing example contour values\n6. **UI registration:** Add metadata to `FAMILY_META` in `apps/web/components/family-meta.tsx` with label, color, and thumbnail SVG\n7. **AI system prompt:** Add cartographic rules for when to use density vs. heatmap in `apps/web/lib/ai/system-prompt.ts`\n8. **Example bank:** Add 1\u20132 few-shot examples demonstrating density usage in `apps/web/lib/ai/example-bank.ts` (e.g., earthquake density, crime hotspots)\n9. **Tests:** Write tests in `packages/map-core/src/__tests__/manifest-compiler.test.ts` covering contour generation and edge cases\n\n## Tasks\n\n### 1. Add MapFamily type and config interface\n**Files:** `packages/data-models/src/manifest.ts`\n**What:**\n- Add `\"density\"` to the `MapFamily` union type (line 9\u201323)\n- Create `DensityConfig` interface with fields:\n  - `contourInterval`: number (default 10) \u2014 spacing between contour lines\n  - `minDensity?`: number \u2014 min point count to show a contour (default 1)\n  - `maxContours?`: number \u2014 max contours to render (default 8)\n  - `aggregationField?`: string \u2014 optional numeric field for density weighting (by default counts points)\n- Add `density?: DensityConfig;` field to `LayerManifest` (around line 374)\n\n**Watch out:**\n- Keep the union alphabetical or follow existing order\n- DensityConfig should be similar in structure to existing configs like HexbinConfig (line 121\u2013125)\n- Don't break backward compatibility \u2014 density must be optional\n\n**Verify:**\n- `pnpm typecheck` passes\n- No unused type errors\n\n### 2. Create compileDensity function in manifest compiler\n**Files:** `packages/map-core/src/manifest-compiler.ts`\n**What:**\n- Write `compileDensity(layer: LayerManifest, data: GeoJSON.FeatureCollection, warnings: string[]): CompiledLayer` function\n- Extract numeric values from data (use existing `numericValues()` helper or build a grid)\n- Use turf.js contours function (check if `@turf/isolines` is already a dependency; if not, note it for later installation)\n- Generate contour features (GeoJSON LineString/MultiLineString collection)\n- Create MapLibre line layers styled with stroke width and opacity based on contour value\n- Return sourceConfig with the contour FeatureCollection, MapLibre layer specs, and legend items showing example values\n- Add warnings if `aggregationField` doesn't exist or data has < 10 points\n\n**Watch out:**\n- Contour generation may fail on sparse data (< 5 points) \u2014 graceful fallback to empty layers with warning\n- Coordinate systems: GeoJSON is [lng, lat]; contour algorithms may expect [lat, lng] \u2014 verify turf.js docs\n- Performance: contour generation is computationally expensive; add a note about max dataset size (~10k points practical)\n\n**Verify:**\n- Function compiles without errors\n- Returns a valid CompiledLayer structure with `sourceId`, `sourceConfig`, `layers`, `legendItems`\n- Tests pass (see Task 9)\n\n### 3. Wire compileDensity into compileLayer dispatcher\n**Files:** `packages/map-core/src/manifest-compiler.ts` (lines 315\u2013348)\n**What:**\n- Add a case in the family switch statement:\n  ```typescript\n  case \"density\":\n    result = compileDensity(resolved, data, warnings); break;\n  ```\n- Place it after \"heatmap\" (line 326) to keep heat/density families adjacent\n\n**Watch out:**\n- Default case (line 346\u2013347) should NOT hit for \"density\" \u2014 if it does, a test will catch it\n\n**Verify:**\n- `pnpm typecheck` passes\n- No switch exhaustion errors\n\n### 4. Add UI metadata and thumbnail for density family\n**Files:** `apps/web/components/family-meta.tsx`\n**What:**\n- Add entry to `FAMILY_META` object (around line 62\u2013309) with:\n  - `label: \"Density\"` or similar\n  - `color: \"#...\" (pick a color not yet used; suggest `#d4a374` or similar warm tone to distinguish from heatmap's `#d85a3a`)\n  - `bg: \"radial-gradient(...)\"` matching the color\n  - `thumbnail: <ThumbnailFrame>...</ThumbnailFrame>` showing contour lines (use SVG concentric circles/ellipses, styled as lines rather than filled)\n- Add entry to `FAMILY_INFO` object (around line 314\u2013378) with:\n  - `typeName: \"Konturkarta\"` (Swedish), `typeNameEn: \"Density map\"`\n  - `oneliner: \"Visa densitet med konturer ist\u00e4llet f\u00f6r gradient.\"`\n  - `description: \"...\"`\n  - `bestFor: \"...\"`\n  - `examples: [...]` (e.g., earthquake clusters, population density, sensor networks)\n- Optionally add to `MAP_TYPE_ORDER` (line 381\u2013389) if featured, or leave off for now\n\n**Watch out:**\n- Never use sage (green) for contour data (editorial rule)\n- Thumbnail SVG should use real GeoJSON data or simplified geometric shapes (never hand-drawn)\n- The provenance text at bottom right must be accurate\n\n**Verify:**\n- No console errors when the page loads\n- Thumbnail renders correctly in browser\n- `FamilyPill({ family: \"density\" })` renders correctly\n\n### 5. Add cartographic rules for density to AI system prompt\n**Files:** `apps/web/lib/ai/system-prompt.ts` (around line 26\u2013100+)\n**What:**\n- Add 2\u20133 new cartographic rules in the `CARTOGRAPHIC_RULES` array with skill tags `[\"thematic\", \"general\"]` or `[\"locational\", \"general\"]`:\n  - Rule: \"Density maps work with point geometry. Requires \u226510 features to generate meaningful contours.\"\n  - Rule: \"Density vs. Heatmap: use density for sparse clusters (< 1000 points, distinct hotspots); use heatmap for dense continuous distributions (> 1000 points, many overlaps).\"\n  - Rule: \"Density contourInterval should be set based on data range (e.g., interval: 5 for 0\u201350 range, interval: 100 for 0\u20131000 range).\"\n\n**Watch out:**\n- Keep rule text concise (single sentence if possible)\n- Tag all rules with appropriate skills\n- Don't over-prescribe \u2014 leave room for AI judgment\n\n**Verify:**\n- `pnpm typecheck` passes\n- Rules appear in the system prompt when viewed in tests\n\n### 6. Add few-shot examples to example bank\n**Files:** `apps/web/lib/ai/example-bank.ts` (around line 27+)\n**What:**\n- Add 1\u20132 examples to the `EXAMPLES` array with:\n  - `families: [\"density\"]`\n  - `geometryTypes: [\"Point\", \"MultiPoint\"]`\n  - `genSkills: [\"locational\", \"general\"]`\n  - A realistic prompt in Swedish (e.g., \"Visa jordb\u00e4vningskoncentrationer som konturer\")\n  - Complete JSON output showing a density-based MapManifest with proper field references, classification, legend\n\n**Watch out:**\n- Example output must match the v2 manifest schema exactly\n- If the example uses a field like \"magnitude\", ensure it's marked as numeric in the profile\n- Legend type should be \"gradient\" with exampleValues\n\n**Verify:**\n- Example validates against MapManifest schema\n- `pnpm eval` doesn't crash on the example\n- Example appears in system prompt in few-shot context\n\n### 7. Add unit tests for compileDensity\n**Files:** `packages/map-core/src/__tests__/manifest-compiler.test.ts` (around line 69+)\n**What:**\n- Add a new `describe(\"density family\", () => { ... })` block with tests:\n  1. **Happy path:** Dense point cluster \u2192 generates 3\u20135 contour lines with expected values\n  2. **Sparse data:** Only 5 points \u2192 warns \"< 10 features\" but doesn't crash\n  3. **Empty data:** 0 points \u2192 returns empty layers with warning\n  4. **Custom contourInterval:** DensityConfig with `contourInterval: 20` \u2192 contour lines at 20, 40, 60, etc.\n  5. **aggregationField:** Point data with numeric weight field \u2192 density weighted by that field\n  6. **Legend generation:** Checks that legendItems have correct labels (e.g., \"10\u201320\", \"20\u201330\")\n\n**Watch out:**\n- Use the existing test helpers: `pt()`, `fc()`, etc.\n- Don't assume exact contour values \u2014 test ranges (e.g., \"should have \u2265 3 layers\")\n- Mock turf.js if needed (though integration test is better)\n\n**Verify:**\n- `pnpm test` passes (run focused test: `cd packages/map-core && npx vitest run __tests__/manifest-compiler.test.ts`)\n- No test timeouts (contour generation should complete in < 1s even for 1k points)\n\n### 8. Verify TypeScript and tests across all packages\n**Files:** All modified files\n**What:**\n- Run `pnpm typecheck` to ensure no type errors across the monorepo\n- Run `pnpm test` to verify all unit tests pass (compiler tests, data-models, web tests)\n- Run `pnpm lint` to check code style\n\n**Watch out:**\n- Watch for unused imports after adding new types\n- Ensure no barrel export issues in `packages/data-models/src/index.ts`\n\n**Verify:**\n- All commands exit with code 0\n- No warnings or errors reported\n\n### 9. Verify UI integration\n**Files:** `apps/web/components/family-meta.tsx`, hub page, and any map-type galleries\n**What:**\n- Manually check that the density family appears in:\n  - The family metadata (FAMILY_META lookup works)\n  - The family info modal (FAMILY_INFO lookup works)\n  - Any landing/hub pages that list map families\n- Check that FamilyPill, thumbnail, and label all render correctly\n\n**Watch out:**\n- The hub page may hardcode family order \u2014 verify density is added if it should appear there\n- Screenshot any UI changes for review\n\n**Verify:**\n- `pnpm dev` starts without errors\n- Browser renders family thumbnails and info without layout shifts\n- No console errors related to density metadata\n\n## Edge Cases\n\n- **No numeric data:** If all point features are categorical, density has nothing to aggregate. Warn the user and suggest point or cluster family instead.\n- **Sparse geography:** If points are very spread out (e.g., 3 cities on different continents), contours may overlap in confusing ways. Suggest a different family.\n- **Very dense data (>10k points):** Contour generation may be slow. Note in a warning if perf is detected.\n- **Missing aggregationField:** If DensityConfig specifies an aggregationField that doesn't exist in the data, fall back to point count and warn.\n- **Non-point geometry in density:** If the layer has polygon/line data but mapFamily=\"density\", warn and render nothing (or fall back to point).\n\n## What We're NOT Doing\n\n- **deck.gl rendering:** Density will use pure MapLibre (contour lines as stroke geometry), not deck.gl. This matches the pattern of heatmap and choropleth.\n- **Raster contours:** We're generating vector contours (GeoJSON LineStrings), not rasterizing to an image layer. This preserves zoom/pan clarity.\n- **Interactive contour editing:** Users cannot adjust contour values at runtime. The AI generates contourInterval at generation time; users can re-generate with a different prompt to adjust.\n- **Contour smoothing/Catmull-Rom:** Default to linear/straight contour segments. Smoothing can be added later if needed.\n- **3D contours:** Not using deck.gl 3D mode. Stick to 2D MapLibre rendering.\n\n## Verify Everything Works\n\n1. **Type safety:** `pnpm typecheck` passes across all packages (data-models, map-core, web)\n2. **Unit tests:** `pnpm test` passes; density-specific tests all pass\n3. **Linting:** `pnpm lint` reports no new errors\n4. **Dev server:** `pnpm dev` starts and renders maps without console errors\n5. **Example validation:** Existing examples still compile; new density examples validate without errors\n6. **AI generation:** A manual test with prompt \"Visa jordb\u00e4vningskoncentrationer\" generates a valid density map (verify in /maps/new with mock data or online eval)\n7. **Offline eval:** `pnpm eval` runs and scores any new eval fixtures if added\n\n## Implementation Notes\n\n- **Dependency check:** Verify that a contour/isoline library is available (turf.js has `@turf/isolines`; confirm it's already installed or add to monorepo package.json)\n- **Color scheme:** Use a sequential scheme (e.g., \"blues\", \"greens\") for density values. Avoid diverging schemes unless the data is explicitly diverging.\n- **Default contourInterval:** Suggest a smart default based on data range (min/max), similar to how classification picks sensible breaks.\n- **Performance baseline:** Contour generation on 1000 points should take < 100ms; optimize/warn if perf is worse.\n\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": true, "evidence": "All sections present"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "All 9 tasks have file paths"}, {"text": "Every task has verification step", "passed": true, "evidence": "Each task has Verify: section"}, {"text": "Edge cases identified", "passed": true, "evidence": "Multiple edge cases (sparse data, non-point geometry, etc)"}, {"text": "Reads existing code first", "passed": true, "evidence": "Analyzed heatmap/isochrone patterns, manifest-compiler structure"}, {"text": "Under 250 lines", "passed": true, "evidence": "229 lines"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}}}, {"id": "eval-2-density-family-without_skill", "prompt": "New density map family plan", "eval_id": 2, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Add 'density' Map Family to Atlas Compiler\n\n## Overview\n\nAdd support for a new map family called `density` that visualizes point data using contour lines instead of the blur-based approach of heatmaps. The density family will render filled contours (isobands) with stroke outlines, similar to how choropleth works visually but derived from point density rather than pre-computed polygon properties.\n\n## Architecture Pattern\n\nAtlas follows a consistent pattern for map families:\n\n1. **Type definition** in `packages/data-models/src/manifest.ts` (MapFamily union type)\n2. **Optional config interface** if the family needs specialized settings (e.g., IsochroneConfig, ExtrusionConfig)\n3. **Compiler function** in `packages/map-core/src/manifest-compiler.ts` that takes a `LayerManifest + GeoJSON data` and returns `CompiledLayer`\n4. **Test coverage** in `packages/map-core/src/__tests__/manifest-compiler.test.ts`\n5. **Example in example bank** for AI prompt matching in `apps/web/lib/ai/example-bank.ts`\n6. **UI metadata** in `apps/web/components/family-meta.tsx` (label, color, thumbnail)\n7. **Templates** using the family in `apps/web/lib/templates.ts`\n\n## Implementation Checklist\n\n### Phase 1: Type System (packages/data-models)\n\n#### 1.1 Add to MapFamily union\n**File:** `packages/data-models/src/manifest.ts`\n\n- Add `\"density\"` to the MapFamily union type (line ~23)\n- Current count: 14 families \u2192 will become 15\n\n#### 1.2 Add DensityConfig interface\n**File:** `packages/data-models/src/manifest.ts`\n\nDefine optional configuration for contour generation:\n\n```typescript\nexport interface DensityConfig {\n  /** Number of contour levels to generate (default 5, range 2-10). */\n  levels?: number;\n  /** Minimum density threshold (0\u20131). Default 0.1. */\n  minDensity?: number;\n  /** Maximum density threshold (0\u20131). Default 1.0. */\n  maxDensity?: number;\n  /** Kernel radius in pixels for density estimation (default 50). */\n  kernelRadius?: number;\n  /** Kernel function: \"gaussian\" (default) or \"exponential\". */\n  kernelType?: \"gaussian\" | \"exponential\";\n}\n```\n\n- Add field to LayerManifest: `density?: DensityConfig;` (around line 380, after timeline)\n\n### Phase 2: Compiler Implementation (packages/map-core)\n\n#### 2.1 Implement compileDensity function\n**File:** `packages/map-core/src/manifest-compiler.ts`\n\nFunction signature:\n```typescript\nfunction compileDensity(\n  layer: LayerManifest,\n  data: GeoJSON.FeatureCollection,\n  warnings: string[] = [],\n): CompiledLayer\n```\n\n**Key implementation details:**\n\n- Extract point features from data (filter geometry.type === \"Point\")\n- Generate contours from point density using a spatial algorithm (options below)\n- Create filled polygon layers per contour level with color ramp\n- Apply stroke styling for contour outlines\n- Build legend with density ranges\n\n**Contour generation strategy:**\n\nTwo viable approaches:\n\n1. **Turf.js approach** (lightweight, pure JS):\n   - Use `turf.convex()` and grid-based interpolation\n   - Pre-computed grid cells with density counts\n   - More manual but self-contained\n\n2. **Mapbox-friendly GeoJSON approach** (recommended):\n   - Generate a regular grid of points across the data extent\n   - Use Kernel Density Estimation (KDE) to assign values to grid points\n   - Use an existing contouring library (e.g., `conrec.js`) or implement basic linear interpolation\n   - Convert isobands to MultiPolygons\n\n**Recommendation:** Start with a simplified approach:\n- Create a bounding box grid (e.g., 30\u00d730 cells)\n- For each cell, count points within a kernel radius\n- Use nearest-neighbor interpolation to generate contours at discrete levels\n- This avoids heavy dependencies and stays aligned with compiler's \"dumb\" philosophy\n\n#### 2.2 Add case in compileLayer switch\n**File:** `packages/map-core/src/manifest-compiler.ts` (line ~318)\n\nAdd:\n```typescript\ncase \"density\":\n  result = compileDensity(resolved, data, warnings); break;\n```\n\n#### 2.3 Color and legend handling\n- Use `scheme()` helper to get color scheme (same as choropleth/heatmap)\n- Generate palette with `getColors(colorScheme, levels)`\n- Create legend items with density range labels (e.g., \"Low (0\u20130.2)\", \"Medium (0.2\u20130.4)\", etc.)\n- Use \"square\" legend shape (matches choropleth/heatmap pattern)\n\n### Phase 3: Test Coverage (packages/map-core)\n\n#### 3.1 Add test suite\n**File:** `packages/map-core/src/__tests__/manifest-compiler.test.ts`\n\nPattern: Add `describe(\"density family\", () => { ... })` block after heatmap tests (line ~456)\n\n**Test cases:**\n\n1. Basic density compilation with point data\n   - Verify layer count (fill + stroke + highlight layers)\n   - Verify layer types (\"fill\", \"line\", \"fill\" for highlight)\n   - Verify legend items match levels count\n   - Verify sourceId naming\n\n2. Density with custom levels\n   - Verify that `levels: 7` generates 7 legend items and 7 fill layers\n\n3. Density with custom color scheme\n   - Verify `color: { scheme: \"blues\" }` applies correctly\n\n4. Density with sparse data\n   - Verify no errors with few points (< 5)\n   - Verify warnings are generated if sensible\n\n5. Empty or non-point data\n   - Verify fallback behavior (should still produce valid output)\n\n### Phase 4: Example Bank (apps/web)\n\n#### 4.1 Add example for AI matching\n**File:** `apps/web/lib/ai/example-bank.ts`\n\nCreate entry similar to burglaries (heatmap) example:\n\n```typescript\n{\n  id: \"crimes-density\",\n  families: [\"density\"],\n  hasProfile: false,\n  geometryTypes: [\"Point\", \"MultiPoint\"],\n  genSkills: [\"locational\", \"general\"],\n  prompt: \"Visa t\u00e4thetkonturer f\u00f6r brottsplatser i Stockholm\",\n  output: `{ ... full manifest JSON ... }`,\n}\n```\n\n**Manifest example:** Point data with density family, inferno scheme, 5\u20137 levels\n\n### Phase 5: UI & Landing (apps/web)\n\n#### 5.1 Add family metadata\n**File:** `apps/web/components/family-meta.tsx`\n\nAdd entry to FAMILY_META record:\n\n```typescript\ndensity: {\n  label: \"Density map\",\n  color: \"#8b5a2b\",  // or chosen brand color\n  bg: \"radial-gradient(ellipse at 50% 50%, rgba(139,90,43,0.10) 0%, transparent 65%)\",\n  thumbnail: (\n    <ThumbnailFrame provenance=\"CONTOUR DENSITY \u00b7 POINT DATA\">\n      {/* World outline + contour rings (SVG) */}\n      ...\n    </ThumbnailFrame>\n  ),\n}\n```\n\n- **Thumbnail design:** Concentric contour rings around data points, similar to isobars on a weather map\n- **Color choice:** Distinct from heatmap (red/orange), proportional-symbol (blue), flow (green)\n- Use real GeoJSON projection at build time (follow editorial rules: no hand-drawn shapes)\n\n#### 5.2 Add to MAP_TYPE_ORDER\n**File:** `apps/web/components/family-meta.tsx` (around line 322)\n\n- Add `\"density\"` to the FAMILY_INFO array in correct visual order\n\n#### 5.3 Add to templates (optional, Phase 2+)\n**File:** `apps/web/lib/templates.ts`\n\nCreate a template example (e.g., \"Population density contours\") once implemented.\n\n### Phase 6: Validation (apps/web)\n\n#### 6.1 Add schema validation (if needed)\n**File:** `apps/web/lib/ai/validators/` (check existing structure)\n\n- Density family should accept point and multipoint geometries\n- May need to validate that point data is present (warn if only polygons)\n- No new rules beyond standard family validation\n\n#### 6.2 Update quality scorer comments\n**File:** `apps/web/lib/ai/quality-scorer.ts`\n\n- Add density as a recognized mapFamily in scoring logic\n- Assign same weight as heatmap (family: 20 points)\n\n---\n\n## Implementation Order\n\n1. **Type system** (1.1, 1.2) \u2014 15 min\n   - Adds MapFamily union and DensityConfig interface\n   - No runtime impact until compiler exists\n\n2. **Compiler core** (2.1, 2.2, 2.3) \u2014 60\u201390 min\n   - Implement compileDensity with contour generation\n   - Add to switch statement\n   - Handle color and legend\n\n3. **Tests** (3.1) \u2014 30\u201345 min\n   - 5 test cases covering basic and edge cases\n   - Run full test suite to verify no regressions\n\n4. **Example bank** (4.1) \u2014 15 min\n   - Add example for prompt matching\n\n5. **UI metadata** (5.1, 5.2) \u2014 30 min\n   - Family tile, thumbnail design\n   - Landing page integration\n\n6. **Validation** (6.1, 6.2) \u2014 15 min\n   - Quality scorer recognition\n   - Optional schema tweaks\n\n---\n\n## Contour Generation Algorithm (Recommended)\n\nTo keep the compiler \"dumb\" and avoid heavy dependencies:\n\n1. Extract all points from data\n2. Calculate bounding box with 10% padding\n3. Create a regular grid across the bbox (configurable resolution, default ~30\u00d730 cells)\n4. For each grid cell center:\n   - Count points within kernel radius (default 50px)\n   - Assign density = count / max_count (0\u20131 normalized)\n5. Interpolate density across grid (simple bilinear or nearest-neighbor)\n6. Generate contour levels at specified thresholds (e.g., [0.2, 0.4, 0.6, 0.8, 1.0])\n7. Convert each contour to a polygon (using marching squares or similar)\n8. Output as MultiPolygon FeatureCollection\n\nThis approach:\n- Requires no external libraries (pure JS)\n- Stays below 500 lines of code\n- Is deterministic and testable\n- Scales well for 100\u201310k points\n\n---\n\n## Cartographic Constraints\n\nPer learned-rules.md and CLAUDE.md:\n\n- **Compiler stays dumb:** No automatic level selection, no color gradient tweaking, no optimizations based on data distribution. Settings are explicit in LayerManifest.\n- **Backward compatibility:** Adding \"density\" to MapFamily is non-breaking. Existing manifests have no density field, so they continue to work.\n- **Example bank matching:** Only used during AI generation, not at render time. AI sees example for similar use cases.\n\n---\n\n## Expected Files Changed\n\n### New/Modified\n\n- `packages/data-models/src/manifest.ts` \u2014 +MapFamily union, +DensityConfig\n- `packages/map-core/src/manifest-compiler.ts` \u2014 +compileDensity(), +case in switch\n- `packages/map-core/src/__tests__/manifest-compiler.test.ts` \u2014 +5 test cases\n- `apps/web/lib/ai/example-bank.ts` \u2014 +1 example\n- `apps/web/components/family-meta.tsx` \u2014 +density entry in FAMILY_META, +thumbnail SVG\n- `apps/web/lib/ai/quality-scorer.ts` \u2014 +density recognition (if needed)\n\n### Verified Unchanged\n\n- `packages/map-core/src/arc-interpolator.ts` \u2014 Not needed for contours\n- `apps/web/app/api/ai/generate-map/route.ts` \u2014 No changes (uses existing validator flow)\n- Layout, pages, hooks \u2014 No changes\n\n---\n\n## Verification Gate (Post-Implementation)\n\n```bash\npnpm typecheck    # Verify MapFamily union and DensityConfig types\npnpm test         # Run all Vitest units, including new density tests\npnpm build        # Build all packages without errors\npnpm eval         # Offline eval on fixtures (if densitycontour fixtures added)\n```\n\n---\n\n## Open Questions / Future Phases\n\n1. **Grid resolution:** Should it be configurable via DensityConfig, or fixed? Recommendation: fixed initially (30\u00d730), add config field in Phase 2.\n\n2. **Kernel shape:** Circular Gaussian kernel is simplest; exponential is smoother. Recommend Gaussian for MVP.\n\n3. **Isoline vs. isoband:** This plan implements isobands (filled contours). True isolines (line-only contours) could be Phase 2 variant or a separate family (\"isoline\").\n\n4. **Deck.gl integration:** Density is MapLibre-based (vector rendering). If deck.gl 3D density heatmaps are desired, that's a separate Phase 3 family.\n\n5. **Performance at scale:** Algorithm handles 100\u201310k points well. For 100k+ points, consider clustering first or using a pre-computed raster source.\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": false, "evidence": "Uses Phase 1-6 structure, no What/Approach/Not Doing sections"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "File changes matrix included"}, {"text": "Every task has verification step", "passed": false, "evidence": "Single verification gate at end, not per-task"}, {"text": "Edge cases identified", "passed": false, "evidence": "Open questions but no explicit edge case handling"}, {"text": "Reads existing code first", "passed": true, "evidence": "Analyzed existing family pattern across 7 steps"}, {"text": "Under 250 lines", "passed": false, "evidence": "311 lines"}], "summary": {"passed": 2, "failed": 4, "total": 6, "pass_rate": 0.33}}}, {"id": "eval-3-color-refactor-with_skill", "prompt": "Color scheme consolidation plan", "eval_id": 3, "outputs": [{"name": "plan.md", "type": "text", "content": "# Plan: Centralize Color Scheme Classification\n\n## What We're Building\n\nThe application currently defines color scheme classifications (sequential, diverging, categorical) in three separate places, creating a single source of truth problem. When the color palette list changes or scheme classifications need updating, changes must be made in multiple files. We're consolidating these definitions into one canonical location in `data-models/src/palettes.ts`, making it the authoritative source for all color scheme metadata.\n\n## Current State\n\n**Files with duplication:**\n- `packages/data-models/src/palettes.ts` \u2014 Defines `COLOR_PALETTES` and `CATEGORICAL_SCHEMES` (line 171)\n- `apps/web/lib/ai/validators/cartographic.ts` \u2014 Defines `CATEGORICAL_SCHEMES` (line 4) and hardcoded `divergingSchemes` array (line 104)\n- `apps/web/lib/ai/quality-scorer.ts` \u2014 Defines `SEQUENTIAL_SCHEMES`, `DIVERGING_SCHEMES`, `CATEGORICAL_SCHEMES` (lines 27-38)\n\nAll three sets of constants are identical or nearly identical, creating maintenance risk when schemes are added/removed or classifications change.\n\n## Approach\n\nMove all scheme classification constants to `packages/data-models/src/palettes.ts` as the single source of truth, then export them. This leverages the fact that `data-models` already owns `COLOR_PALETTES` and the `ColorScheme` type, making it the logical home for all scheme metadata. Both consuming files will import from this central location, eliminating duplication while keeping the implementation close to the data it describes.\n\n## Tasks\n\n### 1. Add scheme classification constants to `palettes.ts`\n**Files:** `packages/data-models/src/palettes.ts`\n\n**What:** Add three new exported constants after the `COLOR_PALETTES` definition:\n- `export const SEQUENTIAL_SCHEMES: Set<ColorScheme> = new Set([...])` \u2014 schemes with single or multi-hue progression\n- `export const DIVERGING_SCHEMES: Set<ColorScheme> = new Set([...])` \u2014 schemes with midpoint and divergence\n- `export const CATEGORICAL_SCHEMES: Set<ColorScheme> = new Set([...])` \u2014 schemes for distinct categories (no ordering)\n\nUse the exact scheme names from the current definitions in quality-scorer.ts:\n- Sequential: `blues`, `greens`, `reds`, `oranges`, `purples`, `greys`, `viridis`, `magma`, `plasma`, `inferno`, `cividis`\n- Diverging: `blue-red`, `blue-yellow-red`, `spectral`\n- Categorical: `set1`, `set2`, `paired`\n\n**Watch out:** Ensure the scheme names exactly match those in `COLOR_PALETTES` keys. The new constants must remain `Set<ColorScheme>` (not arrays or objects) to preserve type safety and match the type of constants being replaced.\n\n**Verify:** `pnpm typecheck` \u2014 all types must resolve correctly and the set membership must align with ColorScheme type.\n\n### 2. Export scheme classifications from `data-models/index.ts`\n**Files:** `packages/data-models/src/index.ts`\n\n**What:** Add three new export statements to the barrel export:\n```typescript\nexport { SEQUENTIAL_SCHEMES, DIVERGING_SCHEMES, CATEGORICAL_SCHEMES } from \"./palettes\";\n```\n\nThese should be grouped with the existing `COLOR_PALETTES` and `getColors` export (currently line 73).\n\n**Watch out:** Ensure exports are in alphabetical order or grouped logically by functionality. Don't break the existing export structure.\n\n**Verify:** Run `pnpm typecheck` to confirm exports are discoverable and correct.\n\n### 3. Update `cartographic.ts` to use centralized classifications\n**Files:** `apps/web/lib/ai/validators/cartographic.ts`\n\n**What:**\n- Remove the local `CATEGORICAL_SCHEMES` definition (line 4)\n- Add import: `import { CATEGORICAL_SCHEMES } from \"@atlas/data-models\";` at the top\n- Delete the hardcoded `divergingSchemes` array (line 104)\n- Replace the inline array usage at line 104-108 with `DIVERGING_SCHEMES` imported from data-models\n- Add `DIVERGING_SCHEMES` to the import statement\n\n**Watch out:** The function `validateCartographic()` checks if schemes are in the `divergingSchemes` array. After this change, it will use `DIVERGING_SCHEMES.has(scheme)` (Set membership test). Verify the logic is equivalent \u2014 Set.has() is the correct replacement for array.includes().\n\n**Verify:**\n- `pnpm typecheck`\n- `cd apps/web && npx vitest run lib/ai/__tests__/cartographic.test.ts` (if such tests exist)\n- Full test suite: `pnpm test`\n\n### 4. Update `quality-scorer.ts` to use centralized classifications\n**Files:** `apps/web/lib/ai/quality-scorer.ts`\n\n**What:**\n- Remove the local definitions of `SEQUENTIAL_SCHEMES`, `DIVERGING_SCHEMES`, and `CATEGORICAL_SCHEMES` (lines 27-38)\n- Add import: `import { SEQUENTIAL_SCHEMES, DIVERGING_SCHEMES, CATEGORICAL_SCHEMES } from \"@atlas/data-models\";`\n- All existing `.has(scheme)` calls remain unchanged since both old and new use Sets\n\n**Watch out:** The file uses all three scheme sets. Ensure the import captures all three and no local constant definitions remain. The logic using `.has()` method is already correct \u2014 no changes needed to call sites.\n\n**Verify:**\n- `pnpm typecheck`\n- `cd apps/web && npx vitest run lib/ai/__tests__/quality-scorer.test.ts` (if tests exist)\n- Full test suite: `pnpm test`\n\n## Edge Cases\n\n- **Backward compatibility:** Since these are internal constants not part of the public API (not exported from app bundles), no consumer code outside these two files depends on them. No breaking changes.\n- **Scheme additions:** Any future color scheme added to `COLOR_PALETTES` must also be classified in one of the three Sets. This is now enforced in one place.\n- **Type safety:** `ColorScheme` union type (in manifest.ts) must remain synchronized with the keys in `COLOR_PALETTES`. This was already a manual concern; the refactor doesn't change that.\n- **Test fixtures:** If tests hardcode scheme lists, they must be checked and may need updates if they mock these constants.\n\n## What We're NOT Doing\n\n- We're not reorganizing `COLOR_PALETTES` itself \u2014 it stays in `palettes.ts` in its current form.\n- We're not creating a new utility module or \"color config\" file \u2014 we're consolidating into the existing home.\n- We're not modifying the manifest types or `getColors()` function.\n- We're not changing any validation or scoring logic \u2014 only where the scheme sets are defined.\n- We're not touching editorial tokens or UI themes (those are separate concerns).\n\n## Verify Everything Works\n\nAfter all four tasks complete:\n\n1. **Type checking:** `pnpm typecheck` \u2014 must pass with no errors.\n2. **Unit tests:** `pnpm test` \u2014 run full suite, especially:\n   - Any tests in `packages/data-models/src/__tests__/colors.test.ts`\n   - `apps/web/lib/ai/__tests__/quality-scorer.test.ts` (if exists)\n   - `apps/web/lib/ai/__tests__/cartographic.test.ts` (if exists)\n3. **Offline eval:** `pnpm eval` \u2014 must pass with same scores as before (manifest compilation should be unchanged).\n4. **Code review:** Verify no other files import `SEQUENTIAL_SCHEMES`, `DIVERGING_SCHEMES`, or `CATEGORICAL_SCHEMES` from cartographic.ts or quality-scorer.ts. Use:\n   ```bash\n   grep -r \"from.*cartographic.*CATEGORICAL_SCHEMES\\|from.*quality-scorer.*SEQUENTIAL\" /sessions/charming-happy-rubin/mnt/atlas --include=\"*.ts\" --include=\"*.tsx\"\n   ```\n   Should return no results.\n5. **Bundle size:** Run `pnpm build` and confirm no unintended size changes (constants moved to shared module may slightly reduce total bundle size due to deduplication).\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": true, "evidence": "All sections present"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "All 4 tasks have exact file paths with line numbers"}, {"text": "Every task has verification step", "passed": true, "evidence": "Each task has Verify: section"}, {"text": "Edge cases identified", "passed": true, "evidence": "4 edge cases + backward compatibility analysis"}, {"text": "Reads existing code first", "passed": true, "evidence": "Cites exact lines in palettes.ts, cartographic.ts, quality-scorer.ts"}, {"text": "Under 200 lines", "passed": true, "evidence": "115 lines"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}}}, {"id": "eval-3-color-refactor-without_skill", "prompt": "Color scheme consolidation plan", "eval_id": 3, "outputs": [{"name": "plan.md", "type": "text", "content": "# F\u00e4rgschema-arkitektur refactor\n\n## Problem\n\nF\u00e4rgschema-klassificeringar \u00e4r duplicerade p\u00e5 tre st\u00e4llen med samma definitioner:\n\n1. **`packages/data-models/src/palettes.ts`** \u2014 K\u00e4lla till sanning f\u00f6r `COLOR_PALETTES` + `CATEGORICAL_SCHEMES`\n2. **`apps/web/lib/ai/validators/cartographic.ts`** \u2014 Duplicerar `CATEGORICAL_SCHEMES`, anv\u00e4nder det f\u00f6r validering\n3. **`apps/web/lib/ai/quality-scorer.ts`** \u2014 Duplicerar `SEQUENTIAL_SCHEMES`, `DIVERGING_SCHEMES`, `CATEGORICAL_SCHEMES`, anv\u00e4nder f\u00f6r scoring\n\nDessutom finns tv\u00e5 andra duplication-hazards:\n- **Geometri-familjrer** definieras bara i `quality-scorer.ts`: `POINT_FAMILIES`, `POLYGON_FAMILIES`, `LINE_FAMILIES`\n- Samma klassificeringslogik (kategorisk vs sekventiell) repliceras i b\u00e5de `cartographic.ts` (funktion `isCategoricalChoropleth`) och `quality-scorer.ts` (samma funktion, n\u00e4stan identisk implementation)\n\n## L\u00f6sning: Unifierad k\u00e4lla\n\n### Fase 1: Expandera `palettes.ts` med klassificeringsdata\n\nFlytta dessa fr\u00e5n `quality-scorer.ts` och `cartographic.ts` till `packages/data-models/src/palettes.ts`:\n\n```typescript\n// Scheme classifications\nexport const SEQUENTIAL_SCHEMES = new Set<ColorScheme>([\n  \"blues\", \"greens\", \"reds\", \"oranges\", \"purples\", \"greys\",\n  \"viridis\", \"magma\", \"plasma\", \"inferno\", \"cividis\",\n]);\n\nexport const DIVERGING_SCHEMES = new Set<ColorScheme>([\n  \"blue-red\", \"blue-yellow-red\", \"spectral\",\n]);\n\nexport const CATEGORICAL_SCHEMES = new Set<ColorScheme>([\n  \"set1\", \"set2\", \"paired\",\n]);\n\n// Family-to-geometry mappings\nexport const POINT_FAMILIES = new Set<MapFamily>([\n  \"point\", \"cluster\", \"heatmap\", \"proportional-symbol\", \"timeline\",\n  \"hexbin\", \"hexbin-3d\", \"screen-grid\",\n]);\n\nexport const POLYGON_FAMILIES = new Set<MapFamily>([\n  \"choropleth\", \"isochrone\", \"extrusion\", \"timeline\",\n]);\n\nexport const LINE_FAMILIES = new Set<MapFamily>([\n  \"flow\", \"animated-route\", \"trip\",\n]);\n\n// Utility for scheme classification\nexport function getSchemeType(scheme: ColorScheme): \"sequential\" | \"diverging\" | \"categorical\" {\n  if (SEQUENTIAL_SCHEMES.has(scheme)) return \"sequential\";\n  if (DIVERGING_SCHEMES.has(scheme)) return \"diverging\";\n  if (CATEGORICAL_SCHEMES.has(scheme)) return \"categorical\";\n  return \"sequential\"; // fallback\n}\n\n// Shared logic: detect categorical choro\nexport function isCategoricalChoropleth(layer: {\n  style?: { mapFamily?: MapFamily; color?: { scheme?: ColorScheme }; classification?: { method?: string } };\n  legend?: { type?: string };\n}): boolean {\n  if (layer.style?.mapFamily !== \"choropleth\") return false;\n  if (layer.legend?.type === \"categorical\") return true;\n  if (layer.style?.classification?.method === \"categorical\") return true;\n  const scheme = layer.style?.color?.scheme;\n  if (\n    layer.style?.classification?.method === \"manual\" &&\n    scheme &&\n    CATEGORICAL_SCHEMES.has(scheme)\n  ) {\n    return true;\n  }\n  return false;\n}\n```\n\n### Fase 2: Uppdatera imports och ta bort duplicering\n\n**`cartographic.ts`:**\n- Importera `CATEGORICAL_SCHEMES`, `isCategoricalChoropleth` fr\u00e5n `@atlas/data-models`\n- Ta bort lokala `const CATEGORICAL_SCHEMES`\n- Ta bort lokala `isCategoricalChoropleth` funktion\n\n**`quality-scorer.ts`:**\n- Importera `SEQUENTIAL_SCHEMES`, `DIVERGING_SCHEMES`, `CATEGORICAL_SCHEMES`, `POINT_FAMILIES`, `POLYGON_FAMILIES`, `LINE_FAMILIES`, `isCategoricalChoropleth` fr\u00e5n `@atlas/data-models`\n- Ta bort alla lokala Set-definitioner\n- Ta bort lokala `isCategoricalChoropleth` funktion\n\n### Fase 3: Uppdatera exports\n\n**`packages/data-models/src/index.ts`:**\n```typescript\nexport {\n  COLOR_PALETTES,\n  getColors,\n  SEQUENTIAL_SCHEMES,\n  DIVERGING_SCHEMES,\n  CATEGORICAL_SCHEMES,\n  POINT_FAMILIES,\n  POLYGON_FAMILIES,\n  LINE_FAMILIES,\n  getSchemeType,\n  isCategoricalChoropleth,\n} from \"./palettes\";\n```\n\n### Fase 4: Verification\n\n1. **Type-check:** `pnpm typecheck` \u2014 s\u00e4mtliga imports m\u00e5ste resolva\n2. **Unit tests:**\n   - `cd apps/web && npx vitest run lib/ai/__tests__/quality-scorer.test.ts`\n   - `cd apps/web && npx vitest run lib/ai/validators/__tests__/cartographic.test.ts`\n   - Befintliga tests ska passa \u2014 bara imports har \u00e4ndrats, inte logik\n3. **End-to-end:** `pnpm e2e` \u2014 s\u00e4kerst\u00e4ll att map generation och scoring fortfarande fungerar\n4. **Eval:** `pnpm eval` \u2014 offline scoring av fixtures ska matcha tidigare resultat\n\n## Arkitektur efter refactor\n\n```\ndata-models/palettes.ts\n\u251c\u2500 COLOR_PALETTES (hex arrays, 17 schemes)\n\u251c\u2500 SEQUENTIAL_SCHEMES, DIVERGING_SCHEMES, CATEGORICAL_SCHEMES (Set classifications)\n\u251c\u2500 POINT_FAMILIES, POLYGON_FAMILIES, LINE_FAMILIES (geometry mappings)\n\u251c\u2500 getColors(scheme, count) \u2192 string[] (sampling logic)\n\u251c\u2500 getSchemeType(scheme) \u2192 \"sequential\" | \"diverging\" | \"categorical\"\n\u2514\u2500 isCategoricalChoropleth(layer) \u2192 boolean (shared logic)\n\ncartographic.ts\n\u251c\u2500 Imports: CATEGORICAL_SCHEMES, isCategoricalChoropleth from @atlas/data-models\n\u2514\u2500 validateCartographic(manifest, profile) \u2014 anv\u00e4nder imported definitions\n\nquality-scorer.ts\n\u251c\u2500 Imports: All Sets + isCategoricalChoropleth from @atlas/data-models\n\u2514\u2500 scoreManifest(manifest, profile) \u2014 anv\u00e4nder imported definitions\n```\n\n## F\u00f6rdelar\n\n- **Single source of truth:** F\u00e4rgschema och familjeklassificeringar lever p\u00e5 ett st\u00e4lle\n- **Maintainability:** Framtida uppdateringar (t.ex. nya schemer) kr\u00e4ver bara en \u00e4ndring\n- **Testability:** Klassificeringslogik kan testas isolerat fr\u00e5n validators/scorers\n- **Discoverability:** Data-models exporterar klassificeringssets explicit, g\u00f6r dem rimliga att importera\n- **No behavioral change:** Befintlig logik beh\u00e5lls exakt \u2014 enbart omstrukturering\n\n## Risk & Mitigering\n\n| Risk | Mitigering |\n|------|-----------|\n| Import-fel fr\u00e5n apps/web \u2192 data-models | Run typecheck + test suite efter \u00e4ndringar |\n| Circular dependency | data-models har inga externals, risk \u00e4r l\u00e5g |\n| Tests bryter | Run focused tests (quality-scorer.test.ts, cartographic.test.ts) f\u00f6rst |\n| Eval-scoring skiljer sig | `pnpm eval` m\u00e5ste ha 100% match p\u00e5 befintliga fixtures |\n\n## Implementeringsordning\n\n1. Expandera `palettes.ts` med ny klassificeringslogik (Set definitions + utility functions)\n2. Uppdatera `data-models/index.ts` exports\n3. Uppdatera `cartographic.ts` imports + ta bort duplicerad kod\n4. Uppdatera `quality-scorer.ts` imports + ta bort duplicerad kod\n5. Type-check: `pnpm typecheck`\n6. Test-suite: `pnpm test` (fokusera p\u00e5 quality-scorer + cartographic tester)\n7. E2E: `pnpm e2e`\n8. Offline eval: `pnpm eval`\n"}], "grading": {"expectations": [{"text": "Plan follows template", "passed": false, "evidence": "Custom structure with Fynden/L\u00f6sningen headers"}, {"text": "Every task has concrete file paths", "passed": true, "evidence": "File paths with line numbers"}, {"text": "Every task has verification step", "passed": false, "evidence": "No per-task verification"}, {"text": "Edge cases identified", "passed": false, "evidence": "No explicit edge cases section"}, {"text": "Reads existing code first", "passed": true, "evidence": "Correctly maps all 3 duplication sites"}, {"text": "Under 200 lines", "passed": true, "evidence": "164 lines"}], "summary": {"passed": 3, "failed": 3, "total": 6, "pass_rate": 0.5}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "pre-build", "skill_path": "/sessions/charming-happy-rubin/pre-build", "executor_model": "claude-opus-4-6", "timestamp": "2026-04-13T14:00:00Z", "evals_run": [1, 2, 3], "runs_per_configuration": 1}, "runs": [{"eval_id": 1, "eval_name": "save-maps-plan", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 74.6, "tokens": 73098, "tool_calls": 22, "errors": 0}, "expectations": [{"text": "Follows template", "passed": true, "evidence": "All sections present"}, {"text": "Concrete file paths", "passed": true, "evidence": "All tasks have paths"}, {"text": "Per-task verification", "passed": true, "evidence": "Every task has Verify:"}, {"text": "Edge cases", "passed": true, "evidence": "8 edge cases listed"}, {"text": "Reads existing code", "passed": true, "evidence": "Found existing scaffold"}, {"text": "Concise (<200 lines)", "passed": true, "evidence": "162 lines"}]}, {"eval_id": 1, "eval_name": "save-maps-plan", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.5, "passed": 3, "failed": 3, "total": 6, "time_seconds": 109.8, "tokens": 81986, "tool_calls": 30, "errors": 0}, "expectations": [{"text": "Follows template", "passed": false, "evidence": "Custom structure"}, {"text": "Concrete file paths", "passed": true, "evidence": "Paths included"}, {"text": "Per-task verification", "passed": false, "evidence": "End-only verification"}, {"text": "Edge cases", "passed": true, "evidence": "Risk table present"}, {"text": "Reads existing code", "passed": true, "evidence": "Found existing routes"}, {"text": "Concise (<200 lines)", "passed": false, "evidence": "623 lines"}]}, {"eval_id": 2, "eval_name": "density-family-plan", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 85.6, "tokens": 78927, "tool_calls": 16, "errors": 0}, "expectations": [{"text": "Follows template", "passed": true, "evidence": "All sections present"}, {"text": "Concrete file paths", "passed": true, "evidence": "9 tasks with paths"}, {"text": "Per-task verification", "passed": true, "evidence": "Every task has Verify:"}, {"text": "Edge cases", "passed": true, "evidence": "Multiple cases handled"}, {"text": "Reads existing code", "passed": true, "evidence": "Analyzed heatmap pattern"}, {"text": "Concise (<250 lines)", "passed": true, "evidence": "229 lines"}]}, {"eval_id": 2, "eval_name": "density-family-plan", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.33, "passed": 2, "failed": 4, "total": 6, "time_seconds": 99.2, "tokens": 76293, "tool_calls": 26, "errors": 0}, "expectations": [{"text": "Follows template", "passed": false, "evidence": "Phase 1-6 custom format"}, {"text": "Concrete file paths", "passed": true, "evidence": "File matrix included"}, {"text": "Per-task verification", "passed": false, "evidence": "End-only gate"}, {"text": "Edge cases", "passed": false, "evidence": "Open questions, no handling"}, {"text": "Reads existing code", "passed": true, "evidence": "Analyzed family pattern"}, {"text": "Concise (<250 lines)", "passed": false, "evidence": "311 lines"}]}, {"eval_id": 3, "eval_name": "color-refactor-plan", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 57.9, "tokens": 64591, "tool_calls": 16, "errors": 0}, "expectations": [{"text": "Follows template", "passed": true, "evidence": "All sections present"}, {"text": "Concrete file paths", "passed": true, "evidence": "Exact line numbers"}, {"text": "Per-task verification", "passed": true, "evidence": "Every task has Verify:"}, {"text": "Edge cases", "passed": true, "evidence": "4 cases + compat analysis"}, {"text": "Reads existing code", "passed": true, "evidence": "Cites exact lines"}, {"text": "Concise (<200 lines)", "passed": true, "evidence": "115 lines"}]}, {"eval_id": 3, "eval_name": "color-refactor-plan", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.5, "passed": 3, "failed": 3, "total": 6, "time_seconds": 65.1, "tokens": 62956, "tool_calls": 16, "errors": 0}, "expectations": [{"text": "Follows template", "passed": false, "evidence": "Custom structure"}, {"text": "Concrete file paths", "passed": true, "evidence": "Paths with line numbers"}, {"text": "Per-task verification", "passed": false, "evidence": "No per-task verify"}, {"text": "Edge cases", "passed": false, "evidence": "No edge cases section"}, {"text": "Reads existing code", "passed": true, "evidence": "Maps duplication sites"}, {"text": "Concise (<200 lines)", "passed": true, "evidence": "164 lines"}]}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 72.7, "stddev": 11.4, "min": 57.9, "max": 85.6}, "tokens": {"mean": 72205, "stddev": 5900, "min": 64591, "max": 78927}}, "without_skill": {"pass_rate": {"mean": 0.44, "stddev": 0.08, "min": 0.33, "max": 0.5}, "time_seconds": {"mean": 91.4, "stddev": 19.4, "min": 65.1, "max": 109.8}, "tokens": {"mean": 73745, "stddev": 8000, "min": 62956, "max": 81986}}, "delta": {"pass_rate": "+0.56", "time_seconds": "-18.7", "tokens": "-1540"}}, "notes": ["Skill achieves 100% pass rate across all 3 evals vs 44% baseline (+56%)", "Skill plans are faster AND more thorough \u2014 73s avg vs 91s baseline", "Biggest skill advantage: per-task verification steps and consistent structure", "Baseline tends to produce longer, less actionable plans (623 lines for eval-1!)", "Both configs read existing code well \u2014 the skill's value is in output structure, not research quality"]}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

@@ -283,45 +283,62 @@ export default function MapPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
+  // ── Save draft to Supabase (shared by autoSave, periodic, reconnect) ──
+  const saveDraft = useCallback(
+    async (
+      m: MapManifest,
+      extras?: { dataUrl?: string; includeChatHistory?: boolean },
+    ) => {
+      if (!id) return;
+      const body: Record<string, unknown> = {
+        manifest: m as unknown as Record<string, unknown>,
+        title: m.title,
+      };
+      if (extras?.dataUrl) body.geojson_url = extras.dataUrl;
+      if (extras?.includeChatHistory) {
+        body.chat_history = chatMessagesRef.current
+          .filter((msg) => msg.content)
+          .map((msg) => ({ role: msg.role, content: msg.content }));
+      }
+      try {
+        const res = await fetch(`/api/maps/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.status === 401) {
+          showToast("Sessionen har gått ut — logga in igen", "error");
+          lastSaveFailedRef.current = true;
+        } else if (!res.ok) {
+          showToast("Kunde inte spara", "error");
+          lastSaveFailedRef.current = true;
+        } else {
+          isDirtyRef.current = false;
+          try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
+          if (lastSaveFailedRef.current) {
+            showToast("Sparad", "success");
+            lastSaveFailedRef.current = false;
+          }
+        }
+      } catch {
+        showToast("Kunde inte spara", "error");
+        lastSaveFailedRef.current = true;
+      }
+    },
+    [id, showToast],
+  );
+
   // ── Reconnect: sync localStorage draft to Supabase ────────
   useEffect(() => {
     if (!id) return;
     const handleOnline = () => {
       if (isDirtyRef.current && manifestRef.current) {
-        const m = manifestRef.current;
-        fetch(`/api/maps/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            manifest: m as unknown as Record<string, unknown>,
-            title: m.title,
-          }),
-        })
-          .then((res) => {
-            if (res.status === 401) {
-              showToast("Sessionen har gått ut — logga in igen", "error");
-              lastSaveFailedRef.current = true;
-            } else if (!res.ok) {
-              showToast("Kunde inte spara", "error");
-              lastSaveFailedRef.current = true;
-            } else {
-              isDirtyRef.current = false;
-              try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
-              if (lastSaveFailedRef.current) {
-                showToast("Sparad", "success");
-                lastSaveFailedRef.current = false;
-              }
-            }
-          })
-          .catch(() => {
-            showToast("Kunde inte spara", "error");
-            lastSaveFailedRef.current = true;
-          });
+        void saveDraft(manifestRef.current);
       }
     };
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
-  }, [id]);
+  }, [id, saveDraft]);
 
   // ── Save version (fire-and-forget) ─────────────────────────
   const saveVersion = useCallback(
@@ -361,79 +378,21 @@ export default function MapPage() {
     } catch { /* localStorage might be full or unavailable */ }
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/maps/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            manifest: m as unknown as Record<string, unknown>,
-            title: m.title,
-            ...(dataUrl ? { geojson_url: dataUrl } : {}),
-            chat_history: chatMessagesRef.current
-              .filter((msg) => msg.content)
-              .map((msg) => ({ role: msg.role, content: msg.content })),
-          }),
-        });
-        if (res.status === 401) {
-          showToast("Sessionen har gått ut — logga in igen", "error");
-          lastSaveFailedRef.current = true;
-        } else if (!res.ok) {
-          showToast("Kunde inte spara", "error");
-          lastSaveFailedRef.current = true;
-        } else {
-          isDirtyRef.current = false;
-          try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
-          if (lastSaveFailedRef.current) {
-            showToast("Sparad", "success");
-            lastSaveFailedRef.current = false;
-          }
-        }
-      } catch {
-        showToast("Kunde inte spara", "error");
-        lastSaveFailedRef.current = true;
-      }
+    saveTimerRef.current = setTimeout(() => {
+      void saveDraft(m, { dataUrl, includeChatHistory: true });
     }, 1000);
-  }, [id, showToast]);
+  }, [id, saveDraft]);
 
   // ── Periodic auto-save (30s) ────────────────────────────────
   useEffect(() => {
     if (!id) return;
     const interval = setInterval(() => {
       if (isDirtyRef.current && manifestRef.current) {
-        const m = manifestRef.current;
-        fetch(`/api/maps/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            manifest: m as unknown as Record<string, unknown>,
-            title: m.title,
-          }),
-        })
-          .then((res) => {
-            if (res.status === 401) {
-              showToast("Sessionen har gått ut — logga in igen", "error");
-              lastSaveFailedRef.current = true;
-            } else if (!res.ok) {
-              showToast("Kunde inte spara", "error");
-              lastSaveFailedRef.current = true;
-            } else {
-              isDirtyRef.current = false;
-              try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
-              if (lastSaveFailedRef.current) {
-                showToast("Sparad", "success");
-                lastSaveFailedRef.current = false;
-              }
-            }
-          })
-          .catch(() => {
-            showToast("Kunde inte spara", "error");
-            lastSaveFailedRef.current = true;
-          });
+        void saveDraft(manifestRef.current);
       }
     }, 30_000);
     return () => clearInterval(interval);
-  }, [id, showToast]);
+  }, [id, saveDraft]);
 
   const [mapWarnings, setMapWarnings] = useState<string[]>([]);
 
