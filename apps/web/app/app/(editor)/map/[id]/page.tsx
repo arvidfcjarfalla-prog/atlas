@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MapShell, CoordinateWidget, GeocoderControl, MeasureControl, CompareView } from "@atlas/map-core";
 import type { CompiledLegendItem, TimelinePlaybackState, ChartOverlayMetadata } from "@atlas/map-core";
@@ -12,6 +12,9 @@ import { MapContent } from "@/components/MapContent";
 import { LegendOverlay } from "@/components/LegendOverlay";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useAgentChat, type AgentMessage } from "@/lib/hooks/use-agent-chat";
+import { useMapLoader } from "@/lib/hooks/use-map-loader";
+import { useMapAutosave } from "@/lib/hooks/use-map-autosave";
+import { useManifestHistory } from "@/lib/hooks/use-manifest-history";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Toast } from "@/components/Toast";
 import type { DatasetProfile } from "@/lib/ai/types";
@@ -25,7 +28,6 @@ import { ZoomControls } from "@/components/ZoomControls";
 import { ShareModal } from "@/components/ShareModal";
 import { exportPNG, exportGeoJSON, exportPDF, exportSVG } from "@/lib/utils/export";
 import { KeyboardShortcutsOverlay } from "@/components/KeyboardShortcutsOverlay";
-import { log, errorMessage } from "@/lib/logger";
 import { PILL_STYLE } from "../_lib/pill-style";
 import { ViewsBar, type SavedView } from "../_lib/ViewsBar";
 import { HeatmapControls } from "../_lib/HeatmapControls";
@@ -43,231 +45,57 @@ export default function MapPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  const [mapRow, setMapRow] = useState<MapRow | null>(null);
-  const [manifest, setManifest] = useState<MapManifest | null>(null);
-  const [geojsonData, setGeojsonData] = useState<GeoJSON.FeatureCollection | null>(null);
+  const {
+    mapRow, setMapRow,
+    manifest, setManifest,
+    geojsonData, setGeojsonData,
+    dataProfile, setDataProfile,
+    initialChatMessages,
+    compareManifest,
+    draftRestore, setDraftRestore,
+    legacyDataMissing,
+    loading,
+    notFound,
+  } = useMapLoader(id, authLoading);
+
+  // View-only state (not persisted, not shared with hooks)
   const [legendItems, setLegendItems] = useState<CompiledLegendItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [legacyDataMissing, setLegacyDataMissing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const handleSaveView = useCallback((view: SavedView) => setSavedViews((prev) => [...prev, view]), []);
   const [mode, setMode] = useState<"interactive" | "presentation" | "compare">("interactive");
-  const [compareManifest, setCompareManifest] = useState<MapManifest | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-
-  // Creative rendering state
   const [timelineState, setTimelineState] = useState<TimelinePlaybackState | null>(null);
   const [chartOverlayMeta, setChartOverlayMeta] = useState<ChartOverlayMetadata | null>(null);
-
-  // Chat state (only for owner)
   const [chatInput, setChatInput] = useState("");
-  const [manifestHistory, setManifestHistory] = useState<MapManifest[]>([]);
-  const [redoStack, setRedoStack] = useState<MapManifest[]>([]);
-  const [dataProfile, setDataProfile] = useState<DatasetProfile | null>(null);
-  const [initialChatMessages, setInitialChatMessages] = useState<AgentMessage[] | undefined>(undefined);
+  const [mapWarnings, setMapWarnings] = useState<string[]>([]);
+
   const { toast, show: showToast } = useToast();
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isDirtyRef = useRef(false);
-  const lastSaveFailedRef = useRef(false);
-  const manifestRef = useRef<MapManifest | null>(null);
-  manifestRef.current = manifest;
   const chatMessagesRef = useRef<AgentMessage[]>([]);
-  const [draftRestore, setDraftRestore] = useState<{
-    manifest: MapManifest;
-    geojsonUrl: string | null;
-    timestamp: number;
-  } | null>(null);
+
+  const { autoSave, saveVersion } = useMapAutosave({
+    id,
+    manifest,
+    chatMessagesRef,
+    showToast,
+  });
+
+  const { canUndo, pushHistory, handleUndo, handleRedo } = useManifestHistory({
+    manifest,
+    setManifest,
+    autoSave,
+  });
 
   const isOwner = user && mapRow && mapRow.user_id === user.id;
 
-  // ── Load map ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!id || authLoading) return;
-    async function load() {
-      const res = await fetch(`/api/maps/${id}`);
-      if (!res.ok) { setNotFound(true); setLoading(false); return; }
-      const json = await res.json();
-      const row: MapRow = json.map;
-      setMapRow(row);
-      const m = row.manifest as unknown as MapManifest;
-      setManifest(m);
-      setCompareManifest(structuredClone(m));
-
-      // Restore chat history
-      if (Array.isArray(row.chat_history) && row.chat_history.length > 0) {
-        setInitialChatMessages(row.chat_history as unknown as AgentMessage[]);
-      }
-
-      // Check for localStorage draft newer than DB
-      try {
-        const draftRaw = localStorage.getItem(`atlas:draft:${id}`);
-        if (draftRaw) {
-          const draft = JSON.parse(draftRaw);
-          const dbUpdated = new Date(row.updated_at).getTime();
-          if (draft.timestamp > dbUpdated && draft.manifest) {
-            setDraftRestore(draft);
-          } else {
-            localStorage.removeItem(`atlas:draft:${id}`);
-          }
-        }
-      } catch { /* ignore parse errors */ }
-
-      // Prefer durable artifact, fallback to legacy cache URL
-      const dataUrl = row.artifact_id
-        ? `/api/datasets/${row.artifact_id}/geojson`
-        : row.geojson_url ?? m.layers[0]?.sourceUrl;
-      let dataLoaded = false;
-      if (dataUrl) {
-        const geo = await fetchGeoJSON(dataUrl);
-        if (geo) {
-          setGeojsonData(geo);
-          setDataProfile(profileDataset(geo));
-          dataLoaded = true;
-        }
-      }
-      // Legacy maps without artifact: data is gone when cache expires
-      if (!dataLoaded && row.data_status === "legacy") {
-        setLegacyDataMissing(true);
-      }
-      setLoading(false);
-    }
-    load();
-  }, [id, authLoading]);
-
-  // ── Warn on navigation if dirty ────────────────────────────
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirtyRef.current) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
-
-  // ── Save draft to Supabase (shared by autoSave, periodic, reconnect) ──
-  const saveDraft = useCallback(
-    async (
-      m: MapManifest,
-      extras?: { dataUrl?: string; includeChatHistory?: boolean },
-    ) => {
-      if (!id) return;
-      const body: Record<string, unknown> = {
-        manifest: m as unknown as Record<string, unknown>,
-        title: m.title,
-      };
-      if (extras?.dataUrl) body.geojson_url = extras.dataUrl;
-      if (extras?.includeChatHistory) {
-        body.chat_history = chatMessagesRef.current
-          .filter((msg) => msg.content)
-          .map((msg) => ({ role: msg.role, content: msg.content }));
-      }
-      try {
-        const res = await fetch(`/api/maps/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (res.status === 401) {
-          showToast("Sessionen har gått ut — logga in igen", "error");
-          lastSaveFailedRef.current = true;
-        } else if (!res.ok) {
-          showToast("Kunde inte spara", "error");
-          lastSaveFailedRef.current = true;
-        } else {
-          isDirtyRef.current = false;
-          try { localStorage.removeItem(`atlas:draft:${id}`); } catch {}
-          if (lastSaveFailedRef.current) {
-            showToast("Sparad", "success");
-            lastSaveFailedRef.current = false;
-          }
-        }
-      } catch {
-        showToast("Kunde inte spara", "error");
-        lastSaveFailedRef.current = true;
-      }
-    },
-    [id, showToast],
-  );
-
-  // ── Reconnect: sync localStorage draft to Supabase ────────
-  useEffect(() => {
-    if (!id) return;
-    const handleOnline = () => {
-      if (isDirtyRef.current && manifestRef.current) {
-        void saveDraft(manifestRef.current);
-      }
-    };
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, [id, saveDraft]);
-
-  // ── Save version (fire-and-forget) ─────────────────────────
-  const saveVersion = useCallback(
-    (m: MapManifest, prompt?: string) => {
-      if (!id) return;
-      fetch(`/api/maps/${id}/versions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          manifest: m as unknown as Record<string, unknown>,
-          ...(prompt ? { prompt } : {}),
-        }),
-      })
-        .then((res) => {
-          if (!res.ok) {
-            log("save.version.failed", { mapId: id, status: res.status });
-          }
-        })
-        .catch((err) => {
-          log("save.version.failed", { mapId: id, error: errorMessage(err) });
-        });
-    },
-    [id],
-  );
-
-  // ── Auto-save ───────────────────────────────────────────────
-  const autoSave = useCallback((m: MapManifest, dataUrl?: string) => {
-    if (!id) return;
-    isDirtyRef.current = true;
-
-    // Write draft to localStorage immediately (offline-safe)
-    try {
-      localStorage.setItem(
-        `atlas:draft:${id}`,
-        JSON.stringify({ manifest: m, geojsonUrl: dataUrl ?? null, timestamp: Date.now() }),
-      );
-    } catch { /* localStorage might be full or unavailable */ }
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      void saveDraft(m, { dataUrl, includeChatHistory: true });
-    }, 1000);
-  }, [id, saveDraft]);
-
-  // ── Periodic auto-save (30s) ────────────────────────────────
-  useEffect(() => {
-    if (!id) return;
-    const interval = setInterval(() => {
-      if (isDirtyRef.current && manifestRef.current) {
-        void saveDraft(manifestRef.current);
-      }
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [id, saveDraft]);
-
-  const [mapWarnings, setMapWarnings] = useState<string[]>([]);
 
   // ── Agent chat ──────────────────────────────────────────────
   const handleManifestUpdate = useCallback(
     (newManifest: MapManifest, dataUrl?: string) => {
       if (!manifest) return;
       saveVersion(manifest, "agent-update");
-      setManifestHistory((h) => [...h, manifest]);
-      setRedoStack([]);
+      pushHistory(manifest);
       setManifest(newManifest);
       if (dataUrl && dataUrl !== mapRow?.geojson_url) {
         // Save manifest immediately (without new data URL).
@@ -298,7 +126,7 @@ export default function MapPage() {
         autoSave(newManifest);
       }
     },
-    [manifest, mapRow, autoSave, saveVersion],
+    [manifest, mapRow, autoSave, saveVersion, pushHistory, setManifest, setMapRow, setGeojsonData, setDataProfile],
   );
 
   const {
@@ -321,24 +149,6 @@ export default function MapPage() {
     setChatInput("");
     sendMessage(msg);
   }, [chatInput, sendMessage]);
-
-  const handleUndo = useCallback(() => {
-    if (manifestHistory.length === 0 || !manifest) return;
-    const prev = manifestHistory[manifestHistory.length - 1];
-    setRedoStack((r) => [...r, manifest]);
-    setManifest(prev);
-    setManifestHistory((h) => h.slice(0, -1));
-    autoSave(prev);
-  }, [manifest, manifestHistory, autoSave]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0 || !manifest) return;
-    const next = redoStack[redoStack.length - 1];
-    setManifestHistory((h) => [...h, manifest]);
-    setManifest(next);
-    setRedoStack((r) => r.slice(0, -1));
-    autoSave(next);
-  }, [manifest, redoStack, autoSave]);
 
   // ── Regenerate map ─────────────────────────────────────────
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -375,8 +185,7 @@ export default function MapPage() {
 
       // Push current to history for undo
       saveVersion(manifest, "before-regenerate");
-      setManifestHistory((h) => [...h, manifest]);
-      setRedoStack([]);
+      pushHistory(manifest);
       setManifest(data.manifest);
       autoSave(data.manifest);
 
@@ -399,24 +208,7 @@ export default function MapPage() {
     } finally {
       setIsRegenerating(false);
     }
-  }, [mapRow, manifest, dataProfile, isRegenerating, autoSave, saveVersion, showToast]);
-
-  // ── Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z ────────────────
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (mod && e.key === "z" && e.shiftKey) {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handleUndo, handleRedo]);
+  }, [mapRow, manifest, dataProfile, isRegenerating, autoSave, saveVersion, showToast, pushHistory, setManifest, setGeojsonData, setDataProfile]);
 
   async function handleCopyLink() {
     const slug = mapRow?.slug ?? id;
@@ -428,12 +220,12 @@ export default function MapPage() {
 
   const handleStyleChange = useCallback(
     (updated: MapManifest) => {
-      setManifestHistory((h) => [...h, manifest!]);
-      setRedoStack([]);
+      if (!manifest) return;
+      pushHistory(manifest);
       setManifest(updated);
       autoSave(updated);
     },
-    [manifest, autoSave],
+    [manifest, autoSave, pushHistory, setManifest],
   );
 
   const handleTitleChange = useCallback(
@@ -534,7 +326,7 @@ export default function MapPage() {
           <span style={{ fontSize: 13, color: "#5a5752", flexShrink: 0 }}>&#x1F50D;</span>
           <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Sök features…" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "7px 10px", fontSize: 12, color: "#e4e0d8", width: "100%", outline: "none", fontFamily: "'Geist',sans-serif" }} />
         </div>
-        <ChatPanel messages={chatMessages} input={chatInput} isStreaming={chatStreaming} onInputChange={setChatInput} onSend={handleSend} onStop={abortStream} onUndo={handleUndo} canUndo={manifestHistory.length > 0} />
+        <ChatPanel messages={chatMessages} input={chatInput} isStreaming={chatStreaming} onInputChange={setChatInput} onSend={handleSend} onStop={abortStream} onUndo={handleUndo} canUndo={canUndo} />
       </div>
     );
 
@@ -570,7 +362,7 @@ export default function MapPage() {
           <DraftRestoreBanner
             timestamp={draftRestore.timestamp}
             onRestore={() => {
-              setManifestHistory((h) => [...h, manifest]);
+              pushHistory(manifest);
               setManifest(draftRestore.manifest);
               autoSave(draftRestore.manifest, draftRestore.geojsonUrl ?? undefined);
               setDraftRestore(null);

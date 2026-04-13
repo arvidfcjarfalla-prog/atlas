@@ -952,12 +952,14 @@ describe("saved editor data flow contracts", () => {
     expect(insideThen).toContain("setDataProfile(profileDataset(geo))");
   });
 
-  it("load effect: profiles GeoJSON on initial load", () => {
-    const loadBlock = source.slice(
-      source.indexOf("// ── Load map"),
-      source.indexOf("// ── Warn on navigation"),
+  it("load effect: profiles GeoJSON on initial load", async () => {
+    // Load effect lives in useMapLoader hook (phase 3 refactor).
+    const fs = await import("node:fs/promises");
+    const loaderSource = await fs.readFile(
+      new URL("../../../lib/hooks/use-map-loader.ts", import.meta.url),
+      "utf-8",
     );
-    expect(loadBlock).toContain("setDataProfile(profileDataset(geo))");
+    expect(loaderSource).toContain("setDataProfile(profileDataset(geo))");
   });
 
   it("saved editor does not expose file upload", () => {
