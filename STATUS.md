@@ -113,7 +113,7 @@ Atlas is an AI-driven map platform. Users describe what they want in natural lan
 - [ ] **Error states** — empty states, error boundaries, offline handling
 - [ ] **Mobile responsive** — editor and hub are desktop-only
 - [ ] **Real usage analytics** — track map creation, sharing, user retention
-- [ ] **Rate limiting** — AI endpoints lack production-grade rate limits
+- [ ] **Production-grade rate limiting** — middleware has in-memory sliding window (20 req/min/IP on `/api/ai/*`), but needs a shared store (Redis/Upstash) to work correctly across Vercel isolates
 - [ ] **Billing integration** — Stripe for Pro tier (pricing page exists but no checkout)
 
 ### Medium Priority
