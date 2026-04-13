@@ -38,16 +38,10 @@ import { getStatsAdapter } from "../../../../lib/ai/tools/pxweb-client";
 import { classifyPipelineResult } from "../../../../lib/ai/pipeline-decision";
 import type { MapManifest } from "@atlas/data-models";
 import type { DatasetProfile } from "../../../../lib/ai/types";
+import { ChatRequestSchema, formatZodIssues } from "../../../../lib/ai/schemas/request-body";
 import { log } from "../../../../lib/logger";
 import { reportError } from "../../../../lib/error-reporter";
 import { createHash } from "node:crypto";
-
-// ─── Types ──────────────────────────────────────────────────
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
 
 // ─── Geocode helper (Photon) ────────────────────────────────
 
@@ -82,18 +76,21 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const t0 = Date.now();
   try {
-    const body = await request.json();
-    const manifest: MapManifest | undefined = body?.manifest;
-    const message: string | undefined = body?.message;
-    const chatHistory: ChatMessage[] = body?.chatHistory ?? [];
-    const dataProfile: DatasetProfile | undefined = body?.dataProfile;
-
-    if (!manifest || !message) {
+    const raw = await request.json().catch(() => null);
+    const parsed = ChatRequestSchema.safeParse(raw);
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: "Missing manifest or message" }),
+        JSON.stringify({
+          error: "Invalid request body",
+          issues: formatZodIssues(parsed.error),
+        }),
         { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
+    const manifest = parsed.data.manifest as unknown as MapManifest;
+    const message = parsed.data.message;
+    const chatHistory = parsed.data.chatHistory;
+    const dataProfile = parsed.data.dataProfile as DatasetProfile | undefined;
 
     // Classify message into a skill for focused prompt + tool selection
     const skill = classifyChatSkill(message, !!dataProfile);

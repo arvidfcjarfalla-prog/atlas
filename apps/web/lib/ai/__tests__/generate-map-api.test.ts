@@ -170,7 +170,8 @@ describe("POST /api/ai/generate-map", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/missing or empty/i);
+    expect(body.error).toBe("Invalid request body");
+    expect(body.issues).toMatch(/prompt/i);
   });
 
   it("returns 400 when prompt is an empty string", async () => {
@@ -179,7 +180,8 @@ describe("POST /api/ai/generate-map", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/missing or empty/i);
+    expect(body.error).toBe("Invalid request body");
+    expect(body.issues).toMatch(/prompt/i);
   });
 
   it("returns 400 when prompt exceeds 2000 characters", async () => {
@@ -188,7 +190,8 @@ describe("POST /api/ai/generate-map", () => {
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/2000 character/i);
+    expect(body.error).toBe("Invalid request body");
+    expect(body.issues).toMatch(/2000/);
   });
 
   it("accepts prompt of exactly 2000 characters", async () => {

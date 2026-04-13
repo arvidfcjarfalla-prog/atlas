@@ -19,6 +19,7 @@ import { createClient } from "../../../../lib/supabase/server";
 import { canGenerateDeterministic, generateDeterministicManifest } from "../../../../lib/ai/tools/deterministic-manifest";
 import type { NormalizedSourceResult } from "../../../../lib/ai/tools/normalized-result";
 import { validateFetchUrl } from "../../../../lib/ai/tools/url-fetcher";
+import { GenerateMapRequestSchema, formatZodIssues } from "../../../../lib/ai/schemas/request-body";
 import { log } from "../../../../lib/logger";
 import { reportError } from "../../../../lib/error-reporter";
 
@@ -235,39 +236,27 @@ export async function POST(request: Request) {
   const t0 = Date.now();
   let prompt: string | undefined;
   try {
-    const body = await request.json();
-    prompt = body?.prompt;
-
-    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+    const raw = await request.json().catch(() => null);
+    const parsed = GenerateMapRequestSchema.safeParse(raw);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Missing or empty 'prompt' field" },
+        { error: "Invalid request body", issues: formatZodIssues(parsed.error) },
         { status: 400 },
       );
     }
-
-    if (prompt.length > 2000) {
-      return NextResponse.json(
-        { error: "Prompt exceeds 2000 character limit" },
-        { status: 400 },
-      );
-    }
+    const body = parsed.data;
+    prompt = body.prompt;
 
     // Resolve dataset profile: explicit > fetched > none
     const sourceUrl: string | undefined = body.sourceUrl ?? body.dataUrl;
-    let profile: DatasetProfile | null = body.dataProfile ?? null;
+    let profile: DatasetProfile | null = (body.dataProfile as DatasetProfile | undefined) ?? null;
     let profileSource: "explicit" | "fetched" | "none" = profile ? "explicit" : "none";
-    if (!profile && sourceUrl && typeof sourceUrl === "string") {
+    if (!profile && sourceUrl) {
       profile = await fetchAndProfile(sourceUrl);
       if (profile) profileSource = "fetched";
     }
 
-    // Optional artifact ID for cold-start fallback (reads from durable storage
-    // when cache is empty). Only used when sourceUrl is a cache-proxy URL.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const artifactId: string | undefined =
-      typeof body.artifactId === "string" && UUID_RE.test(body.artifactId)
-        ? body.artifactId
-        : undefined;
+    const artifactId = body.artifactId;
 
     // Optional auth — needed for reading private artifact data.
     // Public artifacts work without auth. Failure is non-fatal.
@@ -335,11 +324,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // Read optional scope hint (e.g. { region: "Europe", filterField: "continent" })
-    const scopeHint: { region: string; filterField: string } | undefined = body.scopeHint;
-
-    // Read optional user preferences from confirmation step
-    const preferences: Record<string, string> | undefined = body.preferences;
+    const scopeHint = body.scopeHint;
+    const preferences = body.preferences;
 
     // Only AI generation applies few-shot selection. Deterministic requests
     // must not be logged as if an anchor influenced the manifest.
