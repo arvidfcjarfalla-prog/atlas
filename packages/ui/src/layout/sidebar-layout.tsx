@@ -68,6 +68,23 @@ export function SidebarLayout({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width]);
 
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 32 : 8;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setWidth((w) => Math.max(MIN_SIDEBAR_PX, w - step));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setWidth((w) => Math.min(MAX_SIDEBAR_PX, w + step));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setWidth(MIN_SIDEBAR_PX);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setWidth(MAX_SIDEBAR_PX);
+    }
+  }, []);
+
   return (
     <div className={cn("flex h-full w-full overflow-hidden", className)}>
       {/* Left sidebar — desktop only */}
@@ -83,7 +100,15 @@ export function SidebarLayout({
           {sidebar}
           {/* Resize handle */}
           <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            aria-valuenow={width}
+            aria-valuemin={MIN_SIDEBAR_PX}
+            aria-valuemax={MAX_SIDEBAR_PX}
+            tabIndex={0}
             onMouseDown={handleMouseDown}
+            onKeyDown={handleKeyDown}
             style={{
               position: "absolute",
               top: 0,

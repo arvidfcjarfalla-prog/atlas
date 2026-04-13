@@ -68,7 +68,7 @@ export type {
   DissolveTransform,
 } from "./manifest";
 
-export { getAgeBracket, jitterCoordinates } from "./transforms";
+export { getAgeBracket } from "./transforms";
 
 export { COLOR_PALETTES, getColors } from "./palettes";
 export { classify, type ClassBreaks } from "./classification";

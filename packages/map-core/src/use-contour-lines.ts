@@ -39,8 +39,6 @@ export function useContourLines({
     const majorInterval = config?.majorInterval ?? 500;
     const opacity = config?.opacity ?? 0.4;
 
-    let cleanup: (() => void) | undefined;
-
     (async () => {
       try {
         const { default: mlcontour } = await import("maplibre-contour");
@@ -146,10 +144,6 @@ export function useContourLines({
         // maplibre-contour not available or failed
       }
     })();
-
-    return () => {
-      cleanup?.();
-    };
   }, [map, isReady, enabled, config, beforeLayerId]);
 
   // Cleanup on unmount

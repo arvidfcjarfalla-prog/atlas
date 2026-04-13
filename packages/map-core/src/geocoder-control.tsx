@@ -51,7 +51,11 @@ export function GeocoderControl() {
         `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,
         { signal: ctrl.signal, headers: { "User-Agent": "Atlas-MapPlatform/1.0" } },
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        setResults([]);
+        setOpen(false);
+        return;
+      }
       const data: NominatimResult[] = await res.json();
       setResults(data);
       setOpen(data.length > 0);

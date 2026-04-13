@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { MapShell, useMap, useMapLayers, useTectonicLayers, useRippleLayers, useActivityField, useHillshade, useNightlights, useLandMask, useTerrain, MapAtmosphere } from "@atlas/map-core";
+import { MapShell, useMap, useMapLayers, useTectonicLayers, useRippleLayers, useActivityField, useHillshade, useNightlights, useLandMask, MapAtmosphere } from "@atlas/map-core";
 import { Timeline, TimeWindowProvider, DetailPanel, Legend, type LegendItem } from "@atlas/map-modules";
 import type { GeoEntity } from "@atlas/data-models";
 import { SEVERITY_HEX } from "@atlas/data-models";
