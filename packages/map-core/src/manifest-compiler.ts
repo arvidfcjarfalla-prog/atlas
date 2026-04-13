@@ -145,6 +145,8 @@ function buildCentroidCollection(
   const points: GeoJSON.Feature[] = [];
   for (const f of data.features) {
     if (!f.geometry) continue;
+    // Polygon-only: skip Points so label layer doesn't double up on mixed input
+    if (f.geometry.type !== "Polygon" && f.geometry.type !== "MultiPolygon") continue;
     const centroid = centroidOfLargestRing(f.geometry);
     if (!centroid) continue;
     points.push({
@@ -983,8 +985,8 @@ function compileProportionalSymbol(
       type: "circle",
       source: sourceId,
       paint: {
-        "circle-color": buildColorExpression(layer, data, warnings) as string,
-        "circle-radius": radiusExpr as number,
+        "circle-color": buildColorExpression(layer, data, warnings),
+        "circle-radius": radiusExpr,
         "circle-opacity": layer.style.fillOpacity ?? 0.7,
         "circle-stroke-width": layer.style.strokeWidth ?? 1,
         "circle-stroke-color": layer.style.strokeColor ?? "rgba(255,255,255,0.5)",
