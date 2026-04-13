@@ -2,7 +2,7 @@
 
 import { type ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import { useSidebar } from "@/hooks/use-sidebar";
+import { useSidebar } from "@/lib/hooks/use-sidebar";
 
 export default function HubLayout({ children }: { children: ReactNode }) {
   const { open, toggle } = useSidebar();
