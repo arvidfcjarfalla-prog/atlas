@@ -22,6 +22,7 @@ export function ExportMenu({ onExportPNG, onExportGeoJSON, onExportPDF, onExport
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const exportTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   // Close on outside click
   useEffect(() => {
@@ -35,23 +36,39 @@ export function ExportMenu({ onExportPNG, onExportGeoJSON, onExportPDF, onExport
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  useEffect(() => {
+    return () => {
+      for (const id of exportTimersRef.current) clearTimeout(id);
+      exportTimersRef.current = [];
+    };
+  }, []);
+
+  function scheduleExportTimer(fn: () => void, ms: number) {
+    const id = setTimeout(() => {
+      exportTimersRef.current = exportTimersRef.current.filter((t) => t !== id);
+      fn();
+    }, ms);
+    exportTimersRef.current.push(id);
+    return id;
+  }
+
   function handleSelect(key: string) {
     setOpen(false);
     if (key.startsWith("png")) {
       const scale = key === "png-4" ? 4 : key === "png-2" ? 2 : 1;
       setExporting(true);
-      setTimeout(() => {
+      scheduleExportTimer(() => {
         onExportPNG(scale);
-        setTimeout(() => setExporting(false), 600);
+        scheduleExportTimer(() => setExporting(false), 600);
       }, 50);
     } else if (key === "pdf") {
       setExporting(true);
       onExportPDF?.();
-      setTimeout(() => setExporting(false), 1200);
+      scheduleExportTimer(() => setExporting(false), 1200);
     } else if (key === "svg") {
       setExporting(true);
       onExportSVG?.();
-      setTimeout(() => setExporting(false), 600);
+      scheduleExportTimer(() => setExporting(false), 600);
     } else if (key === "geojson") {
       onExportGeoJSON();
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface ShareModalProps {
   open: boolean;
@@ -28,12 +28,21 @@ export function ShareModal({
   const [embedCopied, setEmbedCopied] = useState(false);
   const [localPublic, setLocalPublic] = useState(isPublic);
   const [localSlug, setLocalSlug] = useState(slug);
+  const linkCopiedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const embedCopiedTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Sync with external prop changes
   useEffect(() => {
     setLocalPublic(isPublic);
     setLocalSlug(slug);
   }, [isPublic, slug]);
+
+  useEffect(() => {
+    return () => {
+      if (linkCopiedTimerRef.current) clearTimeout(linkCopiedTimerRef.current);
+      if (embedCopiedTimerRef.current) clearTimeout(embedCopiedTimerRef.current);
+    };
+  }, []);
 
   const host = typeof window !== "undefined" ? window.location.host : "atlas.app";
   const shareUrl = localSlug ? `${window.location.protocol}//${host}/m/${localSlug}` : null;
@@ -57,14 +66,16 @@ export function ShareModal({
     if (!shareUrl) return;
     await navigator.clipboard.writeText(shareUrl).catch(() => {});
     setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    if (linkCopiedTimerRef.current) clearTimeout(linkCopiedTimerRef.current);
+    linkCopiedTimerRef.current = setTimeout(() => setLinkCopied(false), 2000);
   }
 
   async function copyEmbed() {
     if (!embedCode) return;
     await navigator.clipboard.writeText(embedCode).catch(() => {});
     setEmbedCopied(true);
-    setTimeout(() => setEmbedCopied(false), 2000);
+    if (embedCopiedTimerRef.current) clearTimeout(embedCopiedTimerRef.current);
+    embedCopiedTimerRef.current = setTimeout(() => setEmbedCopied(false), 2000);
   }
 
   if (!open) return null;

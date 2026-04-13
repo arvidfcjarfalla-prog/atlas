@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "../../../../lib/supabase/service";
 
 export async function GET(request: Request) {
-  // Verify cron secret to prevent public access
+  // Verify cron secret to prevent public access.
+  // A missing CRON_SECRET must NOT allow the request through.
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

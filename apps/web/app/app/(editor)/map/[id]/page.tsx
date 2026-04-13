@@ -162,7 +162,7 @@ function EmbedPanel({ slug }: { slug: string }) {
 function ChartOverlayWrapper({ metadata }: { metadata: ChartOverlayMetadata }) {
   const { map, isReady } = useMap();
   if (!map || !isReady) return null;
-  return <ChartOverlay map={map as any} metadata={metadata} />;
+  return <ChartOverlay map={map} metadata={metadata} />;
 }
 
 // ─── Map page (view + edit merged) ───────────────────────────

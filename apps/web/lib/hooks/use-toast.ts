@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 export type ToastVariant = "info" | "success" | "error";
 
@@ -21,6 +21,12 @@ export function useToast(duration = 3000) {
     },
     [duration],
   );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return { toast, show } as const;
 }
