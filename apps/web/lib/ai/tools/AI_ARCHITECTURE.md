@@ -727,7 +727,6 @@ import { tool } from "ai";
 import { z } from "zod";
 import { COLOR_PALETTES, getColors } from "@atlas/data-models";
 import type { MapFamily, ColorScheme } from "@atlas/data-models";
-import { PATTERNS, findPattern } from "../patterns";
 
 // --- Tool 1: Look up a manifest field ---
 export const lookupManifestField = tool({

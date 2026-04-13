@@ -50,7 +50,6 @@ Atlas is an AI-driven map platform. Users describe what they want in natural lan
 - [x] Streaming chat agent (`/api/ai/chat`) — conversational editing with tools
 - [x] Prompt enhancement (`/api/ai/enhance-prompt`)
 - [x] Clarification flow (`/api/ai/clarify`)
-- [x] Edit map API (`/api/ai/edit-map`)
 - [x] Agent prompt (`agent-prompt.ts`)
 - [x] Client hook (`use-agent-chat.ts`) — SSE streaming, tool call UI
 - [x] ChatPanel — streaming text, tool chips, stop button

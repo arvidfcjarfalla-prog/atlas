@@ -57,12 +57,6 @@ vi.mock("@/lib/ai/quality-scorer", () => ({
   scoreManifest: vi.fn().mockReturnValue({ total: 90, deductions: [] }),
 }));
 
-vi.mock("@/lib/ai/case-memory", () => ({
-  saveCase: vi.fn().mockResolvedValue(undefined),
-  findRelevantLessons: vi.fn().mockResolvedValue([]),
-  formatLessons: vi.fn().mockReturnValue(""),
-}));
-
 vi.mock("@/lib/ai/refinement-suggestions", () => ({
   getSuggestions: vi.fn().mockReturnValue([]),
 }));

@@ -9,7 +9,6 @@ import { validateManifest } from "../../../../lib/ai/validators";
 import { scoreManifest } from "../../../../lib/ai/quality-scorer";
 import type { QualityScore } from "../../../../lib/ai/quality-scorer";
 import { profileDataset } from "../../../../lib/ai/profiler";
-// case-memory writes disabled — reads already stubbed, Supabase logs are the durable record
 import { getSuggestions } from "../../../../lib/ai/refinement-suggestions";
 import type { DatasetProfile } from "../../../../lib/ai/types";
 import { applyGeometryGuards } from "../../../../lib/ai/geometry-guards";
