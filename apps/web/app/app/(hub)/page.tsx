@@ -10,8 +10,7 @@ import { MapTypeBlock } from "@/components/MapTypeBlock";
 import { EDITORIAL } from "@/lib/editorial-tokens";
 import { TEMPLATES, type MapTemplate } from "@/lib/templates";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Textarea, cn } from "@atlas/ui";
 import { Paperclip, ArrowUpIcon, Globe, BarChart3, MapPin, Layers } from "lucide-react";
 
 // Group templates by family — used to populate example thumbnails per block

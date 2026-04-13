@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpIcon, BarChart3, Globe as LucideGlobe, Layers, MapPin, Paperclip } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Textarea, cn } from "@atlas/ui";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { AtlasRenderPipeline } from "@/components/marketing/AtlasRenderPipeline";
