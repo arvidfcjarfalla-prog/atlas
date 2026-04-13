@@ -26,31 +26,12 @@ import type { ClarifyResponse, ClarificationQuestion } from "@/lib/ai/types";
 import { buildConfirmationQuestions, formatPreferences } from "@/lib/ai/confirmation-questions";
 import { getTemplate } from "@/lib/templates";
 import type { User } from "@supabase/supabase-js";
-
-// ─── Pipeline stages ─────────────────────────────────────────
-
-type Stage =
-  | "clarifying"
-  | "confirming"
-  | "generating"
-  | "fetching"
-  | "ready"
-  | "saving"
-  | "error"
-  | "needs_input";
-
-const STAGE_LABELS: Record<Stage, string> = {
-  clarifying: "Söker data\u2026",
-  confirming: "Bekräfta inställningar",
-  generating: "Genererar karta\u2026",
-  fetching: "Hämtar geodata\u2026",
-  ready: "Klar!",
-  saving: "Sparar\u2026",
-  error: "Något gick fel",
-  needs_input: "Behöver mer information",
-};
-
-const MAX_AUTO_ANSWER_ROUNDS = 3;
+import {
+  type Stage,
+  STAGE_LABELS,
+  MAX_AUTO_ANSWER_ROUNDS,
+  RetryableError,
+} from "../_lib/pipeline-stages";
 
 // ─── Page ────────────────────────────────────────────────────
 
@@ -888,9 +869,3 @@ function NewMapReady({
   );
 }
 
-class RetryableError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RetryableError";
-  }
-}
