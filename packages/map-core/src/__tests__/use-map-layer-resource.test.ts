@@ -360,6 +360,79 @@ describe("runResourceCleanup", () => {
   });
 });
 
+describe("lifecycle cycle — cleanup then re-setup (simulates deps change / toggle)", () => {
+  it("re-setup after cleanup restores added/acquired state and refcount", () => {
+    const { map, sources, layers } = createMockMap();
+    const spec: MapLayerResourceSpec = {
+      sourceId: "src",
+      layerIds: ["layer"],
+      setup: (m) => {
+        m.addSource("src", { type: "raster", tiles: [] } as never);
+        m.addLayer({ id: "layer", type: "raster", source: "src" } as never);
+      },
+    };
+    const state = freshState();
+
+    runResourceSetup(map, spec, state, freshSignal());
+    expect(state.added).toBe(true);
+    expect(__internal.sourceRefCounts.get("src")).toBe(1);
+
+    runResourceCleanup(map, spec, state);
+    expect(state.added).toBe(false);
+    expect(state.acquired).toBe(false);
+    expect(sources.has("src")).toBe(false);
+    expect(layers.find((l) => l.id === "layer")).toBeUndefined();
+    expect(__internal.sourceRefCounts.get("src")).toBeUndefined();
+
+    runResourceSetup(map, spec, state, freshSignal());
+    expect(state.added).toBe(true);
+    expect(state.acquired).toBe(true);
+    expect(sources.has("src")).toBe(true);
+    expect(layers.find((l) => l.id === "layer")).toBeDefined();
+    expect(__internal.sourceRefCounts.get("src")).toBe(1);
+  });
+
+  it("deps change on one shared-source consumer does not tear down the other", () => {
+    const { map, sources } = createMockMap();
+    const sharedSetup = (layerId: string) => (m: MaplibreMap) => {
+      if (!m.getSource("shared")) {
+        m.addSource("shared", { type: "raster-dem", tiles: [] } as never);
+      }
+      m.addLayer({ id: layerId, type: "hillshade", source: "shared" } as never);
+    };
+    const specA: MapLayerResourceSpec = {
+      sourceId: "shared",
+      layerIds: ["layer-a"],
+      setup: sharedSetup("layer-a"),
+    };
+    const specB: MapLayerResourceSpec = {
+      sourceId: "shared",
+      layerIds: ["layer-b"],
+      setup: sharedSetup("layer-b"),
+    };
+    const stateA = freshState();
+    const stateB = freshState();
+
+    runResourceSetup(map, specA, stateA, freshSignal());
+    runResourceSetup(map, specB, stateB, freshSignal());
+    expect(__internal.sourceRefCounts.get("shared")).toBe(2);
+
+    // A's deps change: cleanup + re-setup. B must remain intact throughout.
+    runResourceCleanup(map, specA, stateA);
+    expect(sources.has("shared")).toBe(true);
+    expect(__internal.sourceRefCounts.get("shared")).toBe(1);
+
+    runResourceSetup(map, specA, stateA, freshSignal());
+    expect(sources.has("shared")).toBe(true);
+    expect(__internal.sourceRefCounts.get("shared")).toBe(2);
+    expect(stateB.added).toBe(true);
+
+    runResourceCleanup(map, specA, stateA);
+    runResourceCleanup(map, specB, stateB);
+    expect(sources.has("shared")).toBe(false);
+  });
+});
+
 describe("shared source refcount across two consumers", () => {
   it("removes the source only when the last consumer cleans up", () => {
     const { map, sources } = createMockMap();

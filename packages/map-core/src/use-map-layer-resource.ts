@@ -182,24 +182,35 @@ export function useMapLayerResource(spec: MapLayerResourceSpec): void {
   const deps = spec.deps ?? [];
 
   useEffect(() => {
-    if (!map || !isReady || !enabled || stateRef.current.added) return;
+    if (!map || !isReady || !enabled) return;
 
     const signal: MapResourceSignal = { cancelled: false };
     signalRef.current = signal;
     void runResourceSetup(map, spec, stateRef.current, signal);
 
     return () => {
+      // Runs on deps change, `enabled` flipping true→false, or unmount.
+      // Tear down so the next setup sees a clean slate and so toggle-off
+      // actually removes the layers from the map.
       signal.cancelled = true;
+      if (stateRef.current.added) {
+        runResourceCleanup(map, spec, stateRef.current);
+      }
     };
     // spec is intentionally not in deps — its identity changes every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, isReady, enabled, spec.beforeLayerId, spec.sourceId, ...deps]);
 
+  // Safety net for the `map → null` transition and any edge case where the
+  // main effect's cleanup does not fire. `state.acquired` guards against
+  // double-release if both effects clean up.
   useEffect(() => {
     return () => {
       if (!map) return;
       signalRef.current.cancelled = true;
-      runResourceCleanup(map, spec, stateRef.current);
+      if (stateRef.current.added) {
+        runResourceCleanup(map, spec, stateRef.current);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
