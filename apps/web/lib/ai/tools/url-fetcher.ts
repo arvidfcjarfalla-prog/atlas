@@ -68,6 +68,18 @@ export function validateFetchUrl(raw: string): URL {
     }
   }
 
+  // IPv6 private/link-local: unique local (fc00::/7 → fc/fd prefix), link-local
+  // (fe80::/10), and IPv4-mapped (::ffff:x.x.x.x) which can embed private IPv4.
+  const bareV6 = hostname.replace(/^\[|\]$/g, "");
+  if (
+    bareV6.startsWith("fd") ||
+    bareV6.startsWith("fe80") ||
+    bareV6.startsWith("fc") ||
+    bareV6.startsWith("::ffff:")
+  ) {
+    throw new Error("Private and link-local addresses are not allowed");
+  }
+
   return parsed;
 }
 

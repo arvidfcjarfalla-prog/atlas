@@ -145,6 +145,22 @@ describe("validateFetchUrl", () => {
   it("lowercases hostname before comparing", () => {
     expect(() => validateFetchUrl("http://LOCALHOST/x")).toThrow(/Loopback/);
   });
+
+  it("rejects IPv6 unique-local fd00::/8", () => {
+    expect(() => validateFetchUrl("http://[fd12:3456::1]/x")).toThrow(/Private/);
+  });
+
+  it("rejects IPv6 link-local fe80::/10", () => {
+    expect(() => validateFetchUrl("http://[fe80::1]/x")).toThrow(/Private/);
+  });
+
+  it("rejects IPv6 fc00::/7 prefix", () => {
+    expect(() => validateFetchUrl("http://[fc00::1]/x")).toThrow(/Private/);
+  });
+
+  it("rejects IPv4-mapped IPv6 that embeds private IPv4", () => {
+    expect(() => validateFetchUrl("http://[::ffff:10.0.0.1]/x")).toThrow(/Private/);
+  });
 });
 
 // ─── fetchAndParse ──────────────────────────────────────────

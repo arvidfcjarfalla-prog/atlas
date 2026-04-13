@@ -29,6 +29,10 @@ export async function POST(request: Request) {
   if (buffer.length < 100) {
     return NextResponse.json({ error: "Image too small" }, { status: 400 });
   }
+  const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
+  if (buffer.length > MAX_THUMBNAIL_BYTES) {
+    return NextResponse.json({ error: "Image too large" }, { status: 413 });
+  }
 
   // Upload with service role (bypasses RLS)
   const serviceClient = createServiceClient(

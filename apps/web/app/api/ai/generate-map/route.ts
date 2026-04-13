@@ -19,6 +19,7 @@ import { readArtifactMeta, readDurableDataset } from "../../../../lib/ai/tools/d
 import { createClient } from "../../../../lib/supabase/server";
 import { canGenerateDeterministic, generateDeterministicManifest } from "../../../../lib/ai/tools/deterministic-manifest";
 import type { NormalizedSourceResult } from "../../../../lib/ai/tools/normalized-result";
+import { validateFetchUrl } from "../../../../lib/ai/tools/url-fetcher";
 import { log } from "../../../../lib/logger";
 import { reportError } from "../../../../lib/error-reporter";
 
@@ -140,63 +141,6 @@ async function embedClassificationBreaks(
     classification.max = result.max;
   }
   return source;
-}
-
-/**
- * Validate a URL to prevent SSRF attacks.
- * Blocks private/loopback/link-local IPs, non-http(s) schemes, and AWS metadata.
- */
-function validateFetchUrl(raw: string): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    throw new Error("Invalid URL");
-  }
-
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("Only http and https URLs are allowed");
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  // Block loopback
-  if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "[::1]" ||
-    hostname === "::1" ||
-    hostname.startsWith("127.")
-  ) {
-    throw new Error("Loopback addresses are not allowed");
-  }
-
-  // Block RFC-1918 private ranges, link-local, and AWS metadata
-  const ipMatch = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (ipMatch) {
-    const octets = ipMatch.slice(1).map(Number);
-    const a = octets[0], b = octets[1];
-    if (
-      a === 10 ||                              // 10.0.0.0/8
-      (a === 172 && b >= 16 && b <= 31) ||     // 172.16.0.0/12
-      (a === 192 && b === 168) ||              // 192.168.0.0/16
-      (a === 169 && b === 254)                 // 169.254.0.0/16 (link-local + AWS metadata)
-    ) {
-      throw new Error("Private and link-local addresses are not allowed");
-    }
-  }
-
-  // Block IPv6 private/link-local (unique local fd00::/8, link-local fe80::/10,
-  // and IPv4-mapped ::ffff:x.x.x.x which could embed private IPv4)
-  const bareV6 = hostname.replace(/^\[|\]$/g, "");
-  if (
-    bareV6.startsWith("fd") ||
-    bareV6.startsWith("fe80") ||
-    bareV6.startsWith("fc") ||
-    bareV6.startsWith("::ffff:")
-  ) {
-    throw new Error("Private and link-local addresses are not allowed");
-  }
 }
 
 const MAX_TOKENS = 4096;

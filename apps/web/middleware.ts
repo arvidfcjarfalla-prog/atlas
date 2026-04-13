@@ -50,10 +50,12 @@ export async function middleware(request: NextRequest) {
   // --- Rate-limit AI endpoints before anything else ---
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/api/ai/")) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-      request.ip ??
-      "unknown";
+    // Prefer the first hop of X-Forwarded-For (set by Vercel's edge); fall back
+    // to X-Real-IP. If neither is present, bucket per path so anonymous traffic
+    // on one route cannot starve another route's limit.
+    const xff = request.headers.get("x-forwarded-for")?.split(",")[0].trim();
+    const realIp = request.headers.get("x-real-ip")?.trim();
+    const ip = xff || realIp || `anon:${pathname}`;
     const result = checkRateLimit(ip);
     if (!result.allowed) {
       return NextResponse.json(
