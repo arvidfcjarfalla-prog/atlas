@@ -7,7 +7,6 @@ import type { CompiledLegendItem, TimelinePlaybackState, ChartOverlayMetadata } 
 import { TimelinePlaybackBar } from "@atlas/map-modules";
 import type { MapManifest } from "@atlas/data-models";
 import { useAuth } from "@/lib/auth/use-auth";
-import type { MapRow } from "@/lib/supabase/types";
 import { MapContent } from "@/components/MapContent";
 import { LegendOverlay } from "@/components/LegendOverlay";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -17,7 +16,6 @@ import { useMapAutosave } from "@/lib/hooks/use-map-autosave";
 import { useManifestHistory } from "@/lib/hooks/use-manifest-history";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Toast } from "@/components/Toast";
-import type { DatasetProfile } from "@/lib/ai/types";
 import { profileDataset } from "@/lib/ai/profiler";
 import { EditorToolbar } from "@/components/EditorToolbar";
 import { LayerList } from "@/components/LayerList";
