@@ -6,7 +6,8 @@ export function EmbedPanel({ slug }: { slug: string }) {
   const [embedCopied, setEmbedCopied] = useState(false);
   const [open, setOpen] = useState(false);
   const host = typeof window !== "undefined" ? window.location.host : "atlas.app";
-  const embedCode = `<iframe src="${window.location.protocol}//${host}/m/${slug}/embed" width="100%" height="500" frameborder="0" style="border-radius:8px;border:none"></iframe>`;
+  const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+  const embedCode = `<iframe src="${protocol}//${host}/m/${slug}/embed" width="100%" height="500" frameborder="0" style="border-radius:8px;border:none"></iframe>`;
 
   async function handleCopyEmbed() {
     await navigator.clipboard.writeText(embedCode).catch(() => {});
