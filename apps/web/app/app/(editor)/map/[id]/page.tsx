@@ -34,6 +34,7 @@ import { ChartOverlayWrapper } from "../_lib/ChartOverlayWrapper";
 import { DraftRestoreBanner } from "../_lib/DraftRestoreBanner";
 import { LegacyDataBanner } from "../_lib/LegacyDataBanner";
 import { WarningsBanner } from "../_lib/WarningsBanner";
+import { fetchGeoJSON } from "../_lib/fetch-geojson";
 
 // ─── Map page (view + edit merged) ───────────────────────────
 
@@ -120,17 +121,12 @@ export default function MapPage() {
         : row.geojson_url ?? m.layers[0]?.sourceUrl;
       let dataLoaded = false;
       if (dataUrl) {
-        try {
-          const geoRes = await fetch(dataUrl);
-          if (geoRes.ok) {
-            const geo = await geoRes.json();
-            if (geo?.type === "FeatureCollection") {
-              setGeojsonData(geo);
-              setDataProfile(profileDataset(geo));
-              dataLoaded = true;
-            }
-          }
-        } catch { /* non-fatal */ }
+        const geo = await fetchGeoJSON(dataUrl);
+        if (geo) {
+          setGeojsonData(geo);
+          setDataProfile(profileDataset(geo));
+          dataLoaded = true;
+        }
       }
       // Legacy maps without artifact: data is gone when cache expires
       if (!dataLoaded && row.data_status === "legacy") {
@@ -387,20 +383,14 @@ export default function MapPage() {
       // Re-fetch GeoJSON for the new manifest
       const geoUrl = sourceUrl ?? data.manifest.layers[0]?.sourceUrl;
       if (geoUrl) {
-        try {
-          const geoRes = await fetch(
-            mapRow.artifact_id
-              ? `/api/datasets/${mapRow.artifact_id}/geojson`
-              : geoUrl,
-          );
-          if (geoRes.ok) {
-            const geo = await geoRes.json();
-            if (geo?.type === "FeatureCollection") {
-              setGeojsonData(geo);
-              setDataProfile(profileDataset(geo));
-            }
-          }
-        } catch { /* non-fatal */ }
+        const fetchUrl = mapRow.artifact_id
+          ? `/api/datasets/${mapRow.artifact_id}/geojson`
+          : geoUrl;
+        const geo = await fetchGeoJSON(fetchUrl);
+        if (geo) {
+          setGeojsonData(geo);
+          setDataProfile(profileDataset(geo));
+        }
       }
 
       showToast("Karta regenererad", "success");

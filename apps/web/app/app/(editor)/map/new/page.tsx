@@ -18,7 +18,6 @@ import { AuthModal } from "@/components/AuthModal";
 import { useAgentChat } from "@/lib/hooks/use-agent-chat";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Toast } from "@/components/Toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/use-auth";
 import { decideClarifyAction } from "@/lib/ai/clarify-action";
 import type { GenerateAction } from "@/lib/ai/clarify-action";
@@ -32,6 +31,8 @@ import {
   MAX_AUTO_ANSWER_ROUNDS,
   RetryableError,
 } from "../_lib/pipeline-stages";
+import { fetchGeoJSON } from "../_lib/fetch-geojson";
+import { useMapPersist } from "@/lib/hooks/use-map-persist";
 
 // ─── Page ────────────────────────────────────────────────────
 
@@ -50,11 +51,11 @@ export default function NewMapPageWrapper() {
 function NewMapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const prompt = searchParams.get("prompt") ?? "";
   const templateId = searchParams.get("template");
   const artifactId = searchParams.get("artifactId");
   const { user } = useAuth();
+  const { saveAndRedirect } = useMapPersist();
 
   const { toast, show: showToast } = useToast();
   const [stage, setStage] = useState<Stage>("clarifying");
@@ -121,20 +122,9 @@ function NewMapPage() {
 
       setStage("fetching");
       const geoUrl = dataUrl ?? generatedManifest.layers[0]?.sourceUrl;
-      let geojson: GeoJSON.FeatureCollection | null = null;
-      if (geoUrl) {
-        try {
-          const geoRes = await fetch(geoUrl);
-          if (geoRes.ok) {
-            const geo = await geoRes.json();
-            if (geo?.type === "FeatureCollection") geojson = geo;
-          } else if (geoRes.status === 404) {
-            throw new RetryableError("Cached data expired, retrying");
-          }
-        } catch (e) {
-          if (e instanceof RetryableError) throw e;
-        }
-      }
+      const geojson = geoUrl
+        ? await fetchGeoJSON(geoUrl, { throwOnExpired: true })
+        : null;
 
       // Validate GeoJSON + auto-correct field name mismatches
       if (geojson && geojson.features.length === 0) {
@@ -255,32 +245,14 @@ function NewMapPage() {
         // Auto-save if logged in
         if (user) {
           setStage("saving");
-          try {
-            const saveRes = await fetch("/api/maps", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: generatedManifest.title ?? promptText.slice(0, 60),
-                prompt: promptText,
-                manifest: generatedManifest as unknown as Record<string, unknown>,
-                geojson_url: geoUrl ?? null,
-                is_public: false,
-              }),
-            });
-            if (saveRes.ok) {
-              const saveData = await saveRes.json();
-              const mapId = saveData.map?.id;
-              if (mapId) {
-                queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
-                router.replace(`/app/map/${mapId}`);
-                return;
-              }
-            } else {
-              showToast("Kunde inte spara kartan", "error");
-            }
-          } catch {
-            showToast("Kunde inte spara kartan", "error");
-          }
+          const result = await saveAndRedirect({
+            title: generatedManifest.title ?? promptText.slice(0, 60),
+            prompt: promptText,
+            manifest: generatedManifest,
+            geojsonUrl: geoUrl,
+          });
+          if (result.ok) return;
+          showToast("Kunde inte spara kartan", "error");
         }
 
         setStage("ready");
@@ -351,32 +323,14 @@ function NewMapPage() {
 
       if (user) {
         setStage("saving");
-        try {
-          const saveRes = await fetch("/api/maps", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: generatedManifest.title ?? prompt.slice(0, 60),
-              prompt,
-              manifest: generatedManifest as unknown as Record<string, unknown>,
-              geojson_url: geoUrl ?? null,
-              is_public: false,
-            }),
-          });
-          if (saveRes.ok) {
-            const saveData = await saveRes.json();
-            const mapId = saveData.map?.id;
-            if (mapId) {
-              queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
-              router.replace(`/app/map/${mapId}`);
-              return;
-            }
-          } else {
-            showToast("Kunde inte spara kartan", "error");
-          }
-        } catch {
-          showToast("Kunde inte spara kartan", "error");
-        }
+        const saveResult = await saveAndRedirect({
+          title: generatedManifest.title ?? prompt.slice(0, 60),
+          prompt,
+          manifest: generatedManifest,
+          geojsonUrl: geoUrl,
+        });
+        if (saveResult.ok) return;
+        showToast("Kunde inte spara kartan", "error");
       }
 
       setStage("ready");
@@ -386,7 +340,7 @@ function NewMapPage() {
       setRetryable(false);
       setStage("error");
     }
-  }, [pendingAction, confirmAnswers, confirmQuestions, generateAndRender, callClarify, prompt, user, router, queryClient, showToast]);
+  }, [pendingAction, confirmAnswers, confirmQuestions, generateAndRender, callClarify, prompt, user, saveAndRedirect, showToast]);
 
   // Template loading — skip AI pipeline entirely
   useEffect(() => {
@@ -405,53 +359,29 @@ function NewMapPage() {
     const sourceUrl = tplManifest.layers[0]?.sourceUrl;
 
     async function loadTemplate() {
-      let geojson: GeoJSON.FeatureCollection | null = null;
-      if (sourceUrl) {
-        try {
-          const res = await fetch(sourceUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.type === "FeatureCollection") geojson = data;
-          }
-        } catch { /* proceed without data — map will fetch from sourceUrl */ }
-      }
+      const geojson = sourceUrl ? await fetchGeoJSON(sourceUrl) : null;
 
       setManifest(tplManifest);
       setGeojsonData(geojson);
       setStage("ready");
 
-      // Auto-save if logged in
+      // Auto-save if logged in — silently proceed without save on failure
       if (user) {
         setStage("saving");
-        try {
-          const saveRes = await fetch("/api/maps", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: tplManifest.title,
-              prompt: `Mall: ${tplTitle}`,
-              manifest: tplManifest as unknown as Record<string, unknown>,
-              geojson_url: sourceUrl ?? null,
-              is_public: false,
-            }),
-          });
-          if (saveRes.ok) {
-            const saveData = await saveRes.json();
-            const mapId = saveData.map?.id;
-            if (mapId) {
-              queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
-              router.replace(`/app/map/${mapId}`);
-              return;
-            }
-          }
-        } catch { /* show map without save */ }
+        const result = await saveAndRedirect({
+          title: tplManifest.title ?? `Mall: ${tplTitle}`,
+          prompt: `Mall: ${tplTitle}`,
+          manifest: tplManifest,
+          geojsonUrl: sourceUrl,
+        });
+        if (result.ok) return;
       }
 
       setStage("ready");
     }
 
     loadTemplate();
-  }, [templateId, user, router, queryClient]);
+  }, [templateId, user, saveAndRedirect]);
 
   useEffect(() => {
     if (templateId) return;
@@ -473,33 +403,17 @@ function NewMapPage() {
     async (_authedUser: User) => {
       setAuthModalOpen(false);
       if (!manifest) return;
-      try {
-        const saveRes = await fetch("/api/maps", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: manifest.title ?? prompt.slice(0, 60),
-            prompt,
-            manifest: manifest as unknown as Record<string, unknown>,
-            geojson_url: manifest.layers[0]?.sourceUrl ?? null,
-            is_public: false,
-          }),
-        });
-        if (saveRes.ok) {
-          const saveData = await saveRes.json();
-          const mapId = saveData.map?.id;
-          if (mapId) {
-            queryClient.invalidateQueries({ queryKey: ["recent-maps"] });
-            router.replace(`/app/map/${mapId}`);
-          }
-        } else {
-          showToast("Kunde inte spara — försök igen", "error");
-        }
-      } catch {
+      const result = await saveAndRedirect({
+        title: manifest.title ?? prompt.slice(0, 60),
+        prompt,
+        manifest,
+        geojsonUrl: manifest.layers[0]?.sourceUrl,
+      });
+      if (!result.ok) {
         showToast("Kunde inte spara — försök igen", "error");
       }
     },
-    [manifest, prompt, queryClient, router, showToast],
+    [manifest, prompt, saveAndRedirect, showToast],
   );
 
   // ── Confirming ──────────────────────────────────────────
