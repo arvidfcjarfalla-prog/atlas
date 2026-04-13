@@ -23,7 +23,7 @@ Batch 1 (7 items) committed. See "Done in this arc" below.
 
 ### Larger (2h+)
 
-18. **Extract `useMapLayerResource` helper; port six terrain hooks** — ~90 % shared scaffolding. Effort: **2h+**
+18. ~~**Extract `useMapLayerResource` helper; port six terrain hooks** — ~90 % shared scaffolding. Effort: **2h+**~~ **DONE** (2026-04-13): shared helper with refcounted source + async-cancel + orphan cleanup; all six hooks ported; 19 new tests. Hook LOC 626 → 478; helper +199. Value is semantic de-duplication, not raw LOC.
 19. **Add component-level tests for `MapViewport`/`CompareView`/`MeasureControl`/`GeocoderControl`**. Effort: **2h+**
 20. **Add tests for `map-modules`** — `use-time-window`, `timeline` buckets, `chart-overlay` projection, `mini-pie` math. Effort: **2h+**
 21. **Standardize `apps/web/components/` filenames to one case** — deferred. Effort: **2h+**

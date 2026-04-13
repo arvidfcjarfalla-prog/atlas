@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useMap } from "./use-map";
+import { useMapLayerResource } from "./use-map-layer-resource";
 
 interface UseHillshadeOptions {
   /** Enable the hillshade terrain texture. */
@@ -27,13 +26,12 @@ export function useHillshade({
   enabled = true,
   beforeLayerId,
 }: UseHillshadeOptions = {}) {
-  const { map, isReady } = useMap();
-  const addedRef = useRef(false);
-
-  useEffect(() => {
-    if (!map || !isReady || !enabled || addedRef.current) return;
-
-    try {
+  useMapLayerResource({
+    sourceId: SOURCE_ID,
+    layerIds: [LAYER_ID],
+    enabled,
+    beforeLayerId,
+    setup: (map, { insertBefore }) => {
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: "raster-dem",
@@ -47,11 +45,6 @@ export function useHillshade({
       }
 
       if (!map.getLayer(LAYER_ID)) {
-        const insertBefore =
-          beforeLayerId && map.getLayer(beforeLayerId)
-            ? beforeLayerId
-            : undefined;
-
         map.addLayer(
           {
             id: LAYER_ID,
@@ -70,26 +63,6 @@ export function useHillshade({
           insertBefore,
         );
       }
-
-      addedRef.current = true;
-    } catch {
-      if (map.getSource(SOURCE_ID) && !map.getLayer(LAYER_ID)) {
-        try { map.removeSource(SOURCE_ID); } catch { /* noop */ }
-      }
-    }
-  }, [map, isReady, enabled, beforeLayerId]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (!map || !addedRef.current) return;
-      try {
-        if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
-        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-      } catch {
-        // Map may already be removed
-      }
-      addedRef.current = false;
-    };
-  }, [map]);
+    },
+  });
 }

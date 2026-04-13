@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useMap } from "./use-map";
+import { useMapLayerResource } from "./use-map-layer-resource";
 
 interface UseTerrainOptions {
   /** Enable 3D terrain. */
@@ -21,39 +20,28 @@ export function useTerrain({
   enabled = true,
   exaggeration = 1.5,
 }: UseTerrainOptions = {}) {
-  const { map, isReady } = useMap();
-  const addedRef = useRef(false);
-
-  useEffect(() => {
-    if (!map || !isReady || !enabled || addedRef.current) return;
-
-    // Add DEM source if hillshade hasn't already added one
-    if (!map.getSource(SOURCE_ID)) {
-      map.addSource(SOURCE_ID, {
-        type: "raster-dem",
-        tiles: [
-          "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-        ],
-        encoding: "terrarium",
-        tileSize: 256,
-        maxzoom: 15,
-      });
-    }
-
-    map.setTerrain({ source: SOURCE_ID, exaggeration });
-    addedRef.current = true;
-  }, [map, isReady, enabled, exaggeration]);
-
-  useEffect(() => {
-    return () => {
-      if (!map || !addedRef.current) return;
-      try {
-        map.setTerrain(null);
-        // Don't remove source — hillshade may still use it
-      } catch {
-        // Map may already be removed
+  useMapLayerResource({
+    sourceId: SOURCE_ID,
+    layerIds: [],
+    enabled,
+    keepSourceOnUnmount: true,
+    deps: [exaggeration],
+    setup: (map) => {
+      if (!map.getSource(SOURCE_ID)) {
+        map.addSource(SOURCE_ID, {
+          type: "raster-dem",
+          tiles: [
+            "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+          ],
+          encoding: "terrarium",
+          tileSize: 256,
+          maxzoom: 15,
+        });
       }
-      addedRef.current = false;
-    };
-  }, [map]);
+      map.setTerrain({ source: SOURCE_ID, exaggeration });
+    },
+    teardown: (map) => {
+      map.setTerrain(null);
+    },
+  });
 }

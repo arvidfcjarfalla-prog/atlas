@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useMap } from "./use-map";
+import type maplibregl from "maplibre-gl";
+import { useMapLayerResource } from "./use-map-layer-resource";
 
 interface ContourConfig {
   interval?: number;
@@ -29,136 +29,115 @@ export function useContourLines({
   config,
   beforeLayerId,
 }: UseContourLinesOptions = {}) {
-  const { map, isReady } = useMap();
-  const addedRef = useRef(false);
+  const interval = config?.interval ?? 100;
+  const majorInterval = config?.majorInterval ?? 500;
+  const opacity = config?.opacity ?? 0.4;
 
-  useEffect(() => {
-    if (!map || !isReady || !enabled || addedRef.current) return;
+  useMapLayerResource({
+    sourceId: SOURCE_ID,
+    layerIds: [CONTOUR_LAYER_ID, CONTOUR_MAJOR_LAYER_ID, CONTOUR_LABEL_LAYER_ID],
+    enabled,
+    beforeLayerId,
+    // maplibre-contour is a dynamic import; a missing module or DEM tile fetch
+    // failure is an acceptable no-op rather than console noise.
+    silentOnFailure: true,
+    deps: [interval, majorInterval, opacity],
+    setup: async (map, { insertBefore, signal }) => {
+      const { default: mlcontour } = await import("maplibre-contour");
+      if (signal.cancelled) return;
 
-    const interval = config?.interval ?? 100;
-    const majorInterval = config?.majorInterval ?? 500;
-    const opacity = config?.opacity ?? 0.4;
+      const demSource = new mlcontour.DemSource({
+        url: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+        encoding: "terrarium",
+        maxzoom: 12,
+        worker: true,
+      });
 
-    (async () => {
-      try {
-        const { default: mlcontour } = await import("maplibre-contour");
+      demSource.setupMaplibre(
+        map as unknown as Parameters<typeof demSource.setupMaplibre>[0],
+      );
 
-        const demSource = new mlcontour.DemSource({
-          url: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-          encoding: "terrarium",
-          maxzoom: 12,
-          worker: true,
-        });
-
-        demSource.setupMaplibre(map as unknown as Parameters<typeof demSource.setupMaplibre>[0]);
-
-        if (!map.getSource(SOURCE_ID)) {
-          map.addSource(SOURCE_ID, {
-            type: "vector",
-            tiles: [
-              demSource.contourProtocolUrl({
-                multiplier: 1,
-                overzoom: 1,
-                thresholds: {
-                  11: [interval, majorInterval],
-                  12: [interval, majorInterval],
-                  13: [interval / 2, majorInterval],
-                  14: [interval / 2, majorInterval],
-                },
-                elevationKey: "ele",
-                levelKey: "level",
-                contourLayer: "contours",
-              }),
-            ],
-            maxzoom: 15,
-          } as unknown as maplibregl.SourceSpecification);
-        }
-
-        const insertBefore =
-          beforeLayerId && map.getLayer(beforeLayerId)
-            ? beforeLayerId
-            : undefined;
-
-        if (!map.getLayer(CONTOUR_LAYER_ID)) {
-          map.addLayer(
-            {
-              id: CONTOUR_LAYER_ID,
-              type: "line",
-              source: SOURCE_ID,
-              "source-layer": "contours",
-              filter: ["==", ["get", "level"], 0],
-              paint: {
-                "line-color": "rgba(180, 200, 220, 0.25)",
-                "line-width": 0.5,
-                "line-opacity": opacity,
+      if (!map.getSource(SOURCE_ID)) {
+        map.addSource(SOURCE_ID, {
+          type: "vector",
+          tiles: [
+            demSource.contourProtocolUrl({
+              multiplier: 1,
+              overzoom: 1,
+              thresholds: {
+                11: [interval, majorInterval],
+                12: [interval, majorInterval],
+                13: [interval / 2, majorInterval],
+                14: [interval / 2, majorInterval],
               },
-            },
-            insertBefore,
-          );
-        }
-
-        if (!map.getLayer(CONTOUR_MAJOR_LAYER_ID)) {
-          map.addLayer(
-            {
-              id: CONTOUR_MAJOR_LAYER_ID,
-              type: "line",
-              source: SOURCE_ID,
-              "source-layer": "contours",
-              filter: ["==", ["get", "level"], 1],
-              paint: {
-                "line-color": "rgba(180, 200, 220, 0.45)",
-                "line-width": 1,
-                "line-opacity": opacity,
-              },
-            },
-            insertBefore,
-          );
-        }
-
-        if (!map.getLayer(CONTOUR_LABEL_LAYER_ID)) {
-          map.addLayer(
-            {
-              id: CONTOUR_LABEL_LAYER_ID,
-              type: "symbol",
-              source: SOURCE_ID,
-              "source-layer": "contours",
-              filter: ["==", ["get", "level"], 1],
-              layout: {
-                "symbol-placement": "line",
-                "text-field": ["concat", ["number-format", ["get", "ele"], {}], " m"],
-                "text-size": 9,
-                "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
-              },
-              paint: {
-                "text-color": "rgba(180, 200, 220, 0.5)",
-                "text-halo-color": "rgba(12, 16, 24, 0.8)",
-                "text-halo-width": 1,
-              },
-            },
-            insertBefore,
-          );
-        }
-
-        addedRef.current = true;
-      } catch {
-        // maplibre-contour not available or failed
+              elevationKey: "ele",
+              levelKey: "level",
+              contourLayer: "contours",
+            }),
+          ],
+          maxzoom: 15,
+        } as unknown as maplibregl.SourceSpecification);
       }
-    })();
-  }, [map, isReady, enabled, config, beforeLayerId]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (!map || !addedRef.current) return;
-      try {
-        if (map.getLayer(CONTOUR_LABEL_LAYER_ID)) map.removeLayer(CONTOUR_LABEL_LAYER_ID);
-        if (map.getLayer(CONTOUR_MAJOR_LAYER_ID)) map.removeLayer(CONTOUR_MAJOR_LAYER_ID);
-        if (map.getLayer(CONTOUR_LAYER_ID)) map.removeLayer(CONTOUR_LAYER_ID);
-        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-      } catch {
-        // Map may already be removed
+      if (!map.getLayer(CONTOUR_LAYER_ID)) {
+        map.addLayer(
+          {
+            id: CONTOUR_LAYER_ID,
+            type: "line",
+            source: SOURCE_ID,
+            "source-layer": "contours",
+            filter: ["==", ["get", "level"], 0],
+            paint: {
+              "line-color": "rgba(180, 200, 220, 0.25)",
+              "line-width": 0.5,
+              "line-opacity": opacity,
+            },
+          },
+          insertBefore,
+        );
       }
-      addedRef.current = false;
-    };
-  }, [map]);
+
+      if (!map.getLayer(CONTOUR_MAJOR_LAYER_ID)) {
+        map.addLayer(
+          {
+            id: CONTOUR_MAJOR_LAYER_ID,
+            type: "line",
+            source: SOURCE_ID,
+            "source-layer": "contours",
+            filter: ["==", ["get", "level"], 1],
+            paint: {
+              "line-color": "rgba(180, 200, 220, 0.45)",
+              "line-width": 1,
+              "line-opacity": opacity,
+            },
+          },
+          insertBefore,
+        );
+      }
+
+      if (!map.getLayer(CONTOUR_LABEL_LAYER_ID)) {
+        map.addLayer(
+          {
+            id: CONTOUR_LABEL_LAYER_ID,
+            type: "symbol",
+            source: SOURCE_ID,
+            "source-layer": "contours",
+            filter: ["==", ["get", "level"], 1],
+            layout: {
+              "symbol-placement": "line",
+              "text-field": ["concat", ["number-format", ["get", "ele"], {}], " m"],
+              "text-size": 9,
+              "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+            },
+            paint: {
+              "text-color": "rgba(180, 200, 220, 0.5)",
+              "text-halo-color": "rgba(12, 16, 24, 0.8)",
+              "text-halo-width": 1,
+            },
+          },
+          insertBefore,
+        );
+      }
+    },
+  });
 }
