@@ -28,11 +28,14 @@ interface TimelineProps {
 export function Timeline({ entities, embedded, className }: TimelineProps) {
   const { timeWindow, setTimeWindow, windowMs } = useTimeWindow();
 
+  // Coarse minute-granularity tick so the timeline advances as wall-clock
+  // moves forward, without invalidating the memo on every render (which was
+  // the original bug). 60_000 ms is low enough that users never notice the
+  // quantization in a 48-bucket window.
+  const nowBucket = Math.floor(Date.now() / 60_000);
+
   const buckets = useMemo(() => {
-    // Compute `now` inside the memo so buckets only recompute when their real
-    // inputs (entities or window size) change. Reading Date.now() at render
-    // level previously invalidated the dep array on every render.
-    const now = Date.now();
+    const now = nowBucket * 60_000;
     const windowStart = now - windowMs;
     const bucketSize = windowMs / BUCKET_COUNT;
     const result: Bucket[] = Array.from({ length: BUCKET_COUNT }, (_, i) => ({
@@ -57,7 +60,7 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
     }
 
     return result;
-  }, [entities, windowMs]);
+  }, [entities, windowMs, nowBucket]);
 
   const maxCount = useMemo(
     () => Math.max(1, ...buckets.map((b) => b.count)),

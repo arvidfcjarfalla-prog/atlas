@@ -23,6 +23,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid dataUrl" }, { status: 400 });
   }
 
+  // Short-circuit on raw string length before decoding to avoid allocating a
+  // large Buffer for an attacker payload. 3 MB of base64 ≈ 2.25 MB decoded.
+  const MAX_DATAURL_CHARS = 3 * 1024 * 1024;
+  if (dataUrl.length > MAX_DATAURL_CHARS) {
+    return NextResponse.json({ error: "Image too large" }, { status: 413 });
+  }
+
   // Decode base64 to buffer
   const base64 = dataUrl.replace("data:image/jpeg;base64,", "");
   const buffer = Buffer.from(base64, "base64");
