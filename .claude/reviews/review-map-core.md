@@ -1,68 +1,47 @@
 # map-core
 
-Generally healthy. No runtime-crashing bugs found. Two real dead-code items, a cluster of type lies in the compiler, one unused component export, and a sizable refactor opportunity across six near-identical terrain hooks. 31 source files, 2 test files — React/MapLibre components lack integration tests.
+Solid package overall — manifest compiler is well-tested, the new `useMapLayerResource` helper cleans up six terrain hooks nicely. Two real correctness gaps (missing deck.gl install, toggle-off does not remove basemap layers) plus a handful of unused exports and one dead dep.
 
 ## Fix These (breaks things or hides bugs)
 
-_Nothing crashes. The items below are wrong-but-not-breaking; filed under Clean Up._
+- **deck.gl packages not installed anywhere** — `packages/map-core/src/use-deck-overlay.ts:85` dynamically imports `@deck.gl/mapbox`, `@deck.gl/aggregation-layers`, `@deck.gl/geo-layers` but none of them appear in `packages/map-core/package.json` or `apps/web/package.json`, and `node_modules/@deck.gl` does not exist. The imports fail and the hook only `console.warn`s, so hexbin-3d / screen-grid / trip families silently render nothing even though `compileDeckFamily` (`packages/map-core/src/manifest-compiler.ts:1543`) produces `deckLayers`. Fix: add `@deck.gl/core`, `@deck.gl/mapbox`, `@deck.gl/aggregation-layers`, `@deck.gl/geo-layers` to `apps/web/package.json` (or to map-core as peer deps) so the dynamic import resolves.
+
+- **Disabling a basemap layer at runtime does not remove it** — `packages/map-core/src/use-map-layer-resource.ts:184` — setup effect early-returns when `enabled` flips to false, and the cleanup effect only fires on unmount (`deps: [map]`). A chat edit that flips `basemap.hillshade` true→false keeps the hillshade layer on the map until the MapViewport remounts. Same applies to `nightlights`, `tectonic`, `contourLines`, and `terrain`. Fix: when `enabled` goes from true→false with `state.added === true`, call `runResourceCleanup` and reset `state`, so the setup effect's normal re-run semantics manage the lifecycle.
+
+- **Changing resource deps after first setup is a no-op** — `packages/map-core/src/use-map-layer-resource.ts:185` — `if (state.added) return` means `contour.interval` / `land-mask.color` / `terrain.exaggeration` changes get ignored after the first render, even though they're in the effect's dep array. Fix: when deps identity changes while `state.added`, tear down and re-setup so the new values actually take effect (or document explicitly that deps are setup-time-only).
+
+- **Unused `LngLat` import** — `packages/map-core/src/measure-control.tsx:5` — imported but never referenced; will trip `noUnusedLocals` if that rule is ever enabled. Fix: drop `LngLat` from the import.
 
 ## Clean Up (dead code, unused stuff)
 
-- **Dead `cleanup` variable in `useContourLines`** — `packages/map-core/src/use-contour-lines.ts:42,151` — `let cleanup: (() => void) | undefined;` is declared but never assigned; `cleanup?.()` on :151 is always a no-op. The real unmount cleanup lives in the second `useEffect` at :155–169. Fix: delete line 42 and the `return () => { cleanup?.(); }` at :150–152.
+- **`lucide-react` dep not imported** — `packages/map-core/package.json:25` declares `lucide-react ^0.462.0` but nothing under `packages/map-core/src/` imports it (grep returns zero hits). Fix: remove from dependencies.
 
-- **`MapControls` exported but never consumed** — `packages/map-core/src/index.ts:3`, defined in `packages/map-core/src/map-controls.tsx:10`. `rg MapControls apps/ packages/` returns zero hits outside the barrel/definition and unrelated HTML eval viewers. Fix: delete the export and the file, or wire it into a page if it was meant as a default.
+- **Duplicate `ImageFillMetadata` interface** — `packages/map-core/src/use-image-fills.ts:6` redefines the same shape that `use-manifest-renderer.ts:34` exports as the public type. Two identical-but-separate types invite drift. Fix: `import type { ImageFillMetadata } from "./use-manifest-renderer"` in `use-image-fills.ts` and delete the local copy.
 
-- **Dead import: `useTerrain` in disasters page** — `apps/web/app/(maps)/disasters/page.tsx:4` imports `useTerrain` from `@atlas/map-core` but never calls it (no other references in the file). Fix: remove from the import list.
+- **`useContourLines` not re-exported** — `packages/map-core/src/use-contour-lines.ts` is only reached indirectly via `useBasemapLayers`. `packages/map-core/src/index.ts` exports `useHillshade`, `useNightlights`, `useLandMask`, `useTerrain`, `useTectonicLayers` but not `useContourLines`. Fix: either add it to the barrel for consistency with its siblings, or drop the other five from the barrel since consumers only use `useBasemapLayers` (`apps/web/components/MapContent.tsx:5` and the legacy `apps/web/app/(maps)/disasters/page.tsx:4`).
 
-- **Compiler paint-property type casts hide `Expr` variants** — `packages/map-core/src/manifest-compiler.ts:513,514,527,1083,1084,1245,1246,1257`. `buildColorExpression` returns `string | Expr` (:1635), and `radiusExpr`/`widthExpr`/`heightExpr` are typed `Expr | number`, but every paint entry casts them to `string`/`number`:
-  ```ts
-  "circle-color": colorExpr as string,
-  "circle-radius": radiusExpr as number,
-  ```
-  MapLibre accepts both at runtime so nothing crashes, but the casts lie to every future reader. Line 1094 already demonstrates the proper narrowing: `typeof widthExpr === "number" ? widthExpr + 2 : ["+", widthExpr, 2]`. Fix: drop the casts — `DataDrivenPropertyValueSpecification<T>` accepts expressions natively, so the values can be assigned directly once the locals are typed `Expr | T`.
-
-- **Centroid-extraction logic duplicated** — `packages/map-core/src/manifest-compiler.ts:117–143` (`buildCentroidCollection`) and `:383–398` (chart-overlay inline loop) reimplement the same "largest-ring centroid for Polygon/MultiPolygon" algorithm. Fix: extract `centroidOfLargestRing(geometry): [number, number] | null` and call from both sites.
-
-- **Empty catch in manifest cleanup hides layer-remove failures** — `packages/map-core/src/use-manifest-renderer.ts:121–123`. If `removeLayer`/`removeSource` throws during a manifest swap, the orphan is silent. Fix: `console.warn("[Atlas] cleanup failed:", err)` inside the catch — mirrors the pattern used elsewhere in the file.
-
-- **Empty catches around deck.gl overlay control swaps** — `packages/map-core/src/use-deck-overlay.ts:139,165`. `removeControl` failures are swallowed; if removal fails, `overlayRef.current = null` on :166 but the overlay is still attached to the map. Fix: log the error; optionally only null `overlayRef.current` on success.
-
-- **Empty catch hides `setPaintProperty` failure for image fills** — `packages/map-core/src/use-image-fills.ts:145–147`. If the target layer isn't a fill type, the pattern silently fails with no fill visible and no diagnostic. Fix: log with the layer id.
-
-- **Geocoder leaves stale results on non-ok response** — `packages/map-core/src/geocoder-control.tsx:54`. `if (!res.ok) return;` clears nothing, so after a 429/500 the previous query's list stays on screen while `loading` drops to false. Fix: `if (!res.ok) { setResults([]); setOpen(false); return; }`.
-
-- **`CompareView` registers `move` listeners without an `off` path** — `packages/map-core/src/compare-view.tsx:50–60`. `map.on("move", ...)` is attached inside `handleMapAReady`/`handleMapBReady` and never explicitly removed. Today it's masked because `MapViewport` does `mapRef?.remove()` on unmount which tears down listeners, so there's no live leak. Fix: move the registration into a `useEffect` keyed on the map instance and return `map.off(...)` in cleanup — makes the intent explicit instead of depending on MapLibre's destroy order.
-
-- **deck.gl overlay uses `(map as any).addControl` / `removeControl`** — `packages/map-core/src/use-deck-overlay.ts:138,147,164`. `MapboxOverlay` from `@deck.gl/mapbox` implements `IControl`, so the cast isn't needed. Fix: replace `as any` with the proper control type from `@deck.gl/mapbox`.
+- **Likely-unused public types** — `MapContextValue`, `MapShellProps`, `CameraPadding`, `CompiledSourceConfig` are exported from `packages/map-core/src/index.ts:13,17` but zero consumers import them (searched all of `apps/` and `packages/`). They're harmless API surface, but if kept they should be intentional. Fix: drop them, or note in a comment that they're kept as public API.
 
 ## Nice to Have (style, consistency)
 
-- **Six near-identical terrain/atmosphere hooks** — `use-hillshade.ts`, `use-land-mask.ts`, `use-nightlights.ts`, `use-tectonic-layers.ts`, `use-contour-lines.ts`, `use-terrain.ts` share ~90 % scaffolding: an `addedRef`, an effect that checks `map.getSource`/`addSource` and `map.getLayer`/`addLayer`, a try/catch that conditionally removes the orphaned source, and an unmount effect that removes layers and source. Extracting a `useMapLayerResource({ sourceId, layerId, buildSource, buildLayer, beforeLayerId, enabled })` helper would collapse ~80 lines per hook down to ~20 and standardize error handling. Fix: defer until the next hook is added — trigger refactor then.
+- **`require("h3-js")` inside ESM** — `packages/map-core/src/manifest-compiler.ts:1430` — uses CommonJS `require` in a `.ts` file with an ESLint suppression. Works in the bundler but breaks if the package is ever consumed as pure ESM (e.g. from a Node script — see `.claude/rules/node-script-imports.md`). Fix: move to `import` at module scope; h3-js ships ESM in recent versions.
 
-- **No integration/unit tests for React + MapLibre components** — `MapViewport`, `CompareView`, `MeasureControl`, `GeocoderControl`, `MapShell` have zero tests. Given the existing patterns (listener cleanup, source/layer lifecycle), a few smoke tests would catch regressions cheaply. Fix: start with `MapViewport` mount/unmount and `MeasureControl` source/layer lifecycle using `@testing-library/react` + a MapLibre mock.
+- **`turf-transforms.ts` has no direct test** — `packages/map-core/src/turf-transforms.ts` (180 LoC, six transform types with per-type branches) is exercised only transitively through `manifest-compiler.test.ts`. Fix: add a focused unit test for `applyTransforms` covering each transform type plus the error-swallow-with-warning branch at line 33.
 
-- **`cameraPadding` effect-deps exclusion can drift silently** — `packages/map-core/src/map-viewport.tsx:332–335`. Padding is consumed once inside `onReady` via closure; subsequent `cameraPadding` changes are ignored because the effect only re-inits on `theme`/`basemap.style`. The comment documents the intent, but there is no separate effect that applies `map.setPadding(...)` when the prop changes post-init. Fix: add a small effect keyed on `mapInstance` + `cameraPadding` that calls `mapInstance.setPadding(...)`, so live padding changes (e.g. sidebar toggle) actually take effect.
+- **CompareView initial camera mismatch** — `packages/map-core/src/compare-view.tsx:52` — `mapA` and `mapB` each initialize to their own `manifest.defaultCenter`; if they differ, the user sees a flash until the first move sync. Fix: on mount of the second map, force a one-time `jumpTo` to mapA's state before wiring listeners.
+
+- **Inline `<style>` in popups relies on global fonts** — `packages/map-core/src/use-manifest-renderer.ts:259` hardcodes `'Geist'` and rgba tokens. It works in `apps/web`, but anyone reusing `@atlas/map-core` outside this app gets broken styling. Fix: move popup styling to `popup.css` and use CSS custom properties, or import from `@atlas/ui` tokens.
+
+- **Silent per-layer catch in timeline filter loop** — `packages/map-core/src/use-timeline-playback.ts:90` — `try { map.setFilter(...) } catch {}` on every tick hides schema mismatches (e.g. `timeField` missing on some layers). Fix: keep the catch but `console.warn` once per layer to surface silent failures.
 
 ## Looks Good
 
-- `packages/map-core/src/arc-interpolator.ts` — zero-distance and division-by-zero are guarded; no issues.
-- `packages/map-core/src/turf-transforms.ts` — clean error handling around transform application.
-- `packages/map-core/src/types.ts` — tight public type surface.
-- `packages/map-core/src/index.ts` — barrel is accurate (except the `MapControls` export flagged above).
-- `packages/map-core/src/use-terrain.ts` — intentionally shares `SOURCE_ID` with hillshade; unmount correctly leaves the shared source in place (documented at :51–52).
-- `packages/map-core/src/use-route-animation.ts` — RAF cleanup is symmetric; marker source/layer lifecycle is clean.
-- `packages/map-core/src/use-timeline-playback.ts` — interval and keyboard-listener cleanup verified; no leaks.
-- `packages/map-core/src/use-map-layers.ts` — layer-before-source removal order is correct; cleanup has try/catch.
-- `packages/map-core/src/coordinate-widget.tsx`, `measure-control.tsx`, `map-atmosphere.tsx`, `map-shell.tsx` — all listener registrations have matching cleanups; layer removal precedes source removal in `MeasureControl`.
-- `packages/map-core/src/use-hillshade.ts`, `use-land-mask.ts`, `use-nightlights.ts` — the "asymmetric" catch-branch flagged by exploration is actually correct defensive logic (only remove orphaned source when the layer never got added).
-- `packages/map-core/src/use-deck-overlay.ts` cancel semantics — each effect run closes over its own `cancelled` flag; no cross-run race (the earlier race claim was a false positive).
-
-## Audit Method
-
-- 4 parallel Explore agents, one per sub-area (compiler core, shell/viewport, manifest/render hooks, terrain hooks).
-- Every finding above was re-read in the source file before publication; false positives from the agents were dropped:
-  - "`useManifestRenderer` popup cleanup bug" — rejected: cleanup at `use-manifest-renderer.ts:443–444` does remove both popups.
-  - "`useDeckOverlay` concurrent-run race on `cancelled`" — rejected: `let cancelled = false` is inside the effect body, so each run has its own closure.
-  - "`useHillshade`/`useLandMask`/`useNightlights` asymmetric catch-branch" — rejected: the condition is correct orphan-source cleanup.
-  - "`MapViewport` `map.on('load', onReady)` has no off" — rejected: `mapRef.remove()` in cleanup tears down all listeners.
-  - "`useRippleLayers` RAF/setTimeout race on cleanup" — rejected: `timeoutRef` is cleared in cleanup and `running` is checked before re-scheduling.
+- `useMapLayerResource` refcount, orphan-source cleanup, and async-signal cancellation are thorough; test coverage in `packages/map-core/src/__tests__/use-map-layer-resource.test.ts` exercises all branches including the reverse-order teardown.
+- Manifest compiler is pure, well-documented, has 65 tests in `manifest-compiler.test.ts`.
+- Arc interpolator is cleanly isolated (pure, no DOM), 16 tests.
+- `MapViewport` basemap-fetch retry, style transform pipeline, and ResizeObserver wiring are solid.
+- Hook cleanup patterns in `useRippleLayers`, `useRouteAnimation`, `useTimelinePlayback`, `useDeckOverlay` all clear their RAFs/intervals/overlays on unmount.
+- `useManifestRenderer` correctly stabilizes `EMPTY_LEGEND` / `EMPTY_WARNINGS` references to avoid consumer re-render loops.
+- `CompareView` listener lifecycle with explicit `.off()` and the `syncingRef` guard is correct.
+- No `as any`, no `@ts-ignore`, no empty catches that aren't commented as intentional (map-disposed branches).
+- No stale TODO/FIXME markers.
