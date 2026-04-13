@@ -25,6 +25,7 @@ import { ZoomControls } from "@/components/ZoomControls";
 import { ShareModal } from "@/components/ShareModal";
 import { exportPNG, exportGeoJSON, exportPDF, exportSVG } from "@/lib/utils/export";
 import { KeyboardShortcutsOverlay } from "@/components/KeyboardShortcutsOverlay";
+import { log, errorMessage } from "@/lib/logger";
 
 // ─── Saved views ─────────────────────────────────────────────
 
@@ -333,7 +334,15 @@ export default function MapPage() {
           manifest: m as unknown as Record<string, unknown>,
           ...(prompt ? { prompt } : {}),
         }),
-      }).catch(() => {});
+      })
+        .then((res) => {
+          if (!res.ok) {
+            log("save.version.failed", { mapId: id, status: res.status });
+          }
+        })
+        .catch((err) => {
+          log("save.version.failed", { mapId: id, error: errorMessage(err) });
+        });
     },
     [id],
   );

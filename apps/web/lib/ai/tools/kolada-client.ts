@@ -40,39 +40,58 @@ interface KpiConfig {
 }
 
 /**
- * Curated Kolada KPIs — verified against live API.
- * Key = keyword that triggers this KPI from user prompts.
+ * Curated Kolada KPI definitions — verified against live API.
+ * Each entry lists every keyword that should resolve to that KPI.
+ * The flat keyword→config lookup `KOLADA_KPIS` is built from this list.
  */
-const KOLADA_KPIS: Record<string, KpiConfig> = {
+interface KpiDef extends KpiConfig {
+  aliases: string[];
+}
+
+const KOLADA_KPI_DEFS: KpiDef[] = [
   // Population
-  befolkning: { id: "N01951", label: "Invånare totalt", property: "population", unit: "antal" },
-  invånare: { id: "N01951", label: "Invånare totalt", property: "population", unit: "antal" },
-  population: { id: "N01951", label: "Invånare totalt", property: "population", unit: "antal" },
-  folkmängd: { id: "N01951", label: "Invånare totalt", property: "population", unit: "antal" },
+  { id: "N01951", label: "Invånare totalt", property: "population", unit: "antal",
+    aliases: ["befolkning", "invånare", "population", "folkmängd"] },
   // Unemployment
-  arbetslöshet: { id: "N02280", label: "Arbetslöshet 20-64 år (BAS)", property: "unemployment_rate", unit: "%" },
-  unemployment: { id: "N02280", label: "Arbetslöshet 20-64 år (BAS)", property: "unemployment_rate", unit: "%" },
-  arbetslösa: { id: "N03920", label: "Arbetslösa av befolkningen 18-65 år", property: "unemployment_rate", unit: "%" },
-  ungdomsarbetslöshet: { id: "N03935", label: "Arbetslösa av befolkningen 18-24 år", property: "youth_unemployment", unit: "%" },
+  { id: "N02280", label: "Arbetslöshet 20-64 år (BAS)", property: "unemployment_rate", unit: "%",
+    aliases: ["arbetslöshet", "unemployment"] },
+  { id: "N03920", label: "Arbetslösa av befolkningen 18-65 år", property: "unemployment_rate", unit: "%",
+    aliases: ["arbetslösa"] },
+  { id: "N03935", label: "Arbetslösa av befolkningen 18-24 år", property: "youth_unemployment", unit: "%",
+    aliases: ["ungdomsarbetslöshet"] },
   // Income
-  inkomst: { id: "N00906", label: "Sammanräknad förvärvsinkomst 20-64 år (median)", property: "median_income", unit: "kr" },
-  medianinkomst: { id: "N00906", label: "Sammanräknad förvärvsinkomst 20-64 år (median)", property: "median_income", unit: "kr" },
-  medelinkomst: { id: "N00906", label: "Sammanräknad förvärvsinkomst 20-64 år (median)", property: "median_income", unit: "kr" },
-  income: { id: "N00906", label: "Sammanräknad förvärvsinkomst 20-64 år (median)", property: "median_income", unit: "kr" },
-  nettoinkomst: { id: "N00905", label: "Mediannettoinkomst", property: "net_income", unit: "kr" },
-  gini: { id: "N00956", label: "Ginikoefficient — förvärvsinkomst", property: "gini", unit: "index" },
+  { id: "N00906", label: "Sammanräknad förvärvsinkomst 20-64 år (median)", property: "median_income", unit: "kr",
+    aliases: ["inkomst", "medianinkomst", "medelinkomst", "income"] },
+  { id: "N00905", label: "Mediannettoinkomst", property: "net_income", unit: "kr",
+    aliases: ["nettoinkomst"] },
+  { id: "N00956", label: "Ginikoefficient — förvärvsinkomst", property: "gini", unit: "index",
+    aliases: ["gini"] },
   // Education
-  utbildning: { id: "N00218", label: "Anställda med eftergymnasial utbildning", property: "higher_education_pct", unit: "%" },
-  utbildningsnivå: { id: "N00218", label: "Anställda med eftergymnasial utbildning", property: "higher_education_pct", unit: "%" },
-  education: { id: "N00218", label: "Anställda med eftergymnasial utbildning", property: "higher_education_pct", unit: "%" },
+  { id: "N00218", label: "Anställda med eftergymnasial utbildning", property: "higher_education_pct", unit: "%",
+    aliases: ["utbildning", "utbildningsnivå", "education"] },
   // Demographics
-  äldre: { id: "N01938", label: "Invånare 65+", property: "elderly", unit: "antal" },
-  barn: { id: "N01919", label: "Invånare 0-19 år", property: "children", unit: "antal" },
-  befolkningsförändring: { id: "N01963", label: "Befolkningsförändring sedan föregående år", property: "population_change", unit: "%" },
+  { id: "N01938", label: "Invånare 65+", property: "elderly", unit: "antal",
+    aliases: ["äldre"] },
+  { id: "N01919", label: "Invånare 0-19 år", property: "children", unit: "antal",
+    aliases: ["barn"] },
+  { id: "N01963", label: "Befolkningsförändring sedan föregående år", property: "population_change", unit: "%",
+    aliases: ["befolkningsförändring"] },
   // Social
-  bistånd: { id: "N31825", label: "Biståndsmottagare ekonomiskt bistånd 18+", property: "welfare_recipients", unit: "%" },
-  fattigdom: { id: "U01803", label: "Invånare 18-64 med låg inkomst", property: "low_income_pct", unit: "%" },
-};
+  { id: "N31825", label: "Biståndsmottagare ekonomiskt bistånd 18+", property: "welfare_recipients", unit: "%",
+    aliases: ["bistånd"] },
+  { id: "U01803", label: "Invånare 18-64 med låg inkomst", property: "low_income_pct", unit: "%",
+    aliases: ["fattigdom"] },
+];
+
+/** Flat keyword→config lookup, built once from KOLADA_KPI_DEFS. */
+const KOLADA_KPIS: Record<string, KpiConfig> = (() => {
+  const map: Record<string, KpiConfig> = {};
+  for (const def of KOLADA_KPI_DEFS) {
+    const config: KpiConfig = { id: def.id, label: def.label, property: def.property, unit: def.unit };
+    for (const alias of def.aliases) map[alias] = config;
+  }
+  return map;
+})();
 
 // ─── Keyword matching ───────────────────────────────────────
 
@@ -109,9 +128,8 @@ function matchKpi(prompt: string): KpiConfig | null {
 // ─── AI KPI selection (fallback) ────────────────────────────
 
 async function aiSelectKpi(prompt: string): Promise<KpiConfig | null> {
-  const kpiList = Object.entries(KOLADA_KPIS)
-    .filter(([, v], i, arr) => arr.findIndex(([, v2]) => v2.id === v.id) === i) // dedupe by ID
-    .map(([keyword, config]) => `${keyword}: ${config.id} — ${config.label}`)
+  const kpiList = KOLADA_KPI_DEFS
+    .map((def) => `${def.aliases[0]}: ${def.id} — ${def.label}`)
     .join("\n");
 
   try {
@@ -125,11 +143,12 @@ async function aiSelectKpi(prompt: string): Promise<KpiConfig | null> {
       new Promise<string>((resolve) => setTimeout(() => resolve("NONE"), AI_TIMEOUT_MS)),
     ]);
 
-    if (result === "NONE" || !result.startsWith("N")) return null;
+    if (result === "NONE") return null;
 
-    // Find the config for this ID
-    const entry = Object.values(KOLADA_KPIS).find((c) => c.id === result);
-    return entry ?? null;
+    // Find the def for this ID (covers both N* and U* prefixes)
+    const def = KOLADA_KPI_DEFS.find((d) => d.id === result);
+    if (!def) return null;
+    return { id: def.id, label: def.label, property: def.property, unit: def.unit };
   } catch {
     return null;
   }
