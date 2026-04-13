@@ -142,8 +142,8 @@ export function useImageFills(
       try {
         map.setPaintProperty(fillLayerId, "fill-pattern", matchExpr);
         map.setPaintProperty(fillLayerId, "fill-opacity", imageFill.opacity);
-      } catch {
-        // Pattern property might not be supported for all layer types
+      } catch (err) {
+        console.warn(`[Atlas] image-fill setPaintProperty failed for layer "${fillLayerId}":`, err);
       }
     }
 

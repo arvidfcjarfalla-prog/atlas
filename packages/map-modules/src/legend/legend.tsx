@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@atlas/ui";
+import { glass } from "./legend-styles";
 
 export interface LegendItem {
   label: string;
@@ -15,14 +16,6 @@ interface LegendProps {
   activeItems?: string[];
   onToggle?: (label: string) => void;
 }
-
-const glass = {
-  background: "rgba(12,16,20,0.8)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.05)",
-  borderRadius: 8,
-} as const;
 
 /** Map legend overlay with optional filter toggling. */
 export function Legend({ items, title, className, activeItems, onToggle }: LegendProps) {

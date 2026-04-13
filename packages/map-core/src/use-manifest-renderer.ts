@@ -118,8 +118,8 @@ export function useManifestRenderer({
         for (const extraId of Object.keys(prev.extraSources ?? {})) {
           if (map.getSource(extraId)) map.removeSource(extraId);
         }
-      } catch {
-        // Map may already be in a bad state
+      } catch (err) {
+        console.warn("[Atlas] manifest swap cleanup failed:", err);
       }
       addedRef.current = false;
     }

@@ -136,7 +136,9 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
         if (overlayRef.current) {
           try {
             (map as any).removeControl(overlayRef.current);
-          } catch { /* noop */ }
+          } catch (err) {
+            console.warn("[Atlas] deck.gl overlay removeControl failed:", err);
+          }
         }
 
         const overlay = new MapboxOverlay({
@@ -162,7 +164,9 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
       if (overlayRef.current && map) {
         try {
           (map as any).removeControl(overlayRef.current);
-        } catch { /* noop */ }
+        } catch (err) {
+          console.warn("[Atlas] deck.gl overlay unmount removeControl failed:", err);
+        }
         overlayRef.current = null;
       }
     };

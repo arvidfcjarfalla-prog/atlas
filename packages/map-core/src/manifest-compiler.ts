@@ -110,6 +110,31 @@ function ringArea(ring: number[][]): number {
 }
 
 /**
+ * Returns the centroid of the largest ring in a Polygon/MultiPolygon, or the
+ * Point coordinates for Point geometries. Used for label placement and chart
+ * overlays that need one representative point per feature.
+ */
+function centroidOfLargestRing(
+  geometry: GeoJSON.Geometry,
+): [number, number] | null {
+  if (geometry.type === "Point") {
+    return geometry.coordinates as [number, number];
+  }
+  let bestRing: number[][] | null = null;
+  if (geometry.type === "Polygon") {
+    bestRing = geometry.coordinates[0] as number[][];
+  } else if (geometry.type === "MultiPolygon") {
+    let bestArea = -1;
+    for (const poly of geometry.coordinates as number[][][][]) {
+      const outer = poly[0];
+      const a = ringArea(outer);
+      if (a > bestArea) { bestArea = a; bestRing = outer; }
+    }
+  }
+  return bestRing ? ringCentroid(bestRing) : null;
+}
+
+/**
  * Builds a FeatureCollection of Point features at the centroid of the largest
  * polygon ring for each feature. Properties are copied over for label access.
  * Used to avoid duplicate labels on MultiPolygon archipelago geometries.
@@ -120,22 +145,11 @@ function buildCentroidCollection(
   const points: GeoJSON.Feature[] = [];
   for (const f of data.features) {
     if (!f.geometry) continue;
-    let bestRing: number[][] | null = null;
-    let bestArea = -1;
-    if (f.geometry.type === "Polygon") {
-      bestRing = f.geometry.coordinates[0] as number[][];
-    } else if (f.geometry.type === "MultiPolygon") {
-      for (const poly of f.geometry.coordinates as number[][][][]) {
-        const outer = poly[0];
-        const a = ringArea(outer);
-        if (a > bestArea) { bestArea = a; bestRing = outer; }
-      }
-    }
-    if (!bestRing) continue;
-    const [lng, lat] = ringCentroid(bestRing);
+    const centroid = centroidOfLargestRing(f.geometry);
+    if (!centroid) continue;
     points.push({
       type: "Feature",
-      geometry: { type: "Point", coordinates: [lng, lat] },
+      geometry: { type: "Point", coordinates: centroid },
       properties: { ...f.properties },
     });
   }
@@ -382,20 +396,7 @@ export function compileLayer(
     const chartFeatures: Array<{ centroid: [number, number]; values: number[]; label?: string }> = [];
     for (const f of data.features) {
       if (!f.geometry) continue;
-      let centroid: [number, number] | null = null;
-      if (f.geometry.type === "Point") {
-        centroid = f.geometry.coordinates as [number, number];
-      } else if (f.geometry.type === "Polygon") {
-        centroid = ringCentroid(f.geometry.coordinates[0] as number[][]);
-      } else if (f.geometry.type === "MultiPolygon") {
-        let bestRing: number[][] | null = null;
-        let bestArea = -1;
-        for (const poly of f.geometry.coordinates as number[][][][]) {
-          const a = ringArea(poly[0]);
-          if (a > bestArea) { bestArea = a; bestRing = poly[0]; }
-        }
-        if (bestRing) centroid = ringCentroid(bestRing);
-      }
+      const centroid = centroidOfLargestRing(f.geometry);
       if (!centroid) continue;
       const values = cfg.fields.map((field) => {
         const v = f.properties?.[field];
@@ -510,8 +511,8 @@ function compilePoint(
         source: sourceId,
         ...(hasLines || hasPolygons ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
-          "circle-color": colorExpr as string,
-          "circle-radius": radiusExpr as number,
+          "circle-color": colorExpr,
+          "circle-radius": radiusExpr,
           "circle-stroke-width": 1,
           "circle-stroke-color": layer.style.strokeColor ?? "rgba(255,255,255,0.3)",
           "circle-opacity": layer.style.fillOpacity ?? 0.85,
@@ -524,7 +525,7 @@ function compilePoint(
         ...(hasLines || hasPolygons ? { filter: ["==", ["geometry-type"], "Point"] } : {}),
         paint: {
           "circle-color": "transparent",
-          "circle-radius": highlightRadiusExpr as number,
+          "circle-radius": highlightRadiusExpr,
           "circle-stroke-width": 2,
           "circle-stroke-color": "rgba(255,255,255,0.6)",
           "circle-stroke-opacity": [
@@ -1080,8 +1081,8 @@ function compileFlow(
         "line-join": "round",
       },
       paint: {
-        "line-color": colorExpr as string,
-        "line-width": widthExpr as number,
+        "line-color": colorExpr,
+        "line-width": widthExpr,
         "line-opacity": layer.style.fillOpacity ?? 0.7,
       },
     } as LayerSpecification,
@@ -1242,8 +1243,8 @@ function compileExtrusion(
       type: "fill-extrusion",
       source: sourceId,
       paint: {
-        "fill-extrusion-color": colorExpr as string,
-        "fill-extrusion-height": heightExpr as number,
+        "fill-extrusion-color": colorExpr,
+        "fill-extrusion-height": heightExpr,
         "fill-extrusion-base": 0,
         "fill-extrusion-opacity": layer.style.fillOpacity ?? 0.85,
       },
@@ -1254,7 +1255,7 @@ function compileExtrusion(
       source: sourceId,
       paint: {
         "fill-extrusion-color": "rgba(255,255,255,0.3)",
-        "fill-extrusion-height": heightExpr as number,
+        "fill-extrusion-height": heightExpr,
         "fill-extrusion-base": 0,
         "fill-extrusion-opacity": [
           "case",
