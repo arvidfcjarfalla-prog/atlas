@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { IControl } from "maplibre-gl";
 import { useMap } from "./use-map";
 import type { DeckLayerConfig } from "./manifest-compiler";
 
@@ -64,7 +65,7 @@ function toTimestampSeries(value: unknown, length: number): number[] {
  */
 export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
   const { map, isReady } = useMap();
-  const overlayRef = useRef<unknown>(null);
+  const overlayRef = useRef<IControl | null>(null);
   const prevConfigRef = useRef<string>("");
 
   useEffect(() => {
@@ -135,7 +136,7 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
         // Remove previous overlay
         if (overlayRef.current) {
           try {
-            (map as any).removeControl(overlayRef.current);
+            map.removeControl(overlayRef.current);
           } catch (err) {
             console.warn("[Atlas] deck.gl overlay removeControl failed:", err);
           }
@@ -144,9 +145,9 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
         const overlay = new MapboxOverlay({
           layers,
           interleaved: false,
-        });
+        }) as unknown as IControl;
 
-        (map as any).addControl(overlay);
+        map.addControl(overlay);
         overlayRef.current = overlay;
       } catch (err) {
         console.warn("[Atlas] deck.gl overlay failed to load:", err);
@@ -163,7 +164,7 @@ export function useDeckOverlay(deckLayers?: DeckLayerConfig[]) {
     return () => {
       if (overlayRef.current && map) {
         try {
-          (map as any).removeControl(overlayRef.current);
+          map.removeControl(overlayRef.current);
         } catch (err) {
           console.warn("[Atlas] deck.gl overlay unmount removeControl failed:", err);
         }

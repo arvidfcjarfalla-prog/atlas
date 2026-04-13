@@ -29,8 +29,8 @@ export function CompareView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [split, setSplit] = useState(50); // percentage
   const [dragging, setDragging] = useState(false);
-  const mapARef = useRef<MaplibreMap | null>(null);
-  const mapBRef = useRef<MaplibreMap | null>(null);
+  const [mapA, setMapA] = useState<MaplibreMap | null>(null);
+  const [mapB, setMapB] = useState<MaplibreMap | null>(null);
   const syncingRef = useRef(false);
 
   // Camera sync: when one map moves, move the other
@@ -45,19 +45,21 @@ export function CompareView({
     syncingRef.current = false;
   }, []);
 
-  const handleMapAReady = useCallback((map: MaplibreMap) => {
-    mapARef.current = map;
-    map.on("move", () => {
-      if (mapBRef.current) syncCamera(map, mapBRef.current);
-    });
-  }, [syncCamera]);
+  const handleMapAReady = useCallback((map: MaplibreMap) => setMapA(map), []);
+  const handleMapBReady = useCallback((map: MaplibreMap) => setMapB(map), []);
 
-  const handleMapBReady = useCallback((map: MaplibreMap) => {
-    mapBRef.current = map;
-    map.on("move", () => {
-      if (mapARef.current) syncCamera(map, mapARef.current);
-    });
-  }, [syncCamera]);
+  // Register move listeners with explicit off cleanup
+  useEffect(() => {
+    if (!mapA || !mapB) return;
+    const onMoveA = () => syncCamera(mapA, mapB);
+    const onMoveB = () => syncCamera(mapB, mapA);
+    mapA.on("move", onMoveA);
+    mapB.on("move", onMoveB);
+    return () => {
+      mapA.off("move", onMoveA);
+      mapB.off("move", onMoveB);
+    };
+  }, [mapA, mapB, syncCamera]);
 
   // Divider drag
   const handlePointerDown = useCallback(() => setDragging(true), []);

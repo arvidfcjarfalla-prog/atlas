@@ -6,6 +6,8 @@ export function MiniSparkline({
   size = 40,
 }: {
   values: number[];
+  /** Accepted for sibling-chart uniformity; sparklines render trend, not categories. */
+  labels?: string[];
   size?: number;
 }) {
   if (values.length < 2) return null;

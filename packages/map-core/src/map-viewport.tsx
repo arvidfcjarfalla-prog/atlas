@@ -342,6 +342,17 @@ export function MapViewport({ manifest, children, cameraPadding, onMapReady }: M
     return () => ro.disconnect();
   }, [mapInstance]);
 
+  // Apply cameraPadding changes post-init (e.g. sidebar toggles)
+  useEffect(() => {
+    if (!mapInstance || !cameraPadding) return;
+    mapInstance.setPadding({
+      top: cameraPadding.top ?? 0,
+      right: cameraPadding.right ?? 0,
+      bottom: cameraPadding.bottom ?? 0,
+      left: cameraPadding.left ?? 0,
+    });
+  }, [mapInstance, cameraPadding?.top, cameraPadding?.right, cameraPadding?.bottom, cameraPadding?.left]);
+
   const contextValue = useMemo(
     () => ({ map: mapInstance, isReady: mapInstance !== null }),
     [mapInstance],
