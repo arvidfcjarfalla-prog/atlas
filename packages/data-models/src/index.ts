@@ -69,3 +69,6 @@ export { getAgeBracket } from "./transforms";
 
 export { COLOR_PALETTES, getColors } from "./palettes";
 export { classify, type ClassBreaks } from "./classification";
+
+export { SPEED_OPTIONS } from "./playback";
+export type { PlaybackSpeed, TimelinePlaybackState } from "./playback";

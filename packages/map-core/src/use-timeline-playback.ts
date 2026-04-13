@@ -2,34 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { FilterSpecification } from "maplibre-gl";
+import { SPEED_OPTIONS, type PlaybackSpeed, type TimelinePlaybackState } from "@atlas/data-models";
 import { useMap } from "./use-map";
 import type { TimelineMetadata } from "./manifest-compiler";
-
-const SPEED_OPTIONS = [0.5, 1, 2, 4] as const;
-export type PlaybackSpeed = (typeof SPEED_OPTIONS)[number];
-
-export interface TimelinePlaybackState {
-  /** Current step index (0-based). */
-  currentStep: number;
-  /** Whether playback is active. */
-  isPlaying: boolean;
-  /** Total number of steps. */
-  totalSteps: number;
-  /** Current step value (e.g. year). */
-  currentValue: number;
-  /** All step values. */
-  steps: number[];
-  /** Current playback speed multiplier. */
-  speed: PlaybackSpeed;
-  /** Available speed options. */
-  speedOptions: readonly PlaybackSpeed[];
-  play: () => void;
-  pause: () => void;
-  /** Jump to a specific step index. */
-  setStep: (index: number) => void;
-  /** Set playback speed multiplier. */
-  setSpeed: (speed: PlaybackSpeed) => void;
-}
 
 /**
  * Timeline playback hook.

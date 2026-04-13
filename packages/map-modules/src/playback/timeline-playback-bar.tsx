@@ -1,21 +1,6 @@
 "use client";
 
-/** Timeline playback state — mirrors the type from @atlas/map-core. */
-interface TimelinePlaybackState {
-  currentStep: number;
-  isPlaying: boolean;
-  totalSteps: number;
-  currentValue: number;
-  steps: number[];
-  speed?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  speedOptions?: readonly any[];
-  play: () => void;
-  pause: () => void;
-  setStep: (index: number) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setSpeed?: (speed: any) => void;
-}
+import type { TimelinePlaybackState } from "@atlas/data-models";
 
 /**
  * Glassmorphic playback bar for timeline maps.
@@ -29,7 +14,7 @@ export function TimelinePlaybackBar({
 }) {
   const {
     currentStep, isPlaying, totalSteps, currentValue,
-    speed = 1, speedOptions, play, pause, setStep, setSpeed,
+    speed, speedOptions, play, pause, setStep, setSpeed,
   } = state;
 
   return (
@@ -76,30 +61,28 @@ export function TimelinePlaybackBar({
       </button>
 
       {/* Speed selector */}
-      {speedOptions && setSpeed && (
-        <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-          {speedOptions.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSpeed(s)}
-              style={{
-                padding: "3px 6px",
-                fontSize: 10,
-                fontFamily: "'Geist Mono',monospace",
-                background: speed === s ? "rgba(99,130,255,0.20)" : "transparent",
-                border: speed === s
-                  ? "1px solid rgba(99,130,255,0.35)"
-                  : "1px solid transparent",
-                borderRadius: 4,
-                color: speed === s ? "rgba(99,130,255,0.90)" : "rgba(200,210,225,0.45)",
-                cursor: "pointer",
-              }}
-            >
-              {s}x
-            </button>
-          ))}
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+        {speedOptions.map((s) => (
+          <button
+            key={s}
+            onClick={() => setSpeed(s)}
+            style={{
+              padding: "3px 6px",
+              fontSize: 10,
+              fontFamily: "'Geist Mono',monospace",
+              background: speed === s ? "rgba(99,130,255,0.20)" : "transparent",
+              border: speed === s
+                ? "1px solid rgba(99,130,255,0.35)"
+                : "1px solid transparent",
+              borderRadius: 4,
+              color: speed === s ? "rgba(99,130,255,0.90)" : "rgba(200,210,225,0.45)",
+              cursor: "pointer",
+            }}
+          >
+            {s}x
+          </button>
+        ))}
+      </div>
 
       {/* Current value label */}
       <span
