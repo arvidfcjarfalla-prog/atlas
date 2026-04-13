@@ -7,11 +7,14 @@
  * Decision   — dark, "action blue", for infrastructure/tools
  *
  * UI modes (dashboard/explore pages) — context-driven, not user-toggled:
- * data-mode="discover" → cold mineral stone, public gallery
- * data-mode="own"      → warm stone, personal library
- * data-mode="create"   → cooler, active accent, map builder
- * data-mode="refine"   → dark precision, editing/refine flows
- * Set on <html> by the FOUC-prevention script in layout.tsx.
+ * data-mode="discover" → cold mineral stone, public gallery (set on <html>
+ *                        by the FOUC script in app/layout.tsx for /explore)
+ * data-mode="app"      → glassmorphism dark shell (set on a wrapper div in
+ *                        app/app/layout.tsx for the /app tree)
+ * data-mode="own"      → warm stone, personal library (reserved for
+ *                        /app/gallery; the FOUC dispatch has a known
+ *                        ordering bug that currently collapses it to "app")
+ * data-mode="create"   → cooler, active accent, fallback for other pages
  * Teal (197°) is the single accent across all modes.
  */
 
@@ -105,31 +108,6 @@
   --ui-dashed-hover: 197 48% 70%;
   --ui-header-bg: 210 22% 99% / 0.93;
   --ui-texture-dot: rgba(20, 40, 55, 0.018);
-}
-
-/* ─── Mode: refine — dark precision ─────────────────────── */
-[data-mode="refine"] {
-  --ui-bg: 218 22% 8%;
-  --ui-surface: 218 20% 12%;
-  --ui-border: 218 16% 20%;
-  --ui-border-strong: 218 14% 28%;
-  --ui-text: 205 25% 90%;
-  --ui-text-muted: 210 10% 52%;
-  --ui-text-faint: 210 8% 36%;
-  --ui-accent: 197 65% 52%;
-  --ui-accent-fg: 218 22% 8%;
-  --ui-accent-subtle: 197 50% 14%;
-  --ui-accent-ring: 197 40% 26%;
-  --ui-danger: 0 68% 58%;
-  --ui-danger-fg: 0 0% 100%;
-  --ui-success: 160 52% 44%;
-  --ui-skeleton-base: 218 18% 16%;
-  --ui-skeleton-shine: 218 16% 21%;
-  --ui-thumb-bg: 218 20% 15%;
-  --ui-dashed: 218 14% 30%;
-  --ui-dashed-hover: 197 42% 38%;
-  --ui-header-bg: 218 26% 7% / 0.94;
-  --ui-texture-dot: rgba(255, 255, 255, 0.025);
 }
 
 /* ─── Mode: app — glassmorphism dark shell ────────────── */
