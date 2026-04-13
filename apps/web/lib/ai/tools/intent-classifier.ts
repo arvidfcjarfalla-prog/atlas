@@ -7,7 +7,8 @@
  * Cost: ~$0.001 per call. Latency: ~200-400ms.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
 
 export type PromptIntent =
   | "statistics"    // GDP, population, metrics → World Bank, Eurostat, PxWeb
@@ -19,6 +20,8 @@ interface ClassificationResult {
   intent: PromptIntent;
 }
 
+// Pinned to Haiku; the prompt is tuned for it. Don't swap via MODELS.utility()
+// (utility can route to Gemini via AI_UTILITY_MODEL env).
 const CLASSIFIER_MODEL = "claude-haiku-4-5-20251001";
 
 const SYSTEM_PROMPT = `Classify the user's map prompt into exactly one intent. Reply with ONLY the intent word, nothing else.
@@ -49,26 +52,20 @@ Examples:
 export async function classifyIntent(
   prompt: string,
 ): Promise<ClassificationResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { intent: "general" };
+  if (!process.env.ANTHROPIC_API_KEY) return { intent: "general" };
 
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: CLASSIFIER_MODEL,
-      max_tokens: 10,
+    const { text } = await generateText({
+      model: anthropic(CLASSIFIER_MODEL),
+      maxOutputTokens: 10,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
+      prompt,
     });
 
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text.trim().toLowerCase())
-      .join("");
-
-    if (text.includes("statistics")) return { intent: "statistics" };
-    if (text.includes("poi")) return { intent: "poi" };
-    if (text.includes("entity_search")) return { intent: "entity_search" };
+    const normalized = text.trim().toLowerCase();
+    if (normalized.includes("statistics")) return { intent: "statistics" };
+    if (normalized.includes("poi")) return { intent: "poi" };
+    if (normalized.includes("entity_search")) return { intent: "entity_search" };
     return { intent: "general" };
   } catch (err) {
     console.error("[intent-classifier] classification failed:", err);
