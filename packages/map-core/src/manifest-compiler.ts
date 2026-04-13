@@ -14,6 +14,7 @@ import type {
 } from "@atlas/data-models";
 import { getColors, classify } from "@atlas/data-models";
 import type { LayerSpecification } from "maplibre-gl";
+import * as h3 from "h3-js";
 import { applyArcInterpolation } from "./arc-interpolator";
 import { applyTransforms } from "./turf-transforms";
 
@@ -1422,13 +1423,8 @@ function compileHexbin(
   const aggregation = config?.aggregation ?? "count";
   const aggField = config?.aggregationField;
 
-  // Dynamic import h3-js at compile time — it's a pure function call.
-  // For SSR/Node safety, guard with try/catch.
   let hexData: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const h3 = require("h3-js");
-
     // Bin points into H3 cells
     const cellMap = new Map<string, { count: number; values: number[] }>();
     for (const f of data.features) {

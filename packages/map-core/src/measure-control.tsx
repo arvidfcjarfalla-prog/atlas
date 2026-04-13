@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useMap } from "./use-map";
-import type { MapLayerMouseEvent, GeoJSONSource, LngLat } from "maplibre-gl";
+import type { MapLayerMouseEvent, GeoJSONSource } from "maplibre-gl";
 
 const SOURCE_ID = "atlas-measure-source";
 const LINE_LAYER_ID = "atlas-measure-line";
