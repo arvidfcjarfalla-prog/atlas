@@ -6,13 +6,10 @@ export type {
 } from "./entities/base";
 
 export type { EventEntity } from "./entities/event";
-export type { AssetEntity } from "./entities/asset";
 
 export {
-  SEVERITY_PRIORITY,
   SEVERITY_COLOR,
   SEVERITY_HEX,
-  compareSeverity,
   maxSeverity,
 } from "./entities/severity";
 

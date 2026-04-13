@@ -10,11 +10,11 @@ export { useHillshade } from "./use-hillshade";
 export { useNightlights } from "./use-nightlights";
 export { useLandMask } from "./use-land-mask";
 export { useTerrain } from "./use-terrain";
-export type { MapShellProps, MapContextValue, MaplibreMap, CameraPadding } from "./types";
+export type { MaplibreMap } from "./types";
 
 // v2: Manifest-driven rendering
 export { compileLayer } from "./manifest-compiler";
-export type { CompiledLayer, CompiledLegendItem, CompiledSourceConfig, TimelineMetadata, DeckLayerConfig } from "./manifest-compiler";
+export type { CompiledLayer, CompiledLegendItem, TimelineMetadata, DeckLayerConfig } from "./manifest-compiler";
 export { useManifestRenderer } from "./use-manifest-renderer";
 export type { ImageFillMetadata, ChartOverlayMetadata } from "./use-manifest-renderer";
 export { useBasemapLayers } from "./use-basemap-layers";
