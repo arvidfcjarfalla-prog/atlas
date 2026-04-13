@@ -88,21 +88,19 @@ export function ProportionalLegend({
           gap: 2,
           height: totalHeight,
         }}>
-          {items
-            .sort((a, b) => b.radius - a.radius)
-            .map((item) => (
-              <span
-                key={item.label}
-                style={{
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: 10,
-                  color: "rgba(228,224,216,0.6)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {item.label}
-              </span>
-            ))}
+          {sorted.map((item) => (
+            <span
+              key={item.label}
+              style={{
+                fontFamily: "'Courier New', monospace",
+                fontSize: 10,
+                color: "rgba(228,224,216,0.6)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {item.label}
+            </span>
+          ))}
         </div>
       </div>
     </div>
