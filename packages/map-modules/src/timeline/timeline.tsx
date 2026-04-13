@@ -1,19 +1,11 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import type { GeoEntity, Severity } from "@atlas/data-models";
-import { SEVERITY_COLOR, maxSeverity } from "@atlas/data-models";
+import type { GeoEntity } from "@atlas/data-models";
+import { SEVERITY_COLOR } from "@atlas/data-models";
 import { cn } from "@atlas/ui";
 import { useTimeWindow, type TimeWindowValue } from "./use-time-window";
-
-const BUCKET_COUNT = 48;
-
-interface Bucket {
-  count: number;
-  maxSeverity: Severity;
-  startMs: number;
-  endMs: number;
-}
+import { computeBuckets } from "./buckets";
 
 interface TimelineProps {
   entities: GeoEntity[];
@@ -34,33 +26,10 @@ export function Timeline({ entities, embedded, className }: TimelineProps) {
   // quantization in a 48-bucket window.
   const nowBucket = Math.floor(Date.now() / 60_000);
 
-  const buckets = useMemo(() => {
-    const now = nowBucket * 60_000;
-    const windowStart = now - windowMs;
-    const bucketSize = windowMs / BUCKET_COUNT;
-    const result: Bucket[] = Array.from({ length: BUCKET_COUNT }, (_, i) => ({
-      count: 0,
-      maxSeverity: "low" as Severity,
-      startMs: windowStart + i * bucketSize,
-      endMs: windowStart + (i + 1) * bucketSize,
-    }));
-
-    for (const entity of entities) {
-      const timeField = entity.updatedAt ?? entity.occurredAt;
-      if (!timeField) continue;
-      const t = new Date(timeField).getTime();
-      if (t < windowStart || t > now) continue;
-      const idx = Math.min(
-        BUCKET_COUNT - 1,
-        Math.floor((t - windowStart) / bucketSize),
-      );
-      result[idx].count++;
-      const entitySeverity = entity.severity ?? "low";
-      result[idx].maxSeverity = maxSeverity(result[idx].maxSeverity, entitySeverity);
-    }
-
-    return result;
-  }, [entities, windowMs, nowBucket]);
+  const buckets = useMemo(
+    () => computeBuckets(entities, windowMs, nowBucket * 60_000),
+    [entities, windowMs, nowBucket],
+  );
 
   const maxCount = useMemo(
     () => Math.max(1, ...buckets.map((b) => b.count)),

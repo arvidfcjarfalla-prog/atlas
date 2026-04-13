@@ -5,6 +5,11 @@ import type { ChartOverlayConfig } from "@atlas/data-models";
 import { MiniBar } from "./mini-bar";
 import { MiniPie } from "./mini-pie";
 import { MiniSparkline } from "./mini-sparkline";
+import {
+  computeVisiblePositions,
+  type FeaturePosition,
+  type MapLike,
+} from "./positions";
 
 interface ChartFeature {
   centroid: [number, number]; // [lng, lat]
@@ -15,15 +20,6 @@ interface ChartFeature {
 interface ChartOverlayMetadata {
   config: ChartOverlayConfig;
   features: ChartFeature[];
-}
-
-/** Minimal map interface for projection — avoids maplibre-gl dependency. */
-interface MapLike {
-  getZoom(): number;
-  getBounds(): { contains(lnglat: [number, number]): boolean };
-  project(lnglat: [number, number]): { x: number; y: number };
-  on(type: string, fn: () => void): void;
-  off(type: string, fn: () => void): void;
 }
 
 /**
@@ -47,27 +43,10 @@ export function ChartOverlay({
   const minZoom = config.minZoom ?? 3;
   const maxVisible = config.maxVisible ?? 50;
 
-  const [positions, setPositions] = useState<Array<{ x: number; y: number; idx: number }>>([]);
+  const [positions, setPositions] = useState<FeaturePosition[]>([]);
 
   const updatePositions = useCallback(() => {
-    const zoom = map.getZoom();
-    if (zoom < minZoom) {
-      setPositions([]);
-      return;
-    }
-
-    const bounds = map.getBounds();
-    const visible: Array<{ x: number; y: number; idx: number }> = [];
-
-    for (let i = 0; i < features.length && visible.length < maxVisible; i++) {
-      const [lng, lat] = features[i].centroid;
-      if (!bounds.contains([lng, lat])) continue;
-
-      const point = map.project([lng, lat]);
-      visible.push({ x: point.x, y: point.y, idx: i });
-    }
-
-    setPositions(visible);
+    setPositions(computeVisiblePositions(map, features, minZoom, maxVisible));
   }, [map, features, minZoom, maxVisible]);
 
   useEffect(() => {
