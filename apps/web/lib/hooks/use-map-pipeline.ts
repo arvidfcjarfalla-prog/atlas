@@ -280,6 +280,9 @@ export function useMapPipeline({
 
   const handleSuggestion = useCallback(
     (suggestion: string) => {
+      // Reset the strict-mode guard so the prompt effect can re-fire when
+      // the URL change re-renders us with the new searchParam.
+      pipelineRanRef.current = false;
       router.replace(`/app/map/new?prompt=${encodeURIComponent(suggestion)}`);
     },
     [router],
@@ -385,7 +388,12 @@ export function useMapPipeline({
       setStage("ready");
     }
 
-    loadTemplate();
+    loadTemplate().catch((err) => {
+      const message = err instanceof Error ? err.message : "Mallen kunde inte laddas";
+      setError(message);
+      setRetryable(false);
+      setStage("error");
+    });
   }, [templateId, user, saveAndRedirect]);
 
   // AI prompt pipeline

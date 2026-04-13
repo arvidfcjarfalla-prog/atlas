@@ -98,6 +98,30 @@ describe("useMapPipeline — save behavior", () => {
   });
 });
 
+describe("useMapPipeline — phase 4.5 fixes", () => {
+  it("handleSuggestion resets pipelineRanRef before navigating", () => {
+    // Without the reset, a suggestion click changes the URL/prompt but the
+    // prompt effect bails (ref is still true from the first run) and the
+    // user is stuck on needs_input with the new prompt loaded but not run.
+    const idx = source.indexOf("const handleSuggestion");
+    const block = source.slice(idx, idx + 400);
+    const refIdx = block.indexOf("pipelineRanRef.current = false");
+    const navIdx = block.indexOf("router.replace(");
+    expect(refIdx).toBeGreaterThan(-1);
+    expect(navIdx).toBeGreaterThan(-1);
+    expect(refIdx).toBeLessThan(navIdx);
+  });
+
+  it("template loadTemplate() rejection surfaces as error stage", () => {
+    // Without the .catch, a fetchGeoJSON failure on the template path
+    // becomes an unhandled rejection and the UI is stuck on clarifying.
+    const idx = source.indexOf("// Template loading");
+    const block = source.slice(idx, source.indexOf("// AI prompt pipeline"));
+    expect(block).toMatch(/loadTemplate\(\)\.catch\(/);
+    expect(block).toMatch(/setStage\("error"\)/);
+  });
+});
+
 describe("useMapPipeline — clarify routing", () => {
   it("ask_questions transitions to needs_input stage", () => {
     expect(source).toMatch(
