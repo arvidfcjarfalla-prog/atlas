@@ -239,7 +239,8 @@ summary of the actual dataset. Use it to make precise decisions:
 - **Geometry type**: Hard constraint on mapFamily. Point → point/cluster/heatmap/proportional-symbol. Polygon → choropleth/extrusion. Line → flow/animated-route. Mixed (Line+Point) → animated-route.
 - **3D extrusion**: Use mapFamily "extrusion" for polygon data with a strong numeric field that benefits from height encoding (GDP, population, etc.). Requires extrusion.heightField. Set defaultPitch: 45 for 3D views.
 - **Animated route vs trip**: These two families both animate movement but serve different use cases. Use "animated-route" for a **single entity** following a predefined path (one delivery truck, one flight, one ship). Use "trip" for **multiple vehicles** with simultaneous GPS tracks (bus fleet, shipping lanes, taxi traces). Key distinction: if the prompt says "animate a route" or "show a moving vehicle" → animated-route. If the prompt says "visualize vehicle movements" or "show fleet/multiple tracks" → trip. Both require LineString geometry.
-- **Timeline**: Use mapFamily "timeline" when data has a time dimension (year, date). Requires timeline.timeField. Renders as choropleth/point with time filtering.
+- **Timeline**: Use mapFamily "timeline" when the dataset has a time dimension (year, date, timestamp) and the user wants to *see change over time*, not a single snapshot. Set layer.timeline = { timeField: "<property name from dataset>", cumulative?: boolean, playSpeed?: number /* ms per step, default 1000 */ }. The underlying visual encoding still comes from the layer's own style (markerShape, colorField, classification) — timeline just adds time filtering and a play/pause/scrub bar. Always set timeField to a property that actually exists in the dataset profile.
+- **Terrain & elevation context**: When the data is terrain-relevant (hiking, ski areas, mountains, geology, watersheds, hillforts) OR contains an elevation/altitude/height field, set basemap.terrain = true and defaultPitch >= 25 so the relief is visible. For seismic/tectonic data, also enable basemap.tectonic. For night-time/light-pollution data, enable basemap.nightlights. Do not enable terrain by default for non-terrain data — it adds visual noise.
 - **Bounds**: Compute defaultCenter as midpoint. Estimate zoom from extent span (> 100° lat → 2, > 30° → 4, > 10° → 6, > 2° → 8, > 0.5° → 11, else 14).
 - **Distribution**: For choropleth, prefer "quantile" — it ensures even color distribution regardless of data skew. Use "equal-interval" for uniform data. Reserve "natural-breaks" for when the user explicitly requests it.
 - **Unique values**: Low unique count on string field → good categorical color field. High unique count → avoid as colorField.
@@ -403,11 +404,14 @@ ${rules.map((r) => r.text).join("\n")}
 const PLATFORM_LIMITATIONS_FULL = `<platform-limitations>
 Atlas renders maps via MapLibre GL JS with a fixed manifest schema. It CANNOT do:
 
-- Custom images, icons, or illustrations inside polygons or at points (no per-feature images)
-- Embedded charts, bar graphs, or infographics on the map
 - Text labels with computed values (labels can show raw property values via labelField, not calculated expressions)
 - Custom 3D models (note: 3D extrusion of polygons IS supported via the "extrusion" family)
 - User-generated or AI-generated data (e.g. "favorite dish per country" — this data does not exist in the platform)
+
+Atlas CAN do (use these capabilities when the prompt benefits from them):
+
+- **Per-feature images via imageFill**: Set layer.style.imageFill = { imageField: "<property name with image URL>", fallbackUrl?, opacity?, resolution? } to fill polygons with images stored in feature properties. Useful for flag-filled country choropleths, photo-tile heritage maps.
+- **Embedded mini-charts via chartOverlay**: Set layer.chartOverlay = { type: "bar"|"pie"|"sparkline", fields: ["field1","field2",...], labels?, size?, minZoom?, maxVisible?, labelField? } to render small charts on each feature. Useful for showing multi-dimensional data per region (e.g. revenue split by sector per country).
 
 When the user's prompt requires any of these unsupported capabilities:
 1. Set intent.confidence to 0.3 or lower

@@ -248,9 +248,14 @@ describe("getGenerationSelectionContext", () => {
 
     expect(result.genSkill).toBe("thematic");
     expect(result.primaryAnchorId).toBe("tax-rates");
+    // Family-maximization selects "co2-emissions-timeline" as second slot —
+    // it brings the "timeline" family that no other thematic polygon example
+    // covers. Both housing-prices and co2-emissions-timeline are valid
+    // polygon-compatible thematic anchors; the selector correctly favors
+    // family-diversity over redundant choropleth duplicates.
     expect(result.selectedExampleIds).toEqual([
       "tax-rates",
-      "housing-prices",
+      "co2-emissions-timeline",
     ]);
   });
 });

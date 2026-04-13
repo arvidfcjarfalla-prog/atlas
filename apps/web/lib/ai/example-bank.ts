@@ -1056,6 +1056,136 @@ export const EXAMPLES: FewShotExample[] = [
   "validation": { "valid": true, "errors": [], "warnings": [] }
 }`,
   },
+  {
+    id: "gdp-composition-charts",
+    families: ["choropleth"],
+    hasProfile: false,
+    geometryTypes: ["Polygon", "MultiPolygon"],
+    genSkills: ["thematic", "general"],
+    prompt: "Visa BNP-sammansättning per sektor i europeiska länder, med små stapeldiagram per land",
+    output: `{
+  "version": 2,
+  "id": "gdp-composition-charts",
+  "title": "GDP composition by sector — Europe",
+  "description": "Per-capita GDP choropleth with mini bar charts breaking down agriculture / industry / services share per country.",
+  "theme": "editorial",
+  "defaultCenter": [54, 15],
+  "defaultZoom": 4,
+  "defaultPitch": 0,
+  "basemap": { "style": "paper", "labelsVisible": false },
+  "layers": [
+    {
+      "id": "gdp-composition",
+      "kind": "zone",
+      "label": "BNP per capita",
+      "sourceType": "geojson-url",
+      "sourceUrl": "/api/geo/europe-countries-gdp",
+      "geometryType": "polygon",
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "choropleth",
+        "colorField": "gdp_per_capita",
+        "classification": { "method": "quantile", "classes": 5 },
+        "color": { "scheme": "blues", "colorblindSafe": true },
+        "fillOpacity": 0.75
+      },
+      "chartOverlay": {
+        "type": "bar",
+        "fields": ["gdp_agriculture_share", "gdp_industry_share", "gdp_services_share"],
+        "labels": ["Agri", "Ind", "Serv"],
+        "size": 36,
+        "minZoom": 5,
+        "maxVisible": 50,
+        "labelField": "country_name"
+      },
+      "legend": { "title": "BNP per capita (USD)", "type": "gradient" },
+      "interaction": {
+        "tooltipFields": ["country_name", "gdp_per_capita", "gdp_agriculture_share", "gdp_industry_share", "gdp_services_share"],
+        "clickBehavior": "popup",
+        "hoverEffect": "highlight"
+      },
+      "attribution": "World Bank / Eurostat"
+    }
+  ],
+  "accessibility": { "colorblindSafe": true, "contrastTarget": "AA", "locale": "sv" },
+  "intent": {
+    "userPrompt": "Visa BNP-sammansättning per sektor i europeiska länder, med små stapeldiagram per land",
+    "taskType": "compare-composition",
+    "confidence": 0.92,
+    "assumptions": [
+      "Per-capita GDP normalized for fair country comparison (avoids area-bias of raw totals)",
+      "Per-country sector breakdown rendered as embedded bar chart via chartOverlay",
+      "minZoom 5 prevents chart clutter at world view",
+      "labelsVisible:false on basemap because chart labels carry the per-country annotation"
+    ]
+  },
+  "validation": { "valid": true, "errors": [], "warnings": [] }
+}`,
+  },
+  {
+    id: "co2-emissions-timeline",
+    families: ["timeline"],
+    hasProfile: false,
+    geometryTypes: ["Polygon", "MultiPolygon"],
+    genSkills: ["thematic", "general"],
+    prompt: "Visa CO2-utsläpp per land över tid (1990–2022) som en spelbar tidslinje",
+    output: `{
+  "version": 2,
+  "id": "co2-emissions-timeline",
+  "title": "CO2 emissions per country, 1990–2022",
+  "description": "Choropleth of per-capita CO2 emissions with a play/pause/scrub timeline so the user can step through three decades of change.",
+  "theme": "editorial",
+  "defaultCenter": [20, 0],
+  "defaultZoom": 2,
+  "defaultPitch": 0,
+  "basemap": { "style": "dark", "labelsVisible": false, "landMask": true },
+  "layers": [
+    {
+      "id": "co2-per-capita",
+      "kind": "zone",
+      "label": "CO2 per capita",
+      "sourceType": "geojson-url",
+      "sourceUrl": "/api/geo/world-co2-by-year",
+      "geometryType": "polygon",
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "timeline",
+        "colorField": "co2_per_capita",
+        "classification": { "method": "quantile", "classes": 6 },
+        "color": { "scheme": "reds", "colorblindSafe": true },
+        "fillOpacity": 0.85,
+        "strokeColor": "rgba(255,255,255,0.25)",
+        "strokeWidth": 0.5
+      },
+      "timeline": {
+        "timeField": "year",
+        "cumulative": false,
+        "playSpeed": 600
+      },
+      "legend": { "title": "ton CO2 / capita", "type": "gradient" },
+      "interaction": {
+        "tooltipFields": ["country_name", "year", "co2_per_capita", "co2_total"],
+        "clickBehavior": "popup",
+        "hoverEffect": "highlight"
+      },
+      "attribution": "Our World in Data / Global Carbon Project"
+    }
+  ],
+  "accessibility": { "colorblindSafe": true, "contrastTarget": "AA", "locale": "sv" },
+  "intent": {
+    "userPrompt": "Visa CO2-utsläpp per land över tid (1990–2022) som en spelbar tidslinje",
+    "taskType": "change-over-time",
+    "confidence": 0.93,
+    "assumptions": [
+      "Each feature carries one row per (country, year) — timeField filters to the active year",
+      "cumulative:false because the user wants per-year snapshots, not running totals",
+      "playSpeed 600ms per step gives ~20s per decade — comfortable scrub feel",
+      "Reds colorscheme communicates emissions intensity"
+    ]
+  },
+  "validation": { "valid": true, "errors": [], "warnings": [] }
+}`,
+  },
 ];
 
 // ─── With-profile examples by geometry group ─────────────────

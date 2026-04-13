@@ -38,11 +38,11 @@ const lineProfile: DatasetProfile = {
 };
 
 describe("EXAMPLES bank", () => {
-  it("contains 13 examples", () => {
-    expect(EXAMPLES).toHaveLength(13);
+  it("contains 15 examples", () => {
+    expect(EXAMPLES).toHaveLength(15);
   });
 
-  it("covers all 8 map families", () => {
+  it("covers all 9 represented map families", () => {
     const families = new Set(EXAMPLES.flatMap((e) => e.families));
     expect(families).toEqual(
       new Set([
@@ -54,6 +54,7 @@ describe("EXAMPLES bank", () => {
         "flow",
         "isochrone",
         "hexbin",
+        "timeline",
       ]),
     );
   });
@@ -72,15 +73,15 @@ describe("EXAMPLES bank", () => {
 });
 
 describe("selectExamples", () => {
-  it("returns all 13 examples without profile", () => {
+  it("returns all 15 examples without profile", () => {
     const result = selectExamples();
-    expect(result).toHaveLength(13);
+    expect(result).toHaveLength(15);
     expect(result).toEqual(EXAMPLES);
   });
 
-  it("returns all 13 when profile is undefined", () => {
+  it("returns all 15 when profile is undefined", () => {
     const result = selectExamples(undefined);
-    expect(result).toHaveLength(13);
+    expect(result).toHaveLength(15);
   });
 
   it("returns 3 examples for Point profile", () => {
