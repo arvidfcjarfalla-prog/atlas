@@ -29,6 +29,18 @@
   --z-controls: 30;
 }
 
+/* Reduced motion — disable project-owned keyframe animations and force the
+   end-state so content still renders correctly without the transition.
+   Required by .claude/rules/editorial-landing.md. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-slide-in-right {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
