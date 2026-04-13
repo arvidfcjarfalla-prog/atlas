@@ -269,7 +269,7 @@ function NewMapPage() {
         setStage("error");
       }
     },
-    [user, router, callClarify, generateAndRender],
+    [user, router, callClarify, generateAndRender, saveAndRedirect, showToast],
   );
 
   const handleAnswer = useCallback(
@@ -369,7 +369,7 @@ function NewMapPage() {
       if (user) {
         setStage("saving");
         const result = await saveAndRedirect({
-          title: tplManifest.title ?? `Mall: ${tplTitle}`,
+          title: tplManifest.title,
           prompt: `Mall: ${tplTitle}`,
           manifest: tplManifest,
           geojsonUrl: sourceUrl,

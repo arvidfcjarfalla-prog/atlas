@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { MapManifest } from "@atlas/data-models";
 
 export interface SaveMapArgs {
-  title: string;
+  title: string | undefined;
   prompt: string;
   manifest: MapManifest;
   geojsonUrl?: string | null;
