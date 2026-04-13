@@ -378,6 +378,192 @@ export const EXAMPLES: FewShotExample[] = [
 }`,
   },
   {
+    id: "heritage-sites-profile",
+    families: ["point"],
+    hasProfile: true,
+    geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["locational", "general"],
+    prompt: "Visa UNESCO-världsarv, färgade efter kategori",
+    profile: `{
+  "featureCount": 1248,
+  "geometryType": "Point",
+  "bounds": [[-54.80, -176.65], [78.22, 179.99]],
+  "crs": null,
+  "attributes": [
+    { "name": "name", "type": "string", "uniqueValues": 1248, "nullCount": 0, "sampleValues": ["Historic Centre of Rome", "Royal Domain of Drottningholm", "Galápagos Islands", "Great Barrier Reef"] },
+    { "name": "category", "type": "string", "uniqueValues": 3, "nullCount": 0, "sampleValues": ["Cultural", "Natural", "Mixed"] },
+    { "name": "region", "type": "string", "uniqueValues": 5, "nullCount": 0, "sampleValues": ["Europe and North America", "Asia and the Pacific", "Latin America and the Caribbean"] },
+    { "name": "country", "type": "string", "uniqueValues": 167, "nullCount": 0, "sampleValues": ["Italy", "Sweden", "Ecuador", "Australia"] },
+    { "name": "year_inscribed", "type": "number", "uniqueValues": 47, "nullCount": 12, "min": 1978, "max": 2025, "distribution": "uniform" },
+    { "name": "danger", "type": "boolean", "uniqueValues": 2, "nullCount": 0 },
+    { "name": "area_hectares", "type": "number", "uniqueValues": 980, "nullCount": 221, "min": 0.5, "max": 34870000, "distribution": "skewed-right" }
+  ]
+}`,
+    output: `{
+  "version": 2,
+  "id": "heritage-sites-profile",
+  "title": "UNESCO World Heritage",
+  "description": "World Heritage sites across the globe, colored by category.",
+  "theme": "editorial",
+  "defaultCenter": [20, 25],
+  "defaultZoom": 2,
+  "defaultPitch": 0,
+  "basemap": { "style": "dark" },
+  "layers": [
+    {
+      "id": "heritage",
+      "kind": "asset",
+      "label": "Heritage sites",
+      "sourceType": "api",
+      "sourceUrl": "/api/heritage",
+      "geometryType": "point",
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "point",
+        "colorField": "category",
+        "classification": {
+          "method": "categorical",
+          "classes": 3
+        },
+        "color": {
+          "scheme": "set2",
+          "colorblindSafe": true
+        },
+        "fillOpacity": 0.8,
+        "strokeColor": "rgba(255,255,255,0.2)",
+        "strokeWidth": 0.5
+      },
+      "legend": {
+        "title": "Category",
+        "type": "categorical"
+      },
+      "interaction": {
+        "tooltipFields": ["name", "category", "country", "year_inscribed"],
+        "clickBehavior": "popup",
+        "hoverEffect": "enlarge"
+      },
+      "attribution": "UNESCO World Heritage Centre"
+    }
+  ],
+  "accessibility": {
+    "colorblindSafe": true,
+    "contrastTarget": "AA",
+    "locale": "en"
+  },
+  "intent": {
+    "userPrompt": "Visa UNESCO-världsarv, färgade efter kategori",
+    "taskType": "browse-places",
+    "confidence": 0.93,
+    "assumptions": [
+      "Built-in UNESCO heritage dataset is available at /api/heritage",
+      "category is categorical and should drive color encoding",
+      "Global coverage requires zoom 2 and a restrained editorial basemap",
+      "Popup interaction is sufficient because each point is a discrete place"
+    ]
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}`,
+  },
+  {
+    id: "world-cities-profile",
+    families: ["proportional-symbol"],
+    hasProfile: true,
+    geometryTypes: ["Point", "MultiPoint"],
+    genSkills: ["thematic", "locational", "general"],
+    prompt: "Visa världens största städer med cirklar proportionella mot befolkningen",
+    profile: `{
+  "featureCount": 243,
+  "geometryType": "Point",
+  "bounds": [[-36.85, -123.12], [59.93, 151.21]],
+  "crs": null,
+  "attributes": [
+    { "name": "name", "type": "string", "uniqueValues": 243, "nullCount": 0, "sampleValues": ["Tokyo", "Delhi", "São Paulo", "Stockholm"] },
+    { "name": "country", "type": "string", "uniqueValues": 104, "nullCount": 0, "sampleValues": ["Japan", "India", "Brazil", "Sweden"] },
+    { "name": "continent", "type": "string", "uniqueValues": 6, "nullCount": 0, "sampleValues": ["Asia", "Europe", "South America", "Africa"] },
+    { "name": "pop_max", "type": "number", "uniqueValues": 239, "nullCount": 0, "min": 300000, "max": 35676000, "mean": 3480000, "median": 1850000, "distribution": "skewed-right" },
+    { "name": "pop_min", "type": "number", "uniqueValues": 232, "nullCount": 0, "min": 120000, "max": 17800000, "mean": 1540000, "median": 760000, "distribution": "skewed-right" },
+    { "name": "latitude", "type": "number", "uniqueValues": 243, "nullCount": 0, "min": -36.85, "max": 59.93, "distribution": "uniform" },
+    { "name": "longitude", "type": "number", "uniqueValues": 243, "nullCount": 0, "min": -123.12, "max": 151.21, "distribution": "uniform" },
+    { "name": "capital", "type": "number", "uniqueValues": 2, "nullCount": 0, "min": 0, "max": 1 }
+  ]
+}`,
+    output: `{
+  "version": 2,
+  "id": "world-cities-profile",
+  "title": "World's largest cities",
+  "description": "Major cities with symbol size proportional to population.",
+  "theme": "editorial",
+  "defaultCenter": [20, 20],
+  "defaultZoom": 1.8,
+  "defaultPitch": 0,
+  "basemap": { "style": "dark" },
+  "layers": [
+    {
+      "id": "cities",
+      "kind": "asset",
+      "label": "Cities",
+      "sourceType": "api",
+      "sourceUrl": "/api/geo/world-cities",
+      "geometryType": "point",
+      "style": {
+        "markerShape": "circle",
+        "mapFamily": "proportional-symbol",
+        "sizeField": "pop_max",
+        "colorField": "pop_max",
+        "classification": {
+          "method": "quantile",
+          "classes": 5
+        },
+        "color": {
+          "scheme": "oranges",
+          "colorblindSafe": true
+        },
+        "fillOpacity": 0.7,
+        "strokeColor": "rgba(255,255,255,0.25)",
+        "strokeWidth": 0.5,
+        "labelField": "name"
+      },
+      "legend": {
+        "title": "Population",
+        "type": "proportional",
+        "exampleValues": [1000000, 5000000, 15000000]
+      },
+      "interaction": {
+        "tooltipFields": ["name", "country", "pop_max"],
+        "clickBehavior": "popup",
+        "hoverEffect": "enlarge"
+      },
+      "attribution": "Natural Earth"
+    }
+  ],
+  "accessibility": {
+    "colorblindSafe": true,
+    "contrastTarget": "AA",
+    "locale": "en"
+  },
+  "intent": {
+    "userPrompt": "Visa världens största städer med cirklar proportionella mot befolkningen",
+    "taskType": "compare-magnitudes",
+    "confidence": 0.95,
+    "assumptions": [
+      "Built-in world-cities dataset is available at /api/geo/world-cities",
+      "pop_max is the primary quantitative field and should drive symbol size",
+      "Using the same numeric field for color reinforces relative magnitude without inventing a categorical split",
+      "Global extent requires zoom 1.8 and a restrained dark basemap"
+    ]
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": []
+  }
+}`,
+  },
+  {
     id: "earthquakes-daily",
     families: ["point"],
     hasProfile: true,

@@ -19,6 +19,14 @@ import { resolvePxWeb } from "../../../../lib/ai/tools/pxweb-resolution";
 import { getStatsAdapter } from "../../../../lib/ai/tools/pxweb-client";
 import { classifyPipelineResult, buildTabularFallbackResponse, type TabularStash } from "../../../../lib/ai/pipeline-decision";
 import { generateTabularSuggestions, generateAlternativeSuggestions } from "../../../../lib/ai/tools/ai-suggestion-generator";
+import {
+  applyResolvedOriginLabel,
+  buildIsochroneDataUrl,
+  looksLikeIsochronePrompt,
+  parseIsochronePrompt,
+  resolveKnownIsochroneOrigin,
+  type IsochroneOrigin,
+} from "../../../../lib/ai/isochrone-resolution";
 import type { ClarifyResponse, DatasetProfile } from "../../../../lib/ai/types";
 import { normalizePrompt, getCachedClarify, storeClarifyResult, incrementCacheHit } from "../../../../lib/ai/clarify-cache";
 import { storeResolution, findSimilarResolutions } from "../../../../lib/ai/clarify-resolution-store";
@@ -323,6 +331,56 @@ function detectRegionName(lowerPrompt: string): string | null {
   return null;
 }
 
+async function geocodeIsochroneOrigin(query: string): Promise<IsochroneOrigin | null> {
+  try {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const feature = data?.features?.[0];
+    const coords = feature?.geometry?.coordinates;
+    if (!Array.isArray(coords) || coords.length < 2) return null;
+
+    const [lng, lat] = coords as [number, number];
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+
+    const props = feature?.properties ?? {};
+    const labelParts = [props.name, props.city, props.country]
+      .filter((part): part is string => typeof part === "string" && part.trim().length > 0);
+
+    return {
+      lat,
+      lng,
+      label: labelParts.length > 0 ? labelParts.join(", ") : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function tryIsochroneResolution(
+  prompt: string,
+): Promise<{ dataUrl: string; resolvedPrompt: string } | null> {
+  const parsed = parseIsochronePrompt(prompt);
+  if (!parsed) return null;
+
+  const origin =
+    resolveKnownIsochroneOrigin(parsed.locationQuery) ??
+    await geocodeIsochroneOrigin(parsed.locationQuery);
+  if (!origin) return null;
+
+  const dataUrl = buildIsochroneDataUrl({
+    ...parsed,
+    origin,
+  });
+
+  return {
+    dataUrl,
+    resolvedPrompt: applyResolvedOriginLabel(prompt, parsed.locationQuery, origin.label),
+  };
+}
+
 // ─── Overpass resolution ────────────────────────────────────
 
 /**
@@ -333,6 +391,8 @@ async function tryOverpassResolution(
   prompt: string,
   origin: string,
 ): Promise<{ dataUrl: string; profile: DatasetProfile } | null> {
+  if (looksLikeIsochronePrompt(prompt)) return null;
+
   const city = findCity(prompt);
   if (!city) return null;
 
@@ -476,6 +536,44 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
         log("clarify.resolved", { source: "historical", latencyMs: Date.now() - t0 });
         storeSuccess(response, "catalog");
+        return NextResponse.json(response);
+      }
+    }
+
+    // ── Fast path 0.5: Isochrone origin resolution ──────────
+    const parsedIsochrone = parseIsochronePrompt(fullContext);
+    if (parsedIsochrone && !process.env.ORS_API_KEY) {
+      return NextResponse.json({
+        ready: false,
+        dataWarning: "Isochrone service not configured (missing ORS_API_KEY).",
+      } satisfies ClarifyResponse);
+    }
+
+    if (parsedIsochrone && process.env.ORS_API_KEY) {
+      const isochroneResult = await tryIsochroneResolution(fullContext);
+      if (isochroneResult) {
+        let profile: DatasetProfile | null = null;
+        try {
+          const fetchUrl = new URL(isochroneResult.dataUrl, request.url).toString();
+          const res = await fetch(fetchUrl, { signal: AbortSignal.timeout(15_000) });
+          if (res.ok) {
+            const geojson = await res.json();
+            if (geojson?.type === "FeatureCollection") {
+              profile = profileDataset(geojson);
+            }
+          }
+        } catch { /* proceed without profile */ }
+
+        const response: ClarifyResponse = {
+          ready: true,
+          resolutionStatus: "map_ready",
+          resolvedPrompt: isochroneResult.resolvedPrompt,
+          dataUrl: isochroneResult.dataUrl,
+          ...(profile ? { dataProfile: profile } : {}),
+        };
+
+        log("clarify.resolved", { source: "isochrone", latencyMs: Date.now() - t0 });
+        storeSuccess(response, "isochrone");
         return NextResponse.json(response);
       }
     }

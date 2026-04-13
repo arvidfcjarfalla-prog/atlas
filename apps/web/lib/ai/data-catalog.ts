@@ -107,6 +107,7 @@ export const DATA_CATALOG: CatalogEntry[] = [
     attributes: [
       "name",
       "country",
+      "continent",
       "pop_max",
       "pop_min",
       "latitude",
@@ -467,17 +468,25 @@ export function matchCatalog(prompt: string): CatalogEntry[] {
   const scored = DATA_CATALOG.map((entry) => {
     let hits = 0;
     const matchedTopicWords = new Set<string>();
+    const matchedTopics = new Set<string>();
     for (const topic of entry.topics) {
       if (lower.includes(topic)) {
         hits++;
+        matchedTopics.add(topic);
         // Track which prompt words were matched by topics
         for (const w of topic.split(/\s+/)) matchedTopicWords.add(w);
       }
       if (words.includes(topic)) {
         hits++;
+        matchedTopics.add(topic);
         matchedTopicWords.add(topic);
       }
     }
+
+    const specificity = [...matchedTopics].reduce((sum, topic) => {
+      const wordCount = topic.trim().split(/\s+/).filter(Boolean).length;
+      return sum + Math.max(1, wordCount);
+    }, 0);
 
     // Check if the prompt has substantive content beyond what the entry covers.
     // If the user asks for a specific metric (e.g. "hundägare", "deforestation",
@@ -503,12 +512,12 @@ export function matchCatalog(prompt: string): CatalogEntry[] {
       hits = 0;
     }
 
-    return { entry, hits };
+    return { entry, hits, specificity };
   });
 
   return scored
     .filter((s) => s.hits > 0)
-    .sort((a, b) => b.hits - a.hits)
+    .sort((a, b) => b.hits - a.hits || b.specificity - a.specificity)
     .map((s) => s.entry);
 }
 

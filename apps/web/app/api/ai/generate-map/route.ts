@@ -431,7 +431,7 @@ export async function POST(request: Request) {
       const result = await generateTextWithRetry({
         model: MODELS.generation(),
         maxOutputTokens: MAX_TOKENS,
-        system: buildSystemPrompt(profile, undefined, genSkill),
+        system: buildSystemPrompt(prompt, profile, undefined, genSkill),
         messages,
       });
 
@@ -532,7 +532,7 @@ export async function POST(request: Request) {
         const fallbackResult = await generateTextWithRetry({
           model: MODELS.fallback(),
           maxOutputTokens: MAX_TOKENS,
-          system: buildSystemPrompt(profile, undefined, genSkill),
+          system: buildSystemPrompt(prompt, profile, undefined, genSkill),
           messages: [
             { role: "user", content: buildUserMessage(prompt, profile, sourceUrl, scopeHint, preferences) },
           ],

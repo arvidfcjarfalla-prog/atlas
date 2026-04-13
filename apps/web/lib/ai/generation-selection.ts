@@ -1,4 +1,5 @@
 import { EXAMPLES, selectExamples, type FewShotExample } from "./example-bank";
+import { looksLikeIsochronePrompt } from "./isochrone-resolution";
 import { classifyGenSkill, type GenSkill } from "./skills/router";
 import type { AttributeProfile, DatasetProfile } from "./types";
 
@@ -9,7 +10,6 @@ export interface GenerationSelectionContext {
   primaryAnchorId: string | null;
 }
 
-const ISOCHRONE_PROMPT = /\b(isochrone|reachability|travel time|service area|how far|minutes?\s+(?:drive|driving|walk|walking|cycle|cycling)|(?:drive|driving|walk|walking|cycle|cycling)\s+\d+\s*minutes?)\b/i;
 const BUFFER_PROMPT = /\b(buffer|bufferzon|within\s+\d+\s*(?:km|kilometers?|meter|meters?|miles?)|coverage zone|radius)\b/i;
 const DENSITY_PROMPT =
   /\b(density|heatmap|hotspot|hotspots|concentration|densit|where .* most|var sker flest)\b/i;
@@ -19,7 +19,7 @@ const LIVE_EVENT_PROMPT =
 const QUANTITATIVE_PROMPT =
   /\b(population|gdp|income|revenue|sales|value|count|per\s*capita|proportional|larger circle|circle size|sized by|size by|ranked)\b/i;
 const PLACE_PROMPT =
-  /\b(restaurant|cafe|park|hospital|school|hotel|shop|store|museum|airport|station|metro|subway|pharmacy|gym|cinema|theater|library|capital|charging station|charger|poi|place|location)\b/i;
+  /\b(restaurants?|cafes?|parks?|hospitals?|schools?|hotels?|shops?|stores?|museums?|airports?|stations?|metros?|subways?|pharmacies?|gyms?|cinemas?|theaters?|libraries?|capitals?|charging stations?|chargers?|poi|places?|locations?)\b/i;
 
 const LIVE_EVENT_FIELDS = [
   "mag",
@@ -59,6 +59,12 @@ const QUANT_FIELDS = [
   "count",
 ];
 
+const PROFILE_PLACE_ANCHOR = "heritage-sites-profile";
+const PROFILE_QUANT_ANCHOR = "world-cities-profile";
+const PROFILE_EVENT_ANCHOR = "earthquakes-daily";
+const PROFILE_DENSITY_ANCHOR = "taxi-hexbin";
+const PROFILE_TRANSFORM_ANCHOR = "school-buffer-zones";
+
 function hasAttribute(
   attributes: AttributeProfile[] | undefined,
   candidates: readonly string[],
@@ -78,6 +84,31 @@ function isPointLike(profile?: DatasetProfile | null): boolean {
   );
 }
 
+function geometryGroup(
+  geometryType: DatasetProfile["geometryType"],
+): "point" | "polygon" | "line" {
+  switch (geometryType) {
+    case "Point":
+    case "MultiPoint":
+    case "Mixed":
+      return "point";
+    case "Polygon":
+    case "MultiPolygon":
+      return "polygon";
+    case "LineString":
+    case "MultiLineString":
+      return "line";
+  }
+}
+
+function exampleMatchesProfileGeometry(
+  example: FewShotExample,
+  profile: DatasetProfile,
+): boolean {
+  const profileGroup = geometryGroup(profile.geometryType);
+  return example.geometryTypes.some((geometryType) => geometryGroup(geometryType) === profileGroup);
+}
+
 function inferPreferredExampleIds(
   prompt: string,
   profile: DatasetProfile | null | undefined,
@@ -93,16 +124,32 @@ function inferPreferredExampleIds(
       lower,
     );
 
-  if (ISOCHRONE_PROMPT.test(lower)) {
+  if (profile && looksLikeIsochronePrompt(prompt)) {
+    return [PROFILE_TRANSFORM_ANCHOR, PROFILE_PLACE_ANCHOR, PROFILE_QUANT_ANCHOR];
+  }
+
+  if (looksLikeIsochronePrompt(prompt)) {
     return ["isochrone-cycling", "school-buffer-zones", "restaurants"];
+  }
+
+  if (profile && BUFFER_PROMPT.test(lower)) {
+    return [PROFILE_TRANSFORM_ANCHOR, PROFILE_PLACE_ANCHOR, PROFILE_QUANT_ANCHOR];
   }
 
   if (BUFFER_PROMPT.test(lower)) {
     return ["school-buffer-zones", "restaurants", "population"];
   }
 
+  if (profile && HEXBIN_PROMPT.test(lower)) {
+    return [PROFILE_DENSITY_ANCHOR, PROFILE_QUANT_ANCHOR, PROFILE_EVENT_ANCHOR];
+  }
+
   if (HEXBIN_PROMPT.test(lower)) {
     return ["taxi-hexbin", "burglaries", "population"];
+  }
+
+  if (profile && DENSITY_PROMPT.test(lower)) {
+    return [PROFILE_DENSITY_ANCHOR, PROFILE_QUANT_ANCHOR, PROFILE_EVENT_ANCHOR];
   }
 
   if (DENSITY_PROMPT.test(lower)) {
@@ -110,28 +157,55 @@ function inferPreferredExampleIds(
   }
 
   if (LIVE_EVENT_PROMPT.test(lower) || hasAttribute(attributes, LIVE_EVENT_FIELDS)) {
-    return [profile ? "earthquakes-daily" : "earthquakes-weekly", "population", "restaurants"];
+    if (profile) {
+      return [PROFILE_EVENT_ANCHOR, PROFILE_QUANT_ANCHOR, PROFILE_PLACE_ANCHOR];
+    }
+    return ["earthquakes-weekly", "population", "restaurants"];
   }
 
   if (
     QUANTITATIVE_PROMPT.test(lower) &&
     (quantitativePointContext || genSkill === "thematic")
   ) {
+    if (profile) {
+      return [PROFILE_QUANT_ANCHOR, PROFILE_PLACE_ANCHOR, PROFILE_EVENT_ANCHOR];
+    }
     return ["population", "housing-prices", "tax-rates"];
   }
 
   if (PLACE_PROMPT.test(lower) || hasAttribute(attributes, PLACE_FIELDS)) {
+    if (profile) {
+      return [PROFILE_PLACE_ANCHOR, PROFILE_QUANT_ANCHOR, PROFILE_EVENT_ANCHOR];
+    }
     return ["restaurants", "population", "burglaries"];
   }
 
   if (pointLike) {
     if (hasAttribute(attributes, QUANT_FIELDS)) {
+      if (profile) {
+        return [PROFILE_QUANT_ANCHOR, PROFILE_PLACE_ANCHOR, PROFILE_EVENT_ANCHOR];
+      }
       return ["population", "restaurants", "burglaries"];
+    }
+    if (profile) {
+      return [PROFILE_PLACE_ANCHOR, PROFILE_QUANT_ANCHOR, PROFILE_EVENT_ANCHOR];
     }
     return ["restaurants", "population", "burglaries"];
   }
 
   return [];
+}
+
+function constrainPreferredIdsForProfile(
+  preferredIds: string[],
+  profile: DatasetProfile | null | undefined,
+): string[] {
+  if (!profile) return preferredIds;
+
+  return preferredIds.filter((preferredId) => {
+    const example = EXAMPLES.find((candidate) => candidate.id === preferredId);
+    return Boolean(example?.hasProfile && exampleMatchesProfileGeometry(example, profile));
+  });
 }
 
 function reorderExamples(
@@ -171,7 +245,10 @@ export function getGenerationSelectionContext(
   const baseExamples = selectExamples(profile ?? undefined, undefined, genSkill);
   const selectedExamples = reorderExamples(
     baseExamples,
-    inferPreferredExampleIds(prompt, profile, genSkill),
+    constrainPreferredIdsForProfile(
+      inferPreferredExampleIds(prompt, profile, genSkill),
+      profile,
+    ),
   );
   const selectedExampleIds = selectedExamples.map((example) => example.id);
 

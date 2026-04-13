@@ -38,8 +38,8 @@ const lineProfile: DatasetProfile = {
 };
 
 describe("EXAMPLES bank", () => {
-  it("contains 11 examples", () => {
-    expect(EXAMPLES).toHaveLength(11);
+  it("contains 13 examples", () => {
+    expect(EXAMPLES).toHaveLength(13);
   });
 
   it("covers all 8 map families", () => {
@@ -58,23 +58,29 @@ describe("EXAMPLES bank", () => {
     );
   });
 
-  it("has 5 with-profile examples", () => {
+  it("has 7 with-profile examples", () => {
     const withProfile = EXAMPLES.filter((e) => e.hasProfile);
-    expect(withProfile).toHaveLength(5);
+    expect(withProfile).toHaveLength(7);
     expect(withProfile.every((e) => e.profile)).toBe(true);
+  });
+
+  it("includes with-profile point anchors for place and quantitative datasets", () => {
+    const ids = EXAMPLES.filter((e) => e.hasProfile).map((e) => e.id);
+    expect(ids).toContain("heritage-sites-profile");
+    expect(ids).toContain("world-cities-profile");
   });
 });
 
 describe("selectExamples", () => {
-  it("returns all 11 examples without profile", () => {
+  it("returns all 13 examples without profile", () => {
     const result = selectExamples();
-    expect(result).toHaveLength(11);
+    expect(result).toHaveLength(13);
     expect(result).toEqual(EXAMPLES);
   });
 
-  it("returns all 11 when profile is undefined", () => {
+  it("returns all 13 when profile is undefined", () => {
     const result = selectExamples(undefined);
-    expect(result).toHaveLength(11);
+    expect(result).toHaveLength(13);
   });
 
   it("returns 3 examples for Point profile", () => {

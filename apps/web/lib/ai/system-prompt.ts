@@ -11,8 +11,9 @@
  */
 import type { DatasetProfile } from "./types";
 import type { GenSkill } from "./skills/router";
-import { selectExamples, formatExample } from "./example-bank";
+import { formatExample } from "./example-bank";
 import { catalogContext } from "./data-catalog";
+import { getGenerationSelectionContext } from "./generation-selection";
 
 // ─── Cartographic rules with skill tags ─────────────────────
 
@@ -443,11 +444,12 @@ function buildPlatformLimitations(skill?: GenSkill): string {
  * - With skill: trims cartographic rules to only skill-relevant ones.
  */
 export function buildSystemPrompt(
+  prompt: string,
   profile?: DatasetProfile | null,
   lessonsBlock?: string,
   skill?: GenSkill,
 ): string {
-  const examples = selectExamples(profile ?? undefined, undefined, skill);
+  const { selectedExamples: examples } = getGenerationSelectionContext(prompt, profile, skill);
   const examplesBlock = examples.map((e) => formatExample(e)).join("\n\n");
 
   const availableDatasetsBlock = profile
