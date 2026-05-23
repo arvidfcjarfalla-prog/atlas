@@ -75,8 +75,13 @@
     "Arial_anywhere"
   ],
   "imports_to_flag": [
-    "from \"@/lib/utils\" import { cn }.*shadcn_default_unmodified",
-    "import.*from \"lucide-react\".*size=\\{?24\\}? strokeWidth=\\{?1\\.5\\}?"
+    "from [\"']@/components/ui/(card|button|dialog|input|select)[\"']",
+    "from [\"']lucide-react[\"']",
+    "from [\"']@/lib/utils[\"']"
+  ],
+  "usage_patterns_to_flag": [
+    "size=\\{?24\\}?[[:space:]]+strokeWidth=\\{?1\\.5\\}?",
+    "duration:[[:space:]]*0\\.5(?![[:digit:]])"
   ],
   "composite_vibe_check": {
     "description": "A file fails the vibe check if it hits 3 or more of these in one component",
@@ -110,6 +115,15 @@
       "modal_drawer": 500,
       "absolute_max": 300
     },
-    "spacing_ladder_fibonacci": [2, 4, 6, 10, 14, 22, 36, 58]
+    "spacing_ladder_fibonacci": [2, 4, 6, 10, 14, 22, 36, 58],
+    "framer_motion_springs": {
+      "emil_follow": { "stiffness": 300, "damping": 30, "mass": 1 },
+      "sonner_toast": { "stiffness": 140, "damping": 18, "mass": 1 },
+      "drag_reorder": { "stiffness": 500, "damping": 40, "mass": 1 },
+      "apple_modern": { "type": "spring", "duration": 0.5, "bounce": 0.2 },
+      "bounce_ceiling": 0.3,
+      "use_springs_for": ["drawers", "toasts", "cursor-tracked", "drag-reorder"],
+      "use_easing_for": ["fades", "opacity", "scale-on-press", "page-transitions"]
+    }
   }
 }

@@ -1,0 +1,37 @@
+/* clip-path reveals — sharper than opacity fades, used by Linear and Vercel
+   for hero images, code snippets, and list items entering. Combine with
+   @starting-style for mount animations without JS. */
+
+.reveal-clip {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 400ms var(--ease-ui);
+
+  @starting-style {
+    clip-path: inset(0 100% 0 0); /* enters from the left */
+  }
+}
+
+.reveal-clip[data-direction="bottom"] {
+  @starting-style {
+    clip-path: inset(100% 0 0 0); /* enters from the bottom */
+  }
+}
+
+.reveal-clip[data-direction="center"] {
+  @starting-style {
+    clip-path: inset(50% 50% 50% 50%); /* iris-out */
+  }
+}
+
+/* Pair with scroll-driven animation to reveal as element enters viewport.
+   Compositor-only, no JS, no IntersectionObserver. */
+@keyframes reveal-on-scroll {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+.reveal-on-scroll {
+  animation: reveal-on-scroll linear both;
+  animation-timeline: view();
+  animation-range: entry 10% cover 30%;
+}

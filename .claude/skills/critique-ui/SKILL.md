@@ -17,6 +17,7 @@ Steps:
 1. List changed files with `git diff --name-only`.
 2. For each changed file, run the four scripts in `.claude/skills/anti-ai-ui/scripts/`.
 3. Read `.claude/skills/anti-ai-ui/tells.json` for the regex source of truth.
-4. Apply the decision rule from your agent instructions.
+4. If shadcn components were touched, call the shadcn MCP tool `get_audit_checklist` and treat any failed item as a block.
+5. Apply the decision rule from your agent instructions.
 
 Output: exactly one JSON object on stdout — `{ "ok": true }` or `{ "ok": false, "reason": "<file>:<line> — <tell> — <fix direction>" }`. No prose outside the JSON.

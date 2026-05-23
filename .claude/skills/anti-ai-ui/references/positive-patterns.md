@@ -21,6 +21,7 @@ What taste-tier UI looks like. The single source of truth for positive signals i
 - Never `ease-in` on UI — the delay reads as sluggish.
 - Animate only `transform` and `opacity`. Everything else jitters.
 - Never animate keyboard-initiated actions — feels disconnected from the keypress.
+- **Cubic-bezier for chrome (fades, scales, opacity). Springs for physical objects (drawers being dragged, toasts entering, cursor-tracked, drag-reorder).** Spring configs live in section 11 and `examples/positive/motion-springs.tsx`.
 
 ## 3. Tailwind v4 OKLCH `@theme` example
 
@@ -83,6 +84,9 @@ Step 9 is the only place where the brand hue appears at full saturation.
 | `initial-letter` | Drop caps without absolute positioning |
 | `font-variant-numeric: tabular-nums` | Aligned digits in tables |
 | `font-feature-settings` | Stylistic sets to break Inter-default look |
+| `@font-feature-values` | Named character variants (`character-variant(alt-one)`) — `examples/positive/font-variation-hover.css` |
+| `font-variation-settings` axis animation | Animate weight on hover without layout shift — same file |
+| `clip-path: inset(...)` reveals | Sharper than opacity fade — `examples/positive/clip-path-reveal.css` |
 
 ## 7. Component library tier list
 
@@ -109,3 +113,39 @@ Step 9 is the only place where the brand hue appears at full saturation.
 ## 10. Border-radius discipline
 
 4–12px for chrome. Never `rounded-2xl` (16px) on small elements. Buttons live at 4–8px. Cards at 8–12px. Modals can reach 16px. Above 16px on a small element reads as cartoonish AI default.
+
+## 11. Spring configs (for animation libraries with spring physics)
+
+Use springs for physical objects. Use cubic-beziers (section 1) for chrome. Bounce > 0.3 reads as AI overdoing it.
+
+| Purpose | Config | Source |
+|---|---|---|
+| Cursor-tracked / mouse-follow | `{ stiffness: 300, damping: 30, mass: 1 }` | Emil Kowalski |
+| Toast enter / exit | `{ stiffness: 140, damping: 18, mass: 1 }` | Sonner default |
+| Drag reorder | `{ stiffness: 500, damping: 40, mass: 1 }` | Tight, anchored |
+| Apple-modern declarative | `{ type: "spring", duration: 0.5, bounce: 0.2 }` | Bounce 0.1–0.3 ceiling |
+| Drawer / sheet | **Use cubic-bezier `0.32, 0.72, 0, 1`**, not spring | Vaul / iOS |
+
+Source-of-truth: `tells.json → positive_signals.framer_motion_springs`. Paste-ready snippets: `examples/positive/motion-springs.tsx`.
+
+**Do not emit:**
+- `{ type: "spring" }` with no overrides (default bounce too high).
+- `{ stiffness: 800+ }` (jittery, expensive).
+- `{ bounce: 0.5+ }` (cartoonish).
+- Springs on fade/opacity transitions — use cubic-bezier instead.
+- `transition={{ duration: 0.5 }}` with no easing — the tutorial default, single most-recognised AI motion tell.
+
+## 12. Paste-ready example files
+
+All under `.claude/skills/anti-ai-ui/examples/positive/`:
+
+| File | What it covers |
+|---|---|
+| `easing-tokens.css` | CSS vars for the 5 canonical cubic-beziers + duration scale |
+| `oklch-theme.css` | Tailwind v4 `@theme` block with OKLCH + fibonacci spacing + tracking |
+| `font-feature-settings.css` | Inter with stylistic sets enabled + heading-weight discipline |
+| `starting-style-toast.css` | `@starting-style` + `@property` + `color-mix` + `:has()` |
+| `view-transition-route.css` | View Transitions API + scroll-driven `animation-timeline: view()` |
+| `clip-path-reveal.css` | clip-path reveals with `@starting-style` and scroll-driven variant |
+| `font-variation-hover.css` | Variable font axis animation on hover + `@font-feature-values` |
+| `motion-springs.tsx` | Framer Motion / Motion spring configs (cursor, toast, drag, Apple) |

@@ -13,7 +13,7 @@ argument-hint: <feature description>
 
 Run the anti-ai-ui four-phase flow for the feature: $ARGUMENTS.
 
-This skill runs in the main thread and dispatches each phase as a forked-context skill. It does not invoke other skills via skill mechanism — it tells the orchestrator what to do, and the orchestrator delegates.
+This skill runs in the main thread. Claude Code skills cannot programmatically call other skills, so this skill instructs Claude to invoke each phase in sequence: read this file, then run `/discover`, then `/ux-architecture`, then `/implement-page`, then `/critique-ui`, applying the loop logic in the Phases section below. The Stop-hook (`.claude/hooks/design-critic.sh`) is the final gate either way.
 
 ## Phases
 
