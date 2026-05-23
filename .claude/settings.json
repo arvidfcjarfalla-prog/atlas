@@ -47,6 +47,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-write-rules-loader.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -101,7 +111,31 @@
             "statusMessage": "Verifying claims against source files..."
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/design-critic.sh",
+            "timeout": 30,
+            "statusMessage": "Running anti-ai-ui vibe-check..."
+          }
+        ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/design-critic.sh)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-write-rules-loader.sh)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-format.sh)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-commit-vibe-check.sh)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/skills/anti-ai-ui/scripts/color-fingerprint.sh:*)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/skills/anti-ai-ui/scripts/composite-vibe-check.sh:*)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/skills/anti-ai-ui/scripts/copy-banlist.sh:*)",
+      "Bash(\"$CLAUDE_PROJECT_DIR\"/.claude/skills/anti-ai-ui/scripts/em-dash-density.sh:*)",
+      "Bash(jq:*)"
     ]
   }
 }
