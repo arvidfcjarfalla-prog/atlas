@@ -1,0 +1,23 @@
+/* If using Inter, you MUST enable stylistic sets — vanilla Inter is the AI tell */
+:root {
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "Berkeley Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  font-feature-settings: "ss01" 1, "ss03" 1, "cv11" 1; /* alt-1, curved square dots, single-storey a */
+}
+
+.numerals, .metric, [data-tabular] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1; /* tabular + slashed zero */
+}
+
+/* Heading weight discipline — never below 400, never above 600 for display */
+h1, h2 { font-weight: 500; letter-spacing: var(--tracking-display); text-wrap: balance; }
+h3, h4 { font-weight: 500; letter-spacing: -0.02em; }
+p      { font-weight: 400; text-wrap: pretty; }

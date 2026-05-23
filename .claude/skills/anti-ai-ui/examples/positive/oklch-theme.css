@@ -1,0 +1,29 @@
+@theme {
+  /* OKLCH, not HSL. Warm off-white, not pure white. */
+  --color-bg:        oklch(0.985 0.005 85);
+  --color-fg:        oklch(0.18  0.015 250);
+  --color-muted:     oklch(0.55  0.01  250);
+  --color-accent-9:  oklch(0.65  0.20  245);
+  --color-accent-10: oklch(0.58  0.22  245);
+  --color-accent-11: oklch(0.45  0.18  245);
+
+  /* Fibonacci-ish spacing — not Tailwind's 4/8/12/16 default */
+  --spacing-px:  1px;
+  --spacing-0_5: 2px;
+  --spacing-1:   4px;
+  --spacing-2:   6px;
+  --spacing-3:   10px;
+  --spacing-4:   14px;
+  --spacing-6:   22px;
+  --spacing-10:  36px;
+  --spacing-16:  58px;
+
+  /* Radius — 4–12px for chrome, never 16/20/24 on small elements */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Letter-spacing — Linear/Vercel calibration */
+  --tracking-display: -0.04em;
+  --tracking-body:    -0.011em;
+}

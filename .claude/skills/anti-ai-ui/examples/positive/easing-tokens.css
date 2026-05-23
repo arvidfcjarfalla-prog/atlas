@@ -1,0 +1,24 @@
+:root {
+  /* Emil Kowalski default — strong ease-out for UI */
+  --ease-ui:        cubic-bezier(0.23, 1, 0.32, 1);
+  /* Linear-style snap */
+  --ease-snap:      cubic-bezier(0.16, 1, 0.3, 1);
+  /* Vaul / iOS sheet — drawers and bottom sheets only */
+  --ease-drawer:    cubic-bezier(0.32, 0.72, 0, 1);
+  /* Image / hero reveal — strong ease-in-out */
+  --ease-reveal:    cubic-bezier(0.77, 0, 0.175, 1);
+  /* Subtle pop, not bouncy */
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Durations — hard ceiling 300ms for UI feedback */
+  --dur-instant:  100ms;
+  --dur-fast:     150ms;
+  --dur-ui:       200ms;
+  --dur-modal:    250ms;
+  --dur-drawer:   500ms;
+}
+
+/* Use ease-out on entrances. Never ease-in on UI — the delay reads as sluggish. */
+.button:active { transform: scale(0.97); transition: transform var(--dur-instant) var(--ease-ui); }
+.dialog        { transition: opacity var(--dur-modal) var(--ease-ui), transform var(--dur-modal) var(--ease-ui); }
+.drawer        { transition: transform var(--dur-drawer) var(--ease-drawer); }
