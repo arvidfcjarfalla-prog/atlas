@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hearth · one page for your product</title>
+<meta name="description" content="A small website builder for early hardware founders. One claim, one proof, one way to reach you." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+/* ----------------------------------------------------------------
+   Tokens
+   ---------------------------------------------------------------- */
+:root {
+  /* Warm editorial palette in OKLCH. Not pure white, not pure black. */
+  --paper:       oklch(0.972 0.012 78);   /* warm off-white */
+  --paper-2:     oklch(0.948 0.014 75);   /* slightly deeper, for inset */
+  --ink:         oklch(0.22  0.020 60);   /* warm near-black */
+  --ink-muted:   oklch(0.46  0.018 60);
+  --ink-faint:   oklch(0.62  0.014 60);
+  --rule:        oklch(0.88  0.014 70);
+  --ember:       oklch(0.54  0.150 38);   /* deep brick — the only accent */
+  --ember-soft:  oklch(0.92  0.040 50);
+
+  /* Easing tokens from positive-patterns */
+  --ease-ui:     cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-snap:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --dur-instant: 100ms;
+  --dur-fast:    150ms;
+  --dur-ui:      200ms;
+  --dur-modal:   250ms;
+
+  /* Fibonacci-ish spacing */
+  --s-1:  4px;
+  --s-2:  6px;
+  --s-3:  10px;
+  --s-4:  14px;
+  --s-5:  22px;
+  --s-6:  36px;
+  --s-7:  58px;
+  --s-8:  94px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Letter-spacing */
+  --tracking-display: -0.025em;
+  --tracking-body:    -0.008em;
+  --tracking-mono:    -0.005em;
+
+  /* Display family — variable serif */
+  --font-display: "Fraunces", "Newsreader", Georgia, serif;
+  /* Body / UI */
+  --font-sans:    "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  /* Wordmark + metadata */
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Reading measure */
+  --measure-prose: 38rem;
+}
+
+/* ----------------------------------------------------------------
+   Reset
+   ---------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.55;
+  letter-spacing: var(--tracking-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01" 1, "cv02" 1, "cv11" 1;
+}
+img, svg, iframe { display: block; max-width: 100%; }
+a { color: inherit; }
+button { font: inherit; cursor: pointer; }
+
+::selection { background: var(--ember); color: var(--paper); }
+
+/* ----------------------------------------------------------------
+   Page frame — single column, generous side margin
+   The whole page lives on a 1px hairline grid set off from the edge.
+   ---------------------------------------------------------------- */
+.frame {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--s-5) clamp(20px, 5vw, 58px);
+}
+
+/* ----------------------------------------------------------------
+   Masthead — wordmark only, no nav
+   ---------------------------------------------------------------- */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: var(--s-4);
+  padding-bottom: var(--s-7);
+  border-bottom: 1px solid var(--rule);
+}
+.wordmark {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.wordmark .dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--ember);
+  border-radius: 50%;
+  margin-right: 8px;
+  transform: translateY(-1px);
+}
+.masthead .loc {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* ----------------------------------------------------------------
+   Section 1 — Claim
+   The claim reads as prose set at display scale. Not a stacked hero.
+   ---------------------------------------------------------------- */
+.claim {
+  padding-top: var(--s-8);
+  padding-bottom: var(--s-8);
+}
+.claim__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 var(--s-5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.claim__eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--ink-faint);
+}
+.claim__sentence {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-variation-settings: "opsz" 96, "SOFT" 30;
+  font-weight: 400;
+  font-size: clamp(34px, 5.8vw, 64px);
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  text-wrap: pretty;
+  hanging-punctuation: first;
+  max-width: 18ch;
+  margin: 0 0 var(--s-6);
+  color: var(--ink);
+}
+.claim__sentence em {
+  font-style: italic;
+  color: var(--ember);
+  font-variation-settings: "opsz" 96, "SOFT" 100;
+}
+.claim__mech {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 44ch;
+  margin: 0 0 var(--s-7);
+  text-wrap: pretty;
+}
+.claim__cta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+}
+
+/* CTA — custom radius, not rounded-full, not shadcn default */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 22px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--dur-instant) var(--ease-ui),
+    background-color var(--dur-ui) var(--ease-ui);
+  text-decoration: none;
+}
+.cta:hover { background: oklch(0.30 0.020 60); }
+.cta:active { transform: scale(0.985); }
+.cta:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 3px;
+}
+.cta .arrow {
+  width: 14px;
+  height: 1px;
+  background: currentColor;
+  position: relative;
+  transition: width var(--dur-ui) var(--ease-snap);
+}
+.cta .arrow::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid currentColor;
+  border-top: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+.cta:hover .arrow { width: 20px; }
+
+.claim__aside {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+/* ----------------------------------------------------------------
+   Section divider — a labeled hairline. The kind of detail spec houses use.
+   ---------------------------------------------------------------- */
+.divider {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-6) 0;
+}
+.divider__num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.divider__rule {
+  height: 1px;
+  background: var(--rule);
+}
+.divider__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ----------------------------------------------------------------
+   Section 2 — Proof
+   A single rendered founder page. No carousel, no logos, no testimonial card.
+   We use an <article> inside a framed surface so the reader sees the artifact
+   as the artifact, not as a screenshot decoration.
+   ---------------------------------------------------------------- */
+.proof {
+  padding: var(--s-5) 0 var(--s-7);
+}
+.proof__figure {
+  margin: 0;
+}
+.artifact {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: clamp(28px, 6vw, 78px) clamp(24px, 6vw, 78px);
+  position: relative;
+  overflow: hidden;
+}
+.artifact__chrome {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: clamp(28px, 5vw, 58px);
+  padding-bottom: var(--s-4);
+  border-bottom: 1px solid var(--rule);
+}
+.artifact__url {
+  font-variant-numeric: tabular-nums;
+}
+.artifact__url .scheme { color: oklch(0.72 0.014 60); }
+.artifact__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.artifact__live::before {
+  content: "";
+  width: 6px; height: 6px;
+  background: oklch(0.62 0.16 145);
+  border-radius: 50%;
+}
+
+/* The artifact's own claim — set in the same display serif so the reader sees
+   what Hearth produces, not a screenshot of an unrelated brand. */
+.artifact__claim {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 80, "SOFT" 30;
+  font-weight: 400;
+  font-size: clamp(28px, 4.4vw, 46px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 var(--s-5);
+  text-wrap: pretty;
+  max-width: 20ch;
+}
+.artifact__claim em {
+  font-style: italic;
+  color: var(--ember);
+}
+.artifact__sub {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 42ch;
+  margin: 0 0 var(--s-6);
+}
+.artifact__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--s-5) var(--s-6);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--rule);
+}
+.artifact__meta dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 6px;
+}
+.artifact__meta dd {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0;
+}
+.artifact__order {
+  margin-top: var(--s-6);
+}
+.artifact__order a {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--ember);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklch, var(--ember) 35%, transparent);
+  padding-bottom: 1px;
+  transition: border-color var(--dur-ui) var(--ease-ui);
+}
+.artifact__order a:hover { border-bottom-color: var(--ember); }
+
+/* The caption sits below, plain. Two lines. */
+.proof__caption {
+  margin-top: var(--s-5);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-faint);
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: baseline;
+}
+.proof__caption strong {
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.proof__caption .sep { color: var(--rule); }
+
+/* ----------------------------------------------------------------
+   Section 3 — Mechanics
+   A numbered list with counter-reset. Not cards. Not icons.
+   ---------------------------------------------------------------- */
+.mechanics {
+  padding: var(--s-7) 0 var(--s-5);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-7);
+}
+@media (min-width: 760px) {
+  .mechanics { grid-template-columns: 18ch 1fr; gap: var(--s-7); }
+}
+.mechanics__lede {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 60, "SOFT" 30;
+  font-weight: 400;
+  font-size: clamp(22px, 2.6vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0;
+  text-wrap: pretty;
+}
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  max-width: var(--measure-prose);
+}
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: baseline;
+  padding: var(--s-5) 0;
+  border-top: 1px solid var(--rule);
+}
+.steps li:last-child { border-bottom: 1px solid var(--rule); }
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ember);
+  font-variant-numeric: tabular-nums;
+  align-self: start;
+  padding-top: 4px;
+}
+.steps__label {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+.steps__body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+.disclosure {
+  grid-column: 1 / -1;
+  margin-top: var(--s-5);
+  padding: var(--s-5) var(--s-5);
+  background: color-mix(in oklch, var(--ember-soft) 55%, var(--paper));
+  border-left: 2px solid var(--ember);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: oklch(0.32 0.04 50);
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+.disclosure strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------------------
+   Section 4 — Contact
+   Single email field, blur-validation, in-place confirmation.
+   ---------------------------------------------------------------- */
+.contact {
+  padding: var(--s-7) 0 var(--s-6);
+}
+.contact__heading {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 60, "SOFT" 30;
+  font-weight: 400;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  margin: 0 0 var(--s-5);
+  max-width: 28ch;
+  text-wrap: pretty;
+}
+.contact__form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-3);
+  max-width: 440px;
+}
+.contact__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.field {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-ui) var(--ease-ui),
+              box-shadow var(--dur-ui) var(--ease-ui);
+}
+.field:has(input:focus-visible) {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ink) 8%, transparent);
+}
+.field:has(input[data-invalid="true"]) {
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ember) 12%, transparent);
+}
+.field input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 14px 16px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  outline: none;
+  min-width: 0;
+}
+.field input::placeholder { color: var(--ink-faint); }
+.field button {
+  border: none;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 18px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  transition: background-color var(--dur-ui) var(--ease-ui),
+              transform var(--dur-instant) var(--ease-ui);
+}
+.field button:hover { background: oklch(0.30 0.020 60); }
+.field button:active { transform: scale(0.985); }
+.field button:disabled {
+  background: var(--ink-faint);
+  cursor: not-allowed;
+}
+.field-error {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ember);
+  margin: 0;
+  min-height: 1.2em;
+}
+
+.confirm {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--ink);
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--paper-2);
+}
+.confirm .check {
+  color: var(--ember);
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.contact__origin {
+  margin-top: var(--s-7);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-4);
+  max-width: 52ch;
+}
+.contact__origin p {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+.signoff {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.signoff::before {
+  content: "—";
+  color: var(--ink-faint);
+}
+
+/* Quieter repeat CTA */
+.cta--quiet {
+  margin-top: var(--s-5);
+  height: 40px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  font-size: 14px;
+}
+.cta--quiet:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ----------------------------------------------------------------
+   Footer
+   ---------------------------------------------------------------- */
+footer {
+  margin-top: var(--s-8);
+  padding-top: var(--s-5);
+  padding-bottom: var(--s-7);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+footer small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+footer nav a {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-ui) var(--ease-ui);
+}
+footer nav a:hover { border-bottom-color: var(--ink-muted); }
+
+/* ----------------------------------------------------------------
+   Scroll-driven reveals — sections 2, 3, 4
+   transform + opacity only. ease-out only. 200ms is for UI; here the
+   reveal happens across the entry range driven by view().
+   ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+    @keyframes reveal-in {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+}
+
+/* ----------------------------------------------------------------
+   Small-viewport tightening
+   ---------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .masthead { padding-bottom: var(--s-6); }
+  .claim { padding-top: var(--s-7); padding-bottom: var(--s-6); }
+  .artifact { padding: 24px; }
+  .artifact__meta { grid-template-columns: 1fr 1fr; }
+  footer { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="wordmark"><span class="dot" aria-hidden="true"></span>Hearth</div>
+    <div class="loc">Gothenburg · v0.4</div>
+  </header>
+
+  <!-- Section 1 — Claim -->
+  <section class="claim" aria-labelledby="claim-sentence">
+    <p class="claim__eyebrow">A website builder, of sorts</p>
+    <h1 id="claim-sentence" class="claim__sentence">
+      Hearth writes <em>one page</em> for the product you actually make.
+    </h1>
+    <p class="claim__mech">
+      You answer six questions about what you build and who buys it. Hearth returns a single-page site, hosted on a subdomain, that you can edit by clicking on the words. No themes. No blocks. No second page.
+    </p>
+    <div class="claim__cta-row">
+      <a class="cta" href="#start">
+        Start with your product
+        <span class="arrow" aria-hidden="true"></span>
+      </a>
+      <span class="claim__aside">Takes about nine minutes the first time.</span>
+    </div>
+  </section>
+
+  <div class="divider" aria-hidden="true">
+    <span class="divider__num">02</span>
+    <span class="divider__rule"></span>
+    <span class="divider__label">A page made with Hearth</span>
+  </div>
+
+  <!-- Section 2 — Proof -->
+  <section class="proof reveal" aria-labelledby="proof-heading">
+    <h2 id="proof-heading" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Proof</h2>
+    <figure class="proof__figure">
+      <article class="artifact" aria-label="Live Hearth page for Nordbruk Coffee">
+        <header class="artifact__chrome">
+          <span class="artifact__url"><span class="scheme">https://</span>nordbruk.hearth.page</span>
+          <span class="artifact__live">live</span>
+        </header>
+        <p class="artifact__claim">
+          We roast coffee for the cafés we drink at on <em>Tuesday mornings</em>.
+        </p>
+        <p class="artifact__sub">
+          Nordbruk is a two-person roastery on Hisingen. We deliver by cargo bike on Wednesdays and Fridays inside the city, and ship the rest of Sweden by post on Thursdays.
+        </p>
+        <dl class="artifact__meta">
+          <div>
+            <dt>This week's coffee</dt>
+            <dd>Mormora, Ethiopia, washed</dd>
+          </div>
+          <div>
+            <dt>Bag size</dt>
+            <dd>250 g · 180 SEK</dd>
+          </div>
+          <div>
+            <dt>Roasted</dt>
+            <dd>Mondays, 06:00</dd>
+          </div>
+          <div>
+            <dt>Send a question</dt>
+            <dd>hej@nordbruk.coffee</dd>
+          </div>
+        </dl>
+        <p class="artifact__order">
+          <a href="#">Order a bag for Wednesday</a>
+        </p>
+      </article>
+      <figcaption class="proof__caption">
+        <strong>Nordbruk Coffee</strong>
+        <span class="sep">/</span>
+        <span>Built by Elin Hagström in March 2026. Hosted on Hearth.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="divider" aria-hidden="true">
+    <span class="divider__num">03</span>
+    <span class="divider__rule"></span>
+    <span class="divider__label">How it works</span>
+  </div>
+
+  <!-- Section 3 — Mechanics -->
+  <section class="mechanics reveal" aria-labelledby="mechanics-lede">
+    <p id="mechanics-lede" class="mechanics__lede">
+      Three steps, in this order, every time.
+    </p>
+    <div>
+      <ol class="steps">
+        <li>
+          <div>
+            <p class="steps__label">Intake</p>
+            <p class="steps__body">
+              You describe what you make in a short form. Hearth drafts the first claim sentence and the mechanical paragraph below it. You read what it wrote.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="steps__label">Edit</p>
+            <p class="steps__body">
+              You click on any sentence on the live page and rewrite it in place. There is no separate editor view. What you see is what is published.
+            </p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <p class="steps__label">Publish</p>
+            <p class="steps__body">
+              The page lives at <code style="font-family:var(--font-mono);font-size:13px;background:var(--paper-2);padding:2px 6px;border-radius:3px;">yourname.hearth.page</code> from the moment you save. A custom domain is a one-time setting you can add later.
+            </p>
+          </div>
+        </li>
+      </ol>
+      <p class="disclosure">
+        <strong>The structure is fixed.</strong> One claim, one proof section, one contact point. There is no template marketplace and no drag-and-drop editor. If you need a homepage, an about page, and a blog with categories, you need a different tool.
+      </p>
+    </div>
+  </section>
+
+  <div class="divider" aria-hidden="true">
+    <span class="divider__num">04</span>
+    <span class="divider__rule"></span>
+    <span class="divider__label">Write to us</span>
+  </div>
+
+  <!-- Section 4 — Contact -->
+  <section class="contact reveal" aria-labelledby="contact-heading">
+    <h2 id="contact-heading" class="contact__heading">
+      If this sounds wrong for you, tell us. That is how we learn who it's for.
+    </h2>
+
+    <form class="contact__form" id="contact-form" novalidate>
+      <label class="contact__label" for="email">Your email</label>
+      <div class="field">
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          aria-describedby="email-error"
+          required
+        />
+        <button type="submit" id="send-btn">Send</button>
+      </div>
+      <p class="field-error" id="email-error" role="alert" aria-live="polite"></p>
+    </form>
+
+    <div class="contact__origin">
+      <p>
+        Hearth started because I kept watching founders in my building spend three weekends on a five-page website before they had ten paying customers. The site they actually needed was one page that said what they made and how to buy it. That is the only thing Hearth does.
+      </p>
+      <span class="signoff">Arvid Hjärtberg, Gothenburg, 2026</span>
+    </div>
+
+    <a class="cta cta--quiet" href="#start">Start with your product</a>
+  </section>
+
+  <footer>
+    <small>© 2026 Hearth AB · Org. 559412-8821</small>
+    <nav><a href="/privacy">Privacy</a></nav>
+  </footer>
+
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Minimal progressive-enhancement script.
+   - Validate the email field on BLUR (not on keystroke) per spec.
+   - On valid submit, replace the field+button with an in-place
+     confirmation line. No toast, no modal.
+   ------------------------------------------------------------------ */
+(function () {
+  const form = document.getElementById("contact-form");
+  if (!form) return;
+
+  const input = form.querySelector('input[type="email"]');
+  const errorEl = document.getElementById("email-error");
+  const sendBtn = document.getElementById("send-btn");
+  const fieldWrap = form.querySelector(".field");
+
+  function isValidEmail(v) {
+    if (!v) return false;
+    // Pragmatic check — not RFC 5322. Server does the real validation.
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+  }
+
+  function clearError() {
+    errorEl.textContent = "";
+    input.removeAttribute("data-invalid");
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    input.setAttribute("data-invalid", "true");
+  }
+
+  // Validate on blur only, per spec.
+  input.addEventListener("blur", function () {
+    const v = input.value;
+    if (v === "") { clearError(); return; }
+    if (!isValidEmail(v)) {
+      showError("That address doesn't look right. Have a second look?");
+    } else {
+      clearError();
+    }
+  });
+
+  // Clear error silently as the user types after a blur error.
+  input.addEventListener("input", function () {
+    if (input.getAttribute("data-invalid") === "true" && isValidEmail(input.value)) {
+      clearError();
+    }
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const v = input.value.trim();
+    if (!isValidEmail(v)) {
+      showError("That address doesn't look right. Have a second look?");
+      input.focus();
+      return;
+    }
+    // In-place confirmation. Replace field + button.
+    const confirm = document.createElement("div");
+    confirm.className = "confirm";
+    confirm.innerHTML = '<span class="check" aria-hidden="true">✓</span>Got it. We will write back from arvid@hearth.page within a day or two.';
+    fieldWrap.replaceWith(confirm);
+    errorEl.remove();
+    sendBtn.remove();
+  });
+})();
+</script>
+
+</body>
+</html>
