@@ -1,0 +1,44 @@
+/* Variable font axis animation. Works with Inter Variable, Geist, ABC Diatype,
+   any registered variable font. Animate the weight axis on hover instead of
+   swapping font-weight (which causes layout shift — Rauno typography rule 4). */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+}
+
+.heading {
+  font-family: "Inter Variable", system-ui, sans-serif;
+  font-variation-settings: "wght" 500, "opsz" 32;
+  transition: font-variation-settings 200ms var(--ease-ui);
+}
+
+.heading:hover {
+  /* Same width metrics, no layout shift — that is the point of variable axes. */
+  font-variation-settings: "wght" 700, "opsz" 32;
+}
+
+/* Named character variants via @font-feature-values — the modern alternative
+   to scattering `font-feature-settings: "cv01" 1` across stylesheets. */
+@font-feature-values "Inter Variable" {
+  @character-variant {
+    alt-one: cv01;       /* alternate one with serif */
+    simple-a: cv11;      /* single-storey a */
+    simple-u: cv06;      /* simplified u */
+    curved-square: ss03; /* curved square dots */
+  }
+  @stylistic {
+    open-digits: ss01;
+  }
+}
+
+.numerals {
+  font-variant-alternates: character-variant(alt-one);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.heading {
+  font-variant-alternates: character-variant(simple-a, curved-square);
+}

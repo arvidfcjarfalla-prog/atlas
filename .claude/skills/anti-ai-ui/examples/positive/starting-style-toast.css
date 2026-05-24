@@ -1,0 +1,20 @@
+.toast {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--dur-ui) var(--ease-ui),
+              transform var(--dur-ui) var(--ease-ui);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.card-shimmer:hover { --gradient-angle: 180deg; transition: --gradient-angle 600ms var(--ease-ui); }
+
+.tint { background: color-mix(in oklch, var(--color-accent-9) 12%, transparent); }
+.form:has(input:invalid) .submit { opacity: 0.5; pointer-events: none; }

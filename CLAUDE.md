@@ -82,3 +82,14 @@ pnpm 9.15 + Turborepo · TypeScript 5.8 strict · Next.js 14 App Router · MapLi
 - **Plan compliance:** When implementing from an approved plan, cross-check every item before declaring done. Enumerate each plan item and show evidence it was implemented. Never silently drop items.
 - **Read before writing:** Before implementing a feature, read the surrounding code to find the optimal place and approach. Don't bolt things on — integrate them properly.
 - **Match the ambition:** If consensus/research recommended a rich solution, implement the rich solution. Don't downgrade to the minimum viable version without asking.
+
+## anti-ai-ui
+
+This project uses the `anti-ai-ui` skill. Before generating or editing UI:
+- Invoke `/anti-ai-review <feature>` to run the four-phase flow (discover → ux-architecture → implement-page → critique-ui).
+- The Stop-hook will block completion if any composite vibe-check item is present in the diff.
+- Read `.claude/skills/anti-ai-ui/references/anti-ai-fingerprint.md` for what to avoid.
+- Read `.claude/skills/anti-ai-ui/references/positive-patterns.md` for what to emit.
+- Tells regex source-of-truth: `.claude/skills/anti-ai-ui/tells.json`.
+
+Stack default: shadcn/ui + Tailwind. Override here if the project differs.

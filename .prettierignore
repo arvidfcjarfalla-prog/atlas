@@ -1,0 +1,4 @@
+# Prettier with proseWrap: always wraps YAML description: across lines and breaks skill discovery
+**/.claude/skills/**/SKILL.md
+**/.claude/agents/**/*.md
+**/.claude/rules/**/*.md
