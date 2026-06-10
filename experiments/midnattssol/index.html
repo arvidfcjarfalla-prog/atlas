@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Midnattssol — dagsljusets år i Sverige</title>
+<meta name="description" content="Soluppgång, solnedgång och skymning för tio svenska städer, beräknat i webbläsaren med NOAA:s solekvationer.">
+<style>
+  :root {
+    --paper: #16140f;
+    --plot: #121419;
+    --ink: #ece7da;
+    --ink-muted: #968d78;
+    --ink-faint: #5c5648;
+    --gold: #d9a441;
+    --gold-deep: #8a6a23;
+    --hairline: rgba(236, 231, 218, 0.12);
+    --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
+    --mono: "Berkeley Mono", "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { background: var(--paper); }
+  body {
+    font-family: var(--serif);
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 58px 22px 36px;
+  }
+  .frame { max-width: 880px; margin: 0 auto; }
+
+  .overline {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  h1 {
+    font-size: clamp(34px, 6vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin-top: 10px;
+  }
+  .lede {
+    margin-top: 6px;
+    max-width: 58ch;
+    color: var(--ink-muted);
+    font-size: 16px;
+    text-wrap: pretty;
+  }
+
+  nav.cities {
+    margin-top: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 22px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 14px;
+  }
+  nav.cities button {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 2px 0 4px;
+    cursor: pointer;
+    font-family: var(--serif);
+    font-size: 15px;
+    color: var(--ink-muted);
+    border-bottom: 1px solid transparent;
+    transition: border-color 150ms var(--ease-ui), color 150ms var(--ease-ui);
+  }
+  nav.cities button .lat {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-left: 5px;
+    letter-spacing: 0.04em;
+  }
+  nav.cities button:hover { border-bottom-color: var(--ink-muted); }
+  nav.cities button[aria-pressed="true"] {
+    color: var(--gold);
+    border-bottom: 2px solid var(--gold);
+  }
+  nav.cities button:focus-visible {
+    outline: 1px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  .chart-wrap { margin-top: 22px; }
+  canvas {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--hairline);
+    background: var(--plot);
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+  canvas:focus-visible { outline: 1px solid var(--gold); outline-offset: 3px; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+  }
+  .legend i {
+    display: inline-block;
+    width: 14px;
+    height: 9px;
+    margin-right: 6px;
+    vertical-align: baseline;
+    font-style: normal;
+  }
+  .legend .sw-day i  { background: var(--gold); }
+  .legend .sw-twi i  { background: #3e3422; }
+  .legend .sw-noon i { height: 0; border-top: 1px solid var(--gold-deep); vertical-align: middle; }
+  .legend .hint { margin-left: auto; color: var(--ink-faint); }
+
+  .readout {
+    margin-top: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 36px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 18px;
+  }
+  .readout .date {
+    font-style: italic;
+    font-size: 24px;
+    min-width: 12ch;
+  }
+  .readout dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 30px;
+  }
+  .readout dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .readout dd {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    margin-top: 2px;
+  }
+  .readout .note {
+    flex-basis: 100%;
+    font-size: 14px;
+    color: var(--ink-muted);
+    font-style: italic;
+  }
+
+  .facts {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 22px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 18px;
+  }
+  .facts dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .facts dd {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    margin-top: 4px;
+    line-height: 1.45;
+  }
+  .facts dd .sub { color: var(--ink-muted); }
+
+  footer {
+    margin-top: 58px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 14px;
+    font-size: 13px;
+    color: var(--ink-faint);
+    max-width: 64ch;
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <p class="overline">Ljuskarta · Sverige · <span id="year-label"></span></p>
+    <h1>Midnattssol</h1>
+    <p class="lede">Dagsljusets år i tio svenska städer, från Kiruna till Malmö.
+    Dra över diagrammet för att läsa av ett datum, eller stega med piltangenterna.</p>
+  </header>
+
+  <nav class="cities" id="cities" aria-label="Välj stad"></nav>
+
+  <div class="chart-wrap">
+    <canvas id="chart" tabindex="0" role="img"></canvas>
+    <p class="legend">
+      <span class="sw-day"><i></i>dagsljus</span>
+      <span class="sw-twi"><i></i>borgerlig skymning</span>
+      <span class="sw-noon"><i></i>sann middag</span>
+      <span class="hint">klocktid · vinter- och sommartid</span>
+    </p>
+  </div>
+
+  <section class="readout" aria-live="polite">
+    <p class="date" id="ro-date"></p>
+    <dl>
+      <div><dt>Upp</dt><dd id="ro-rise"></dd></div>
+      <div><dt>Ner</dt><dd id="ro-set"></dd></div>
+      <div><dt>Dagsljus</dt><dd id="ro-len"></dd></div>
+    </dl>
+    <p class="note" id="ro-note"></p>
+  </section>
+
+  <dl class="facts">
+    <div><dt>Längsta dagen</dt><dd id="f-long"></dd></div>
+    <div><dt>Kortaste dagen</dt><dd id="f-short"></dd></div>
+    <div><dt>Midnattssol</dt><dd id="f-msun"></dd></div>
+    <div><dt>Polarnatt</dt><dd id="f-pnight"></dd></div>
+  </dl>
+
+  <footer>
+    Sol- och skymningstider beräknas med NOAA:s solekvationer direkt i webbläsaren
+    när sidan öppnas. Ingen data hämtas och inget skript laddas utifrån. Tiderna
+    gäller innevarande år, anges i svensk normaltid respektive sommartid och kan
+    avvika någon minut från tabellverk. Hacken i kurvorna i mars och oktober är
+    tidsomställningen.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- solar geometry (NOAA general equations) ---------- */
+
+const RAD = Math.PI / 180;
+const YEAR = new Date().getFullYear();
+const DAYS = (YEAR % 4 === 0 && YEAR % 100 !== 0) || YEAR % 400 === 0 ? 366 : 365;
+
+// zenith 90.833° = sunrise/sunset, 96° = civil twilight
+function solarEvents(dayOfYear, lat, lon, zenithDeg) {
+  const gamma = (2 * Math.PI / DAYS) * (dayOfYear - 1 + 0.5);
+  const eqtime = 229.18 * (0.000075
+    + 0.001868 * Math.cos(gamma)     - 0.032077 * Math.sin(gamma)
+    - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+  const decl = 0.006918
+    - 0.399912 * Math.cos(gamma)     + 0.070257 * Math.sin(gamma)
+    - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma)
+    - 0.002697 * Math.cos(3 * gamma) + 0.00148  * Math.sin(3 * gamma);
+  const noonUTC = 720 - 4 * lon - eqtime; // minutes after 00:00 UTC
+  const cosHa = Math.cos(zenithDeg * RAD) / (Math.cos(lat * RAD) * Math.cos(decl))
+              - Math.tan(lat * RAD) * Math.tan(decl);
+  if (cosHa < -1) return { kind: "up", noonUTC };
+  if (cosHa > 1)  return { kind: "down", noonUTC };
+  const haMin = 4 * (Math.acos(cosHa) / RAD);
+  return { kind: "normal", noonUTC, riseUTC: noonUTC - haMin, setUTC: noonUTC + haMin };
+}
+
+function lastSundayUTC(year, monthIndex) {
+  const d = new Date(Date.UTC(year, monthIndex + 1, 0));
+  return Date.UTC(year, monthIndex, d.getUTCDate() - d.getUTCDay(), 1, 0);
+}
+const DST_START = lastSundayUTC(YEAR, 2);
+const DST_END = lastSundayUTC(YEAR, 9);
+
+function utcOffsetMin(dayOfYear) {
+  const t = Date.UTC(YEAR, 0, dayOfYear, 12, 0);
+  return t >= DST_START && t < DST_END ? 120 : 60;
+}
+
+/* ---------- per-city year profile ---------- */
+
+const CITIES = [
+  { name: "Kiruna",    lat: 67.86, lon: 20.23 },
+  { name: "Luleå",     lat: 65.58, lon: 22.15 },
+  { name: "Umeå",      lat: 63.83, lon: 20.26 },
+  { name: "Östersund", lat: 63.18, lon: 14.64 },
+  { name: "Sundsvall", lat: 62.39, lon: 17.31 },
+  { name: "Falun",     lat: 60.61, lon: 15.63 },
+  { name: "Stockholm", lat: 59.33, lon: 18.07 },
+  { name: "Göteborg",  lat: 57.71, lon: 11.97 },
+  { name: "Visby",     lat: 57.64, lon: 18.30 },
+  { name: "Malmö",     lat: 55.60, lon: 13.00 },
+];
+
+// Polar days are folded onto the solar-noon line (rise = set = noon, or noon ± 12 h
+// under midnight sun) so every curve is continuous and cities can be interpolated.
+function computeCity(city) {
+  const p = { rise: [], set: [], twiRise: [], twiSet: [], noon: [], kind: [], len: [] };
+  for (let d = 1; d <= DAYS; d++) {
+    const off = utcOffsetMin(d);
+    const sun = solarEvents(d, city.lat, city.lon, 90.833);
+    const twi = solarEvents(d, city.lat, city.lon, 96);
+    const noon = (sun.noonUTC + off) / 60;
+    p.noon.push(noon);
+    p.kind.push(sun.kind);
+    if (sun.kind === "normal") {
+      p.rise.push((sun.riseUTC + off) / 60);
+      p.set.push((sun.setUTC + off) / 60);
+      p.len.push((sun.setUTC - sun.riseUTC) / 60);
+    } else if (sun.kind === "up") {
+      p.rise.push(noon - 12); p.set.push(noon + 12); p.len.push(24);
+    } else {
+      p.rise.push(noon); p.set.push(noon); p.len.push(0);
+    }
+    if (twi.kind === "normal") {
+      p.twiRise.push((twi.riseUTC + off) / 60);
+      p.twiSet.push((twi.setUTC + off) / 60);
+    } else if (twi.kind === "up") {
+      p.twiRise.push(noon - 12); p.twiSet.push(noon + 12);
+    } else {
+      p.twiRise.push(noon); p.twiSet.push(noon);
+    }
+  }
+  return p;
+}
+
+const profiles = CITIES.map(computeCity);
+
+/* ---------- formatting ---------- */
+
+const fmtDate = new Intl.DateTimeFormat("sv-SE", { weekday: "long", day: "numeric", month: "long" });
+const fmtShort = new Intl.DateTimeFormat("sv-SE", { day: "numeric", month: "short" });
+
+function dateOf(dayOfYear) { return new Date(Date.UTC(YEAR, 0, dayOfYear)); }
+
+function hhmm(hours) {
+  let m = Math.round(hours * 60);
+  m = ((m % 1440) + 1440) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+}
+
+function lenStr(hours) {
+  const m = Math.round(hours * 60);
+  return Math.floor(m / 60) + " t " + String(m % 60).padStart(2, "0") + " min";
+}
+
+/* ---------- state ---------- */
+
+const todayIdx = Math.min(DAYS, Math.max(1,
+  Math.round((Date.now() - Date.UTC(YEAR, 0, 0)) / 86400000)));
+
+let cityIdx = CITIES.findIndex(c => c.name === "Stockholm");
+let pinnedDay = todayIdx;
+let hoverDay = null;
+let shown = null; // arrays currently on screen (animated during city switch)
+let animId = 0;
+
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+
+/* ---------- canvas ---------- */
+
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+const MONTHS = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+const MONTH_START = [];
+{
+  let acc = 1;
+  for (let m = 0; m < 12; m++) {
+    MONTH_START.push(acc);
+    acc += new Date(Date.UTC(YEAR, m + 1, 0)).getUTCDate();
+  }
+}
+
+function plotGeom() {
+  const k = devicePixelRatio || 1;
+  return {
+    k,
+    left: 46 * k, right: 12 * k, top: 16 * k, bottom: 26 * k,
+    w: canvas.width, h: canvas.height,
+  };
+}
+
+function draw() {
+  const g = plotGeom();
+  const pw = g.w - g.left - g.right;
+  const ph = g.h - g.top - g.bottom;
+  if (pw <= 0 || ph <= 0 || !shown) return;
+  const yOf = hour => g.top + (1 - Math.min(24, Math.max(0, hour)) / 24) * ph;
+  const xOf = day => g.left + ((day - 1) / (DAYS - 1)) * pw;
+  const sample = (arr, t) => {
+    const i = Math.min(DAYS - 2, Math.floor(t));
+    return arr[i] + (arr[i + 1] - arr[i]) * (t - i);
+  };
+
+  ctx.clearRect(0, 0, g.w, g.h);
+
+  // Events past midnight wrap around the day boundary instead of being clipped.
+  // Colors are opaque (twilight is pre-blended against the plot background) so
+  // the wrapped strip can overlap the main band by a pixel without a visible seam.
+  const fillBand = (x, lo, hi, color) => {
+    if (hi <= lo) return;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, yOf(hi), 1, yOf(lo) - yOf(hi));
+    if (hi > 24) ctx.fillRect(x, yOf(hi - 24) - 1, 1, yOf(0) - yOf(hi - 24) + 1);
+    if (lo < 0) ctx.fillRect(x, yOf(24), 1, yOf(lo + 24) - yOf(24) + 1);
+  };
+
+  // bands, one device-pixel column at a time
+  for (let px = 0; px < pw; px++) {
+    const t = (px / (pw - 1)) * (DAYS - 1);
+    const x = g.left + px;
+    fillBand(x, sample(shown.twiRise, t), sample(shown.twiSet, t), "#3e3422");
+    fillBand(x, sample(shown.rise, t), sample(shown.set, t), "#d9a441");
+  }
+
+  // solar-noon line
+  ctx.strokeStyle = "#8a6a23";
+  ctx.lineWidth = g.k;
+  ctx.beginPath();
+  for (let px = 0; px < pw; px++) {
+    const t = (px / (pw - 1)) * (DAYS - 1);
+    const y = yOf(sample(shown.noon, t));
+    px === 0 ? ctx.moveTo(g.left, y) : ctx.lineTo(g.left + px, y);
+  }
+  ctx.stroke();
+
+  // hour grid + labels
+  ctx.font = `${10.5 * g.k}px "Berkeley Mono", "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace`;
+  ctx.fillStyle = "rgba(150, 141, 120, 0.9)";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let h = 0; h <= 24; h += 6) {
+    const y = yOf(h);
+    if (h > 0 && h < 24) {
+      ctx.strokeStyle = "rgba(236, 231, 218, 0.07)";
+      ctx.lineWidth = g.k;
+      ctx.beginPath();
+      ctx.moveTo(g.left, y);
+      ctx.lineTo(g.left + pw, y);
+      ctx.stroke();
+    }
+    ctx.fillText(String(h).padStart(2, "0"), g.left - 8 * g.k, y);
+  }
+
+  // month ticks + labels
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (let m = 0; m < 12; m++) {
+    const x0 = xOf(MONTH_START[m]);
+    ctx.strokeStyle = "rgba(236, 231, 218, 0.07)";
+    ctx.beginPath();
+    ctx.moveTo(x0, g.top);
+    ctx.lineTo(x0, g.top + ph);
+    ctx.stroke();
+    const x1 = m < 11 ? xOf(MONTH_START[m + 1]) : g.left + pw;
+    ctx.fillText(MONTHS[m], (x0 + x1) / 2, g.top + ph + 8 * g.k);
+  }
+
+  // today marker
+  const xT = xOf(todayIdx);
+  ctx.save();
+  ctx.strokeStyle = "rgba(236, 231, 218, 0.55)";
+  ctx.lineWidth = g.k;
+  ctx.setLineDash([3 * g.k, 4 * g.k]);
+  ctx.beginPath();
+  ctx.moveTo(xT, g.top);
+  ctx.lineTo(xT, g.top + ph);
+  ctx.stroke();
+  ctx.restore();
+  ctx.textAlign = todayIdx > DAYS * 0.88 ? "right" : "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "rgba(236, 231, 218, 0.7)";
+  ctx.fillText("idag", xT + (todayIdx > DAYS * 0.88 ? -5 : 5) * g.k, g.top + 12 * g.k);
+
+  // scrub marker
+  const sel = hoverDay ?? pinnedDay;
+  if (sel !== todayIdx) {
+    const xS = xOf(sel);
+    ctx.strokeStyle = "rgba(217, 164, 65, 0.9)";
+    ctx.lineWidth = g.k;
+    ctx.beginPath();
+    ctx.moveTo(xS, g.top);
+    ctx.lineTo(xS, g.top + ph);
+    ctx.stroke();
+  }
+}
+
+/* ---------- readout + facts ---------- */
+
+const $ = id => document.getElementById(id);
+
+function updateReadout() {
+  const p = profiles[cityIdx];
+  const d = (hoverDay ?? pinnedDay) - 1;
+  $("ro-date").textContent = fmtDate.format(dateOf(d + 1));
+  const kind = p.kind[d];
+  if (kind === "up") {
+    $("ro-rise").textContent = "—";
+    $("ro-set").textContent = "—";
+    $("ro-len").textContent = "24 t 00 min";
+  } else if (kind === "down") {
+    $("ro-rise").textContent = "—";
+    $("ro-set").textContent = "—";
+    $("ro-len").textContent = "0 t 00 min";
+  } else {
+    $("ro-rise").textContent = hhmm(p.rise[d]);
+    $("ro-set").textContent = hhmm(p.set[d]);
+    $("ro-len").textContent = lenStr(p.len[d]);
+  }
+
+  let note;
+  if (kind === "up") {
+    note = "Solen går aldrig ner — midnattssol.";
+  } else if (kind === "down") {
+    note = p.twiSet[d] > p.twiRise[d]
+      ? "Solen går aldrig upp, men borgerlig skymning råder mitt på dagen."
+      : "Solen går aldrig upp — polarnatt.";
+  } else {
+    const prev = d > 0 ? p.len[d - 1] : p.len[d];
+    const diff = Math.round((p.len[d] - prev) * 60);
+    note = diff === 0 ? "Dagen är lika lång som i går."
+      : `Dagen är ${Math.abs(diff)} min ${diff > 0 ? "längre" : "kortare"} än dagen före.`;
+  }
+  $("ro-note").textContent = note;
+}
+
+function updateFacts() {
+  const p = profiles[cityIdx];
+  let longest = 0, shortest = 0;
+  for (let i = 1; i < DAYS; i++) {
+    if (p.len[i] > p.len[longest]) longest = i;
+    if (p.len[i] < p.len[shortest]) shortest = i;
+  }
+  const upDays = [], downDays = [];
+  p.kind.forEach((k, i) => { if (k === "up") upDays.push(i + 1); if (k === "down") downDays.push(i + 1); });
+
+  $("f-long").innerHTML = p.kind[longest] === "up"
+    ? `24 t 00 min`
+    : `${lenStr(p.len[longest])}<br><span class="sub">${fmtShort.format(dateOf(longest + 1))}</span>`;
+  $("f-short").innerHTML = p.kind[shortest] === "down"
+    ? `0 t 00 min`
+    : `${lenStr(p.len[shortest])}<br><span class="sub">${fmtShort.format(dateOf(shortest + 1))}</span>`;
+  $("f-msun").innerHTML = upDays.length
+    ? `${upDays.length} dygn<br><span class="sub">${fmtShort.format(dateOf(upDays[0]))}–${fmtShort.format(dateOf(upDays[upDays.length - 1]))}</span>`
+    : "—";
+  $("f-pnight").innerHTML = downDays.length ? `${downDays.length} dygn` : "—";
+
+  canvas.setAttribute("aria-label",
+    `Dagsljusdiagram för ${CITIES[cityIdx].name} ${YEAR}. Längsta dagen ${lenStr(p.len[longest])}, kortaste ${lenStr(p.len[shortest])}.`
+    + (upDays.length ? ` Midnattssol ${upDays.length} dygn.` : "")
+    + (downDays.length ? ` Polarnatt ${downDays.length} dygn.` : ""));
+}
+
+/* ---------- city switching with morph ---------- */
+
+const KEYS = ["rise", "set", "twiRise", "twiSet", "noon"];
+
+function setCity(idx) {
+  if (idx === cityIdx && shown) return;
+  cityIdx = idx;
+  document.querySelectorAll("nav.cities button").forEach((b, i) =>
+    b.setAttribute("aria-pressed", String(i === idx)));
+  updateReadout();
+  updateFacts();
+
+  const target = profiles[idx];
+  cancelAnimationFrame(animId);
+  if (!shown || reduceMotion.matches) {
+    shown = target;
+    draw();
+    return;
+  }
+  const from = {};
+  KEYS.forEach(k => { from[k] = shown[k].slice(); });
+  const start = performance.now();
+  const DUR = 180;
+  const step = now => {
+    const t = Math.min(1, (now - start) / DUR);
+    const e = 1 - Math.pow(1 - t, 4); // strong ease-out
+    const mix = {};
+    KEYS.forEach(k => {
+      mix[k] = from[k].map((v, i) => v + (target[k][i] - v) * e);
+    });
+    shown = mix;
+    draw();
+    if (t < 1) animId = requestAnimationFrame(step);
+    else { shown = target; draw(); }
+  };
+  animId = requestAnimationFrame(step);
+}
+
+/* ---------- wiring ---------- */
+
+$("year-label").textContent = YEAR;
+
+const nav = $("cities");
+CITIES.forEach((c, i) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `${c.name}<span class="lat">${c.lat.toFixed(1).replace(".", ",")}°N</span>`;
+  b.addEventListener("click", () => setCity(i));
+  nav.appendChild(b);
+});
+
+function dayFromEvent(ev) {
+  const g = plotGeom();
+  const rect = canvas.getBoundingClientRect();
+  const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+  const t = (x - g.left) / (g.w - g.left - g.right);
+  return Math.max(1, Math.min(DAYS, Math.round(t * (DAYS - 1)) + 1));
+}
+
+canvas.addEventListener("pointermove", ev => {
+  hoverDay = dayFromEvent(ev);
+  updateReadout();
+  draw();
+});
+canvas.addEventListener("pointerdown", ev => {
+  pinnedDay = dayFromEvent(ev);
+  hoverDay = null;
+  updateReadout();
+  draw();
+});
+canvas.addEventListener("pointerleave", () => {
+  hoverDay = null;
+  updateReadout();
+  draw();
+});
+canvas.addEventListener("keydown", ev => {
+  const stepDays = ev.shiftKey ? 7 : 1;
+  if (ev.key === "ArrowLeft") pinnedDay = Math.max(1, pinnedDay - stepDays);
+  else if (ev.key === "ArrowRight") pinnedDay = Math.min(DAYS, pinnedDay + stepDays);
+  else if (ev.key === "Home") pinnedDay = todayIdx;
+  else return;
+  ev.preventDefault();
+  hoverDay = null;
+  updateReadout();
+  draw();
+});
+
+function resize() {
+  const k = devicePixelRatio || 1;
+  const cssW = canvas.parentElement.clientWidth;
+  const cssH = Math.max(280, Math.round(cssW * 0.46));
+  canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * k);
+  canvas.height = Math.round(cssH * k);
+  draw();
+}
+new ResizeObserver(resize).observe(canvas.parentElement);
+
+resize();
+setCity(cityIdx);
+</script>
+</body>
+</html>
