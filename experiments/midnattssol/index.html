@@ -196,6 +196,11 @@
     text-wrap: pretty;
   }
 
+  @media (pointer: coarse) {
+    nav.cities { gap: 8px 26px; }
+    nav.cities button { padding: 8px 0; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
   }
@@ -363,6 +368,7 @@ const todayIdx = Math.min(DAYS, Math.max(1,
 let cityIdx = CITIES.findIndex(c => c.name === "Stockholm");
 let pinnedDay = todayIdx;
 let hoverDay = null;
+let dragging = false;
 let shown = null; // arrays currently on screen (animated during city switch)
 let animId = 0;
 
@@ -623,16 +629,21 @@ function dayFromEvent(ev) {
 }
 
 canvas.addEventListener("pointermove", ev => {
-  hoverDay = dayFromEvent(ev);
+  if (dragging) { pinnedDay = dayFromEvent(ev); hoverDay = null; }
+  else hoverDay = dayFromEvent(ev);
   updateReadout();
   draw();
 });
 canvas.addEventListener("pointerdown", ev => {
+  dragging = true;
+  canvas.setPointerCapture(ev.pointerId);
   pinnedDay = dayFromEvent(ev);
   hoverDay = null;
   updateReadout();
   draw();
 });
+canvas.addEventListener("pointerup", () => { dragging = false; });
+canvas.addEventListener("pointercancel", () => { dragging = false; });
 canvas.addEventListener("pointerleave", () => {
   hoverDay = null;
   updateReadout();
